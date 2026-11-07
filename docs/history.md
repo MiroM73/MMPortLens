@@ -49,7 +49,7 @@
   kept over an update restart. Verified in the running program (port 443 + public, port range,
   invalid `/33`, remembered `/^(code|claude)/` + `!loopback` after a restart).
 
-## In progress (phase 3)
+## 0.2.0 (2026-11-07) – phase 3, parity with TCPView
 - #17: multi-selection by `ConnKey` (`src/selection.rs`) – Ctrl / Shift + click, Shift + arrows,
   Ctrl+A – kept over refreshes and re-sorting; keyboard shortcuts F5, Space, Ctrl+F, Esc, arrows /
   PgUp / PgDn / Home / End, Ctrl+C (selected rows with a header), F1 = Help → Keyboard shortcuts

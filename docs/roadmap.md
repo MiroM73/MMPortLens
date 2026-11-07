@@ -32,12 +32,12 @@ program, README / `docs/architecture.md` / `docs/history.md`, detailed commit wi
 ## Phase 3 – parity with TCPView
 | Issue | What | Status |
 |-------|------|--------|
-| #17 | Keyboard shortcuts and multi-selection (needed for bulk actions in #6 and copying) | done |
-| #5 | Reverse DNS (off the UI thread) | done |
-| #6 | Close a connection, end a process | done |
-| #7 | Process details (svchost services, user, command line, icon) | done |
-| #14 | Real creation time and owner module of TCP connections | done |
-| #8 | Bytes sent / received per connection (ESTATS, needs admin – administrator mode of #15 exists) | done |
+| #17 | Keyboard shortcuts and multi-selection (needed for bulk actions in #6 and copying) | done (a85607f) |
+| #5 | Reverse DNS (off the UI thread) | done (a56191c) |
+| #6 | Close a connection, end a process | done (fec39e0); closing as administrator not yet checked by hand |
+| #7 | Process details (svchost services, user, command line, icon) | done (3ffd6a3) |
+| #14 | Real creation time and owner module of TCP connections | done (1f660a1) |
+| #8 | Bytes sent / received per connection (ESTATS, needs admin – administrator mode of #15 exists) | done (50055c3); the counters as administrator not yet checked by hand |
 
 ## Phase 4 – comfort
 | Issue | What | Status |
@@ -61,4 +61,5 @@ program, README / `docs/architecture.md` / `docs/history.md`, detailed commit wi
 |-------|------|--------|
 | #21 part 3 | Status bar hint when Windows reports invalid TCP states | |
 | #22 | Sort arrow in the header drawn as an empty box | |
-| #23 | Live snapshot test failed once (flaky) – better message, retry | |
+| #23 | Live snapshot test failed once (flaky) – better message, retry; reproduced: own connection reported as Listen (#21) | |
+| #24 | Listener rows flicker between two keys when Windows alternates state 0 and Listen | |
