@@ -34,6 +34,9 @@ Early version (0.1.5). What works now:
 - **Column filters** under the headers: text, `=exact`, `/regex/`, `a|b`, `!not`; ports and PID
   `>1024`, `1000-2000`; addresses `10.0.0.0/8`, `fe80::/10`, `loopback`, `private`, `public`
   (hover a field for the syntax).
+- **Process details**: icon, description and company from the version resource, user, command
+  line, start time and the **Windows services** running in the process (which service of
+  `svchost.exe` it is) – in the details pane under the table, as columns and as a tooltip.
 - **Close connection** (IPv4 TCP, like TCPView) and **End process** from the context menu or with
   Del, for all selected rows, after a confirmation that lists them.
 - **Multi-selection and keyboard shortcuts**: Ctrl / Shift + click, arrows, Ctrl+A, Ctrl+C copies

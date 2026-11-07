@@ -72,3 +72,11 @@
   without administrator rights reported "access denied" for both connections, End process ended
   the helper and its rows disappeared. Not verified elevated (no UAC confirmation possible in the
   session); the test `close_own_connection` checks that case when run as administrator.
+- #7: process details (`src/winproc.rs`, `src/process.rs`, `src/app/details.rs`): icon in the
+  Process column, tooltip, details pane (View → Details pane), columns Windows services / User /
+  Command line / Company / Description; services per PID from the service manager every 10 s;
+  the process cache is keyed by PID + start time (PID reuse). Verified in the running program
+  (not elevated): msedge.exe rows with the Edge icon, "Microsoft Edge", Microsoft Corporation,
+  user, start time and the full command line in the details pane; `svchost.exe` rows without a
+  path still show their services (CDPSvc, KeyIso, RpcEptMapper, Schedule …) and the hint about
+  administrator rights. Linux build checked with `cargo clippy --target x86_64-unknown-linux-gnu`.

@@ -19,6 +19,12 @@ impl App {
                 ui.menu_button(t!("menu.view.columns"), |ui| self.columns_menu(ui));
                 ui.separator();
                 if ui
+                    .checkbox(&mut self.cfg.show_details, t!("menu.view.details"))
+                    .changed()
+                {
+                    self.settings_changed();
+                }
+                if ui
                     .checkbox(
                         &mut self.cfg.resolve_addresses,
                         t!("menu.view.resolve_addresses"),

@@ -22,6 +22,7 @@ mod selection;
 mod services;
 mod timefmt;
 mod update;
+mod winproc;
 
 use eframe::egui;
 use std::sync::Arc;

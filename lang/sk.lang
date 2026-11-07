@@ -16,6 +16,7 @@ menu.file.always_admin.tip = Program spustený bez administrátorských práv sa
 menu.file.exit = Koniec
 menu.view = Zobraziť
 menu.view.columns = Stĺpce
+menu.view.details = Panel detailov
 menu.view.column_filters = Zobraziť filtre stĺpcov
 menu.view.remember_column_filters = Pamätať si filtre stĺpcov
 menu.view.remember_column_filters.tip = Filtre stĺpcov sa uložia a pri ďalšom spustení sa nastavia znova
@@ -64,6 +65,11 @@ column.process_path = Cesta k procesu
 column.remote_host = Vzdialený hostiteľ
 column.local_host = Lokálny hostiteľ
 column.service = Služba
+column.win_services = Služby Windows
+column.user = Používateľ
+column.command_line = Príkazový riadok
+column.company = Spoločnosť
+column.description = Popis
 state.invalid = Neplatný ({value})
 state.invalid.tip = Operačný systém vrátil neplatný stav TCP ({value}). Nie je to chyba MM PortLens; riadok je zobrazený tak, ako ho systém vrátil.
 columns.move_left = Posunúť doľava
@@ -122,6 +128,11 @@ action.close.closed = Spojenie je už zatvorené.
 action.unsupported = V tomto operačnom systéme to nie je podporované.
 action.kill.system = Systémové procesy (PID 0 a 4) sa nedajú ukončiť.
 action.kill.own = MM PortLens neukončí sám seba – použi Súbor → Koniec.
+
+# --- Panel detailov ---
+details.started = Proces spustený
+details.services_line = Služby: {services}
+details.no_access = Windows bez administrátorských práv neposkytne podrobnosti o tomto procese (Súbor → Reštartovať ako administrátor).
 
 # --- Stavový riadok ---
 status.endpoints = Koncové body: {shown} z {total}

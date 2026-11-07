@@ -17,7 +17,8 @@ with the change.
 | `src/net/winrows.rs` | Pure decoding of the iphlpapi table buffers (tested on every platform). |
 | `src/net/windows.rs` | Windows backend: `GetExtendedTcpTable` / `GetExtendedUdpTable`, declared directly with `unsafe extern "system"` (no binding crate). |
 | `src/net/procfs.rs` | Linux backend: `/proc/net/{tcp,tcp6,udp,udp6}` + socket inode → PID from `/proc/<pid>/fd`. |
-| `src/process.rs` | PID → name and path (`QueryFullProcessImageNameW` / `/proc/<pid>/exe`), cached per PID. |
+| `src/process.rs` | `ProcessInfo` (name, path, start time, user, command line, company, description, services, icon) and `ProcessCache` keyed by PID + start time (#7). |
+| `src/winproc.rs` | Windows process details: image path, start time, user (token), command line (`NtQueryInformationProcess`), version strings, icon (`ExtractIconExW` → RGBA), services per PID (`EnumServicesStatusExW`) (#7). |
 | `src/poller.rs` | Background thread: snapshot + process names every interval, sent over a channel. |
 | `src/model.rs` | `Tracker`: merges snapshots into rows, marks new / changed / closed rows and expires the marks. |
 | `src/colfilter.rs` | Column filter syntax: parsing and matching (`ColumnFilter`, `FilterKind`, `FilterError`) – core from RusTrace. |
@@ -29,7 +30,7 @@ with the change.
 | `src/config.rs` | `Config` (JSON, every field has a default). |
 | `src/i18n.rs` | `t!()` and the language files – the same module as in RusTrace. |
 | `src/timefmt.rs` | Clock times for the table. |
-| `src/app/` | The UI, split by area like RusTrace: `mod.rs` (state, frame loop), `menu.rs`, `toolbar.rs`, `table.rs`, `statusbar.rs`, `colfilters.rs` (column filter state and field), `admin.rs` (restart as administrator), `update_window.rs` (Help → Check for updates), `input.rs` (keyboard shortcuts, copying the selection), `help.rs` (Help → Keyboard shortcuts), `actions.rs` (context menu items, confirmation window and result of #6). |
+| `src/app/` | The UI, split by area like RusTrace: `mod.rs` (state, frame loop), `menu.rs`, `toolbar.rs`, `table.rs`, `statusbar.rs`, `colfilters.rs` (column filter state and field), `admin.rs` (restart as administrator), `update_window.rs` (Help → Check for updates), `input.rs` (keyboard shortcuts, copying the selection), `help.rs` (Help → Keyboard shortcuts), `actions.rs` (context menu items, confirmation window and result of #6), `details.rs` (details pane, process icons and tooltip of #7). |
 | `lang/*.lang` | Built-in translations (en, sk, cs, de), embedded with `include_str!`. |
 
 ## Reading the connections
@@ -133,6 +134,38 @@ service name as a tooltip.
   dirty when names arrive. Unresolved addresses show the IP, so the text filter, the column filters
   and sorting work on what is shown; sorting puts names before bare addresses.
 - The status bar shows "Resolving: n" while lookups are pending.
+
+## Process details (#7)
+
+`ProcessCache` (in the poll thread) looks up a PID when it first owns an endpoint and keeps the
+`Arc<ProcessInfo>` while the PID has endpoints. A PID is identified together with the **start
+time** of its process (`GetProcessTimes`; Linux `/proc/<pid>/stat` field 22 + `btime`): a PID
+reused by a new process has another start time and is looked up again. Without access (other
+users' and protected processes when not elevated) the start time is `None` and the entry stays.
+
+- Windows (`winproc.rs`, all with `PROCESS_QUERY_LIMITED_INFORMATION`): image path
+  (`QueryFullProcessImageNameW`), user (`OpenProcessToken` + `TokenUser` + `LookupAccountSidW` →
+  `DOMAIN\user`), command line (`NtQueryInformationProcess` class 60, Windows 8.1+; the
+  `UNICODE_STRING` must point inside the returned buffer), company and description
+  (`GetFileVersionInfoW` + `VerQueryValueW`, the first translation, then 0409/04b0 and 0409/04e4).
+  Linux: `/proc/<pid>/cmdline` and the UID from `/proc/<pid>/status` mapped by `/etc/passwd`.
+- Icons: `ExtractIconExW` (the large 32 px icon of the exe; no COM needed, unlike
+  `SHGetFileInfoW`), `GetIconInfo` + `GetDIBits` as top-down 32-bit BGRA, converted by the pure
+  `icon_rgba` (an icon without alpha takes it from the AND mask). Cached per executable path in
+  the poll thread; the UI creates one texture per path (`App::load_icon_textures`, before the table
+  borrows `self`) and draws it in the Process cell and the details pane.
+- Services: `EnumServicesStatusExW(SC_ENUM_PROCESS_INFO, SERVICE_WIN32, SERVICE_ACTIVE)` read every
+  10 s (`SERVICES_EVERY`) into PID → (service name, display name); processes whose list changed get
+  a new `Arc<ProcessInfo>`. The entries of `ENUM_SERVICE_STATUS_PROCESSW` are read with the
+  pointer-size stride (two string pointers + 9 DWORDs, the PID is the 8th). No administrator rights
+  needed, so the services of `svchost.exe` are known even when its path is not. The exact service of
+  an endpoint comes with #14 (owner module).
+- Columns (hidden by default): Windows services, User, Command line, Company, Description. The
+  Process cell tooltip shows description – company, services and the command line.
+- **View → Details pane** (`Config::show_details`, default on): a resizable bottom panel for the
+  cursor row (or the first selected row): the connection fields on the left, the process with its
+  icon on the right; values are selectable. Without a path and without elevation it explains that
+  Windows needs administrator rights.
 
 ## Close connection, End process (#6)
 
@@ -272,7 +305,9 @@ names changed; the logic is the same.
 (new / changed / closed / expiry / reappearing), column layout and sorting, settings round trip,
 language files, reverse DNS (cache TTL / negative results / pending, `sockaddr` layout, a
 300-address run through the worker pool with a slow fake resolver – never more than `WORKERS` at
-once, the caller never blocks –, the system resolver on 127.0.0.1), port names, close / kill checks and the `MIB_TCPROW` layout, ending an own child process,
+once, the caller never blocks –, the system resolver on 127.0.0.1), port names, process details (own process: start time, user, command line; notepad.exe: company,
+description, icon; services by PID; start time identifies a reused PID; icon alpha / mask
+conversion, FILETIME, version keys), close / kill checks and the `MIB_TCPROW` layout, ending an own child process,
 closing an own loopback connection (elevated: it disappears; not elevated: exactly
 `AccessDenied`), host / service
 cells, selection (clicks, ranges, re-sorting, navigation targets), column filters (syntax, regex, numeric ranges, CIDR, address classes, errors,

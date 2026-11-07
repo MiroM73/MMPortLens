@@ -27,6 +27,7 @@ menu.file.always_admin.tip = A program started without administrator rights star
 menu.file.exit = Exit
 menu.view = View
 menu.view.columns = Columns
+menu.view.details = Details pane
 menu.view.column_filters = Show column filters
 menu.view.remember_column_filters = Remember column filters
 menu.view.remember_column_filters.tip = The column filters are saved and set again at the next start
@@ -75,6 +76,11 @@ column.process_path = Process path
 column.remote_host = Remote host
 column.local_host = Local host
 column.service = Service
+column.win_services = Windows services
+column.user = User
+column.command_line = Command line
+column.company = Company
+column.description = Description
 state.invalid = Invalid ({value})
 state.invalid.tip = The operating system reported an invalid TCP state ({value}). This is not an error of MM PortLens; the row is shown as reported.
 columns.move_left = Move left
@@ -133,6 +139,11 @@ action.close.closed = The connection is already closed.
 action.unsupported = Not supported on this operating system.
 action.kill.system = System processes (PID 0 and 4) cannot be ended.
 action.kill.own = MM PortLens does not end itself – use File → Exit.
+
+# --- Details pane ---
+details.started = Process started
+details.services_line = Services: {services}
+details.no_access = Windows does not give details of this process without administrator rights (File → Restart as administrator).
 
 # --- Status bar ---
 status.endpoints = Endpoints: {shown} of {total}

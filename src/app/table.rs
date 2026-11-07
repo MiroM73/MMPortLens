@@ -122,6 +122,19 @@ impl App {
                             {
                                 resp.inner.on_hover_text(name);
                             }
+                        } else if c == ColumnId::Process {
+                            // Icon + name; the tooltip says what the process is (#7).
+                            if let Some(tex) = self.icon_texture(&r.process) {
+                                ui.add(
+                                    egui::Image::new(tex)
+                                        .fit_to_exact_size(egui::vec2(row_h - 6.0, row_h - 6.0)),
+                                );
+                            }
+                            let resp = ui.add(label);
+                            let tip = details::process_tip(&r.process);
+                            if !tip.is_empty() {
+                                resp.on_hover_text(tip);
+                            }
                         } else {
                             let resp = ui.add(label);
                             if c == ColumnId::State

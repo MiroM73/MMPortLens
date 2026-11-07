@@ -73,6 +73,7 @@ fn poll_once(cache: &mut ProcessCache) -> PollResult {
     let conns = net::snapshot()?;
     let pids: HashSet<u32> = conns.iter().map(|c| c.pid).collect();
     cache.retain(&pids);
+    cache.refresh_services();
     let rows = conns
         .into_iter()
         .map(|c| {

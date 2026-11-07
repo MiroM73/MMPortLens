@@ -19,7 +19,6 @@ pub struct Selection {
 }
 
 impl Selection {
-    #[cfg(test)]
     pub fn cursor(&self) -> Option<ConnKey> {
         self.cursor
     }

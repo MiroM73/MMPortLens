@@ -16,6 +16,7 @@ menu.file.always_admin.tip = Ein ohne Administratorrechte gestartetes Programm s
 menu.file.exit = Beenden
 menu.view = Ansicht
 menu.view.columns = Spalten
+menu.view.details = Detailbereich
 menu.view.column_filters = Spaltenfilter anzeigen
 menu.view.remember_column_filters = Spaltenfilter merken
 menu.view.remember_column_filters.tip = Die Spaltenfilter werden gespeichert und beim nächsten Start wieder gesetzt
@@ -64,6 +65,11 @@ column.process_path = Prozesspfad
 column.remote_host = Remote-Host
 column.local_host = Lokaler Host
 column.service = Dienst
+column.win_services = Windows-Dienste
+column.user = Benutzer
+column.command_line = Befehlszeile
+column.company = Firma
+column.description = Beschreibung
 state.invalid = Ungültig ({value})
 state.invalid.tip = Das Betriebssystem hat einen ungültigen TCP-Zustand ({value}) gemeldet. Das ist kein Fehler von MM PortLens; die Zeile wird so angezeigt, wie sie gemeldet wurde.
 columns.move_left = Nach links
@@ -122,6 +128,11 @@ action.close.closed = Die Verbindung ist bereits geschlossen.
 action.unsupported = Auf diesem Betriebssystem nicht unterstützt.
 action.kill.system = Systemprozesse (PID 0 und 4) können nicht beendet werden.
 action.kill.own = MM PortLens beendet sich nicht selbst – Datei → Beenden verwenden.
+
+# --- Detailbereich ---
+details.started = Prozess gestartet
+details.services_line = Dienste: {services}
+details.no_access = Ohne Administratorrechte liefert Windows keine Details zu diesem Prozess (Datei → Als Administrator neu starten).
 
 # --- Statusleiste ---
 status.endpoints = Endpunkte: {shown} von {total}

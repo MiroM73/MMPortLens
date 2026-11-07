@@ -26,6 +26,7 @@ use std::time::{Duration, Instant};
 mod actions;
 mod admin;
 mod colfilters;
+mod details;
 mod help;
 mod input;
 mod menu;
@@ -115,6 +116,8 @@ pub struct App {
     pending_action: Option<actions::Pending>,
     /// Result of the last action (status bar).
     action_result: Option<actions::ActionResult>,
+    /// Textures of the process icons by executable path (#7).
+    icons: HashMap<String, egui::TextureHandle>,
     last_changes: Changes,
     last_took: Duration,
     last_poll: Option<u64>,
@@ -169,6 +172,7 @@ impl App {
             show_shortcuts: false,
             pending_action: None,
             action_result: None,
+            icons: HashMap::new(),
             last_changes: Changes::default(),
             last_took: Duration::ZERO,
             last_poll: None,
@@ -347,10 +351,12 @@ impl eframe::App for App {
         if self.view_dirty {
             self.rebuild_view();
         }
+        self.load_icon_textures(&ctx);
 
         egui::Panel::top("menu").show(ui, |ui| self.menu_bar(ui));
         egui::Panel::top("toolbar").show(ui, |ui| self.toolbar(ui));
         egui::Panel::bottom("status").show(ui, |ui| self.status_bar(ui));
+        self.details_pane(ui);
         egui::CentralPanel::default().show(ui, |ui| self.table(ui));
         self.about_window(&ctx);
         self.shortcuts_window(&ctx);

@@ -26,11 +26,19 @@ pub enum ColumnId {
     LocalHost,
     /// Name of the well-known port (#5).
     Service,
+    /// Windows services running in the process (#7).
+    WinServices,
+    /// Owner of the process (#7).
+    User,
+    CommandLine,
+    /// Company / description from the version resource (#7).
+    Company,
+    Description,
 }
 
 impl ColumnId {
     /// All columns in the default order (the order of TCPView, then the additional ones).
-    pub const ALL: [ColumnId; 13] = [
+    pub const ALL: [ColumnId; 18] = [
         ColumnId::Process,
         ColumnId::Pid,
         ColumnId::Protocol,
@@ -44,12 +52,26 @@ impl ColumnId {
         ColumnId::Service,
         ColumnId::FirstSeen,
         ColumnId::ProcessPath,
+        ColumnId::WinServices,
+        ColumnId::User,
+        ColumnId::CommandLine,
+        ColumnId::Company,
+        ColumnId::Description,
     ];
 
     /// Shown by default (the path is long and the local host name is mostly the own computer,
     /// so they start hidden).
     fn default_visible(self) -> bool {
-        !matches!(self, ColumnId::ProcessPath | ColumnId::LocalHost)
+        !matches!(
+            self,
+            ColumnId::ProcessPath
+                | ColumnId::LocalHost
+                | ColumnId::WinServices
+                | ColumnId::User
+                | ColumnId::CommandLine
+                | ColumnId::Company
+                | ColumnId::Description
+        )
     }
 
     fn key(self) -> &'static str {
@@ -67,6 +89,11 @@ impl ColumnId {
             ColumnId::RemoteHost => "column.remote_host",
             ColumnId::LocalHost => "column.local_host",
             ColumnId::Service => "column.service",
+            ColumnId::WinServices => "column.win_services",
+            ColumnId::User => "column.user",
+            ColumnId::CommandLine => "column.command_line",
+            ColumnId::Company => "column.company",
+            ColumnId::Description => "column.description",
         }
     }
 
@@ -86,6 +113,10 @@ impl ColumnId {
             ColumnId::ProcessPath => 360.0,
             ColumnId::RemoteHost | ColumnId::LocalHost => 220.0,
             ColumnId::Service => 90.0,
+            ColumnId::WinServices | ColumnId::Company => 180.0,
+            ColumnId::User => 160.0,
+            ColumnId::CommandLine => 400.0,
+            ColumnId::Description => 220.0,
         }
     }
 
@@ -141,6 +172,11 @@ pub fn cell_text(row: &Row, col: ColumnId) -> String {
             None => ip_text(c.local.ip()),
         },
         ColumnId::Service => service(row).unwrap_or_default().to_owned(),
+        ColumnId::WinServices => row.process.service_list(),
+        ColumnId::User => row.process.user.clone(),
+        ColumnId::CommandLine => row.process.command_line.clone(),
+        ColumnId::Company => row.process.company.clone(),
+        ColumnId::Description => row.process.description.clone(),
     }
 }
 
@@ -187,6 +223,13 @@ pub fn compare(a: &Row, b: &Row, col: ColumnId) -> Ordering {
             host(a).cmp(&host(b))
         }
         ColumnId::Service => service(a).cmp(&service(b)),
+        ColumnId::WinServices
+        | ColumnId::User
+        | ColumnId::CommandLine
+        | ColumnId::Company
+        | ColumnId::Description => cell_text(a, col)
+            .to_lowercase()
+            .cmp(&cell_text(b, col).to_lowercase()),
     }
 }
 
@@ -312,7 +355,7 @@ mod tests {
     #[test]
     fn layout_default_and_visibility() {
         let mut l = ColumnLayout::default();
-        assert_eq!(l.visible().len(), ColumnId::ALL.len() - 2);
+        assert_eq!(l.visible().len(), ColumnId::ALL.len() - 7);
         assert!(!l.visible().contains(&ColumnId::ProcessPath));
         assert!(l.visible().contains(&ColumnId::RemoteHost));
         l.set_visible(ColumnId::ProcessPath, true);
