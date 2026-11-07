@@ -80,3 +80,11 @@
   user, start time and the full command line in the details pane; `svchost.exe` rows without a
   path still show their services (CDPSvc, KeyIso, RpcEptMapper, Schedule …) and the hint about
   administrator rights. Linux build checked with `cargo clippy --target x86_64-unknown-linux-gnu`.
+- #14: the Windows backend reads `TCP_TABLE_OWNER_MODULE_ALL` / `UDP_TABLE_OWNER_MODULE`: real
+  creation time of every endpoint and its owner module (`GetOwnerModuleFrom*Entry`, cached per
+  endpoint). Columns Created, Duration, Module (First seen now hidden by default); the Windows
+  services column shows the exact service of the endpoint. Verified: the live tests (creation time
+  of an own new connection within 1 s, module = the test exe), and in the running program without
+  administrator rights the svchost endpoints showed their exact services (SessionEnv, CDPSvc, RpcSs,
+  Schedule, EventLog, TermService, Spooler, WinDefend …), creation times with ms, durations, and a
+  refresh took ~1 ms.

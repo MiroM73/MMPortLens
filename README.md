@@ -22,6 +22,8 @@ Early version (0.1.5). What works now:
 
 - TCP and UDP endpoints, IPv4 and IPv6, with PID, process name and process path
   (Windows: `GetExtendedTcpTable` / `GetExtendedUdpTable`; Linux: `/proc/net`).
+- The real **creation time** of each endpoint and how long it exists, and its **owner module** –
+  for an endpoint of a service in `svchost.exe` the exact service (Windows).
 - Automatic refresh in a background thread: pause / resume, refresh now, interval 0.5 s – 30 s.
 - New endpoints are **green**, endpoints that changed their TCP state **yellow**, closed endpoints
   stay **red** for 3 seconds before they disappear.

@@ -34,11 +34,17 @@ pub enum ColumnId {
     /// Company / description from the version resource (#7).
     Company,
     Description,
+    /// When the system created the endpoint (#14).
+    Created,
+    /// How long the endpoint exists (#14).
+    Duration,
+    /// Owner module: the executable or the service in svchost (#14).
+    Module,
 }
 
 impl ColumnId {
     /// All columns in the default order (the order of TCPView, then the additional ones).
-    pub const ALL: [ColumnId; 18] = [
+    pub const ALL: [ColumnId; 21] = [
         ColumnId::Process,
         ColumnId::Pid,
         ColumnId::Protocol,
@@ -50,7 +56,10 @@ impl ColumnId {
         ColumnId::RemotePort,
         ColumnId::RemoteHost,
         ColumnId::Service,
+        ColumnId::Created,
+        ColumnId::Duration,
         ColumnId::FirstSeen,
+        ColumnId::Module,
         ColumnId::ProcessPath,
         ColumnId::WinServices,
         ColumnId::User,
@@ -71,6 +80,9 @@ impl ColumnId {
                 | ColumnId::CommandLine
                 | ColumnId::Company
                 | ColumnId::Description
+                | ColumnId::FirstSeen
+                | ColumnId::Duration
+                | ColumnId::Module
         )
     }
 
@@ -94,6 +106,9 @@ impl ColumnId {
             ColumnId::CommandLine => "column.command_line",
             ColumnId::Company => "column.company",
             ColumnId::Description => "column.description",
+            ColumnId::Created => "column.created",
+            ColumnId::Duration => "column.duration",
+            ColumnId::Module => "column.module",
         }
     }
 
@@ -117,6 +132,9 @@ impl ColumnId {
             ColumnId::User => 160.0,
             ColumnId::CommandLine => 400.0,
             ColumnId::Description => 220.0,
+            ColumnId::Created => 110.0,
+            ColumnId::Duration => 100.0,
+            ColumnId::Module => 150.0,
         }
     }
 
@@ -134,7 +152,7 @@ impl ColumnId {
     pub fn numeric(self) -> bool {
         matches!(
             self,
-            ColumnId::Pid | ColumnId::LocalPort | ColumnId::RemotePort
+            ColumnId::Pid | ColumnId::LocalPort | ColumnId::RemotePort | ColumnId::Duration
         )
     }
 }
@@ -172,12 +190,36 @@ pub fn cell_text(row: &Row, col: ColumnId) -> String {
             None => ip_text(c.local.ip()),
         },
         ColumnId::Service => service(row).unwrap_or_default().to_owned(),
-        ColumnId::WinServices => row.process.service_list(),
+        ColumnId::WinServices => win_services(row),
         ColumnId::User => row.process.user.clone(),
         ColumnId::CommandLine => row.process.command_line.clone(),
         ColumnId::Company => row.process.company.clone(),
         ColumnId::Description => row.process.description.clone(),
+        ColumnId::Created => c
+            .created
+            .map(|t| crate::timefmt::stamp(t, crate::model::now_ms()))
+            .unwrap_or_default(),
+        ColumnId::Duration => c
+            .created
+            .map(|t| crate::timefmt::duration(crate::model::now_ms().saturating_sub(t)))
+            .unwrap_or_default(),
+        ColumnId::Module => c.module.as_deref().unwrap_or_default().to_owned(),
     }
+}
+
+/// Windows services of a row: the exact service when the owner module of the endpoint is one of
+/// the services of its process (#14), otherwise all services of the process (#7).
+pub fn win_services(row: &Row) -> String {
+    if let Some(m) = &row.conn.module
+        && let Some((name, _)) = row
+            .process
+            .services
+            .iter()
+            .find(|(n, _)| n.eq_ignore_ascii_case(m))
+    {
+        return name.clone();
+    }
+    row.process.service_list()
 }
 
 /// Service of a row: the name of the remote port, for endpoints without a remote side (listeners,
@@ -223,7 +265,15 @@ pub fn compare(a: &Row, b: &Row, col: ColumnId) -> Ordering {
             host(a).cmp(&host(b))
         }
         ColumnId::Service => service(a).cmp(&service(b)),
+        // Older first; unknown times last.
+        ColumnId::Created => {
+            (x.created.is_none(), x.created).cmp(&(y.created.is_none(), y.created))
+        }
+        // The longest-living first when ascending would surprise; shorter = created later.
+        ColumnId::Duration => (x.created.is_none(), std::cmp::Reverse(x.created))
+            .cmp(&(y.created.is_none(), std::cmp::Reverse(y.created))),
         ColumnId::WinServices
+        | ColumnId::Module
         | ColumnId::User
         | ColumnId::CommandLine
         | ColumnId::Company
@@ -355,7 +405,8 @@ mod tests {
     #[test]
     fn layout_default_and_visibility() {
         let mut l = ColumnLayout::default();
-        assert_eq!(l.visible().len(), ColumnId::ALL.len() - 7);
+        assert_eq!(l.visible().len(), ColumnId::ALL.len() - 10);
+        assert!(l.visible().contains(&ColumnId::Created));
         assert!(!l.visible().contains(&ColumnId::ProcessPath));
         assert!(l.visible().contains(&ColumnId::RemoteHost));
         l.set_visible(ColumnId::ProcessPath, true);
@@ -400,6 +451,8 @@ mod tests {
                 remote: Some("140.82.112.3:443".parse().unwrap()),
                 state: Some(TcpState::Established),
                 pid: 1,
+                created: None,
+                module: None,
             },
             process: Default::default(),
             first_seen: 0,
@@ -425,6 +478,48 @@ mod tests {
         row.remote_host = None;
         assert_eq!(cell_text(&row, ColumnId::RemoteHost), "");
         assert_eq!(cell_text(&row, ColumnId::Service), "rdp");
+    }
+
+    #[test]
+    fn exact_service_from_the_owner_module() {
+        use crate::net::{Connection, Protocol};
+        use crate::process::ProcessInfo;
+        let mut row = Row {
+            conn: Connection {
+                proto: Protocol::Udp,
+                local: "0.0.0.0:5353".parse().unwrap(),
+                remote: None,
+                state: None,
+                pid: 1,
+                created: Some(1_000),
+                module: Some("dnscache".into()),
+            },
+            process: std::sync::Arc::new(ProcessInfo {
+                services: vec![
+                    ("Dnscache".into(), "DNS Client".into()),
+                    ("NlaSvc".into(), "Network Location Awareness".into()),
+                ],
+                ..Default::default()
+            }),
+            first_seen: 0,
+            mark: crate::model::Mark::None,
+            mark_until: 0,
+            local_host: None,
+            remote_host: None,
+        };
+        assert_eq!(cell_text(&row, ColumnId::WinServices), "Dnscache");
+        assert_eq!(cell_text(&row, ColumnId::Module), "dnscache");
+        let older = row.clone();
+        // A module that is not a service: all services of the process.
+        row.conn.module = Some("svchost.exe".into());
+        row.conn.created = Some(2_000);
+        assert_eq!(cell_text(&row, ColumnId::WinServices), "Dnscache, NlaSvc");
+        // Created: older first; Duration: shorter (created later) first.
+        assert_eq!(compare(&older, &row, ColumnId::Created), Ordering::Less);
+        assert_eq!(compare(&row, &older, ColumnId::Duration), Ordering::Less);
+        row.conn.created = None;
+        assert_eq!(compare(&older, &row, ColumnId::Created), Ordering::Less);
+        assert_eq!(cell_text(&row, ColumnId::Duration), "");
     }
 
     #[test]

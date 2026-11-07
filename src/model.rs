@@ -174,6 +174,8 @@ mod tests {
                 remote: Some("10.0.0.2:443".parse().unwrap()),
                 state: Some(state),
                 pid: 100,
+                created: None,
+                module: None,
             },
             Arc::new(ProcessInfo::default()),
         )

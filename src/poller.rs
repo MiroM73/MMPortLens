@@ -2,7 +2,7 @@
 //! thread never waits for the system. The UI controls it through [`PollControl`] and receives
 //! [`Snapshot`]s over a channel.
 
-use crate::net::{self, Connection, NetError};
+use crate::net::{Connection, NetError, Reader};
 use crate::process::{ProcessCache, ProcessInfo};
 use std::collections::HashSet;
 use std::sync::atomic::{AtomicBool, AtomicU64, Ordering};
@@ -50,6 +50,7 @@ pub fn start(
 
 fn run(ctl: &PollControl, tx: &mpsc::Sender<PollResult>, wake: impl Fn()) {
     let mut cache = ProcessCache::default();
+    let mut reader = Reader::default();
     let mut last: Option<Instant> = None;
     while !ctl.stop.load(Ordering::Relaxed) {
         let interval = Duration::from_millis(ctl.interval_ms.load(Ordering::Relaxed));
@@ -57,7 +58,7 @@ fn run(ctl: &PollControl, tx: &mpsc::Sender<PollResult>, wake: impl Fn()) {
         let now_requested = ctl.refresh_now.swap(false, Ordering::Relaxed);
         if now_requested || (due && !ctl.paused.load(Ordering::Relaxed)) {
             last = Some(Instant::now());
-            let res = poll_once(&mut cache);
+            let res = poll_once(&mut reader, &mut cache);
             if tx.send(res).is_err() {
                 return; // the UI is gone
             }
@@ -68,9 +69,9 @@ fn run(ctl: &PollControl, tx: &mpsc::Sender<PollResult>, wake: impl Fn()) {
     }
 }
 
-fn poll_once(cache: &mut ProcessCache) -> PollResult {
+fn poll_once(reader: &mut Reader, cache: &mut ProcessCache) -> PollResult {
     let start = Instant::now();
-    let conns = net::snapshot()?;
+    let conns = reader.read()?;
     let pids: HashSet<u32> = conns.iter().map(|c| c.pid).collect();
     cache.retain(&pids);
     cache.refresh_services();

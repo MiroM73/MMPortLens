@@ -14,8 +14,8 @@ with the change.
 | `src/http.rs` | HTTPS GET over WinHTTP (raw FFI) for the update check – from RusTrace. |
 | `src/update.rs` | GitHub releases, version compare, release notes as plain lines, ZIP download + SHA-256 check + in-place install, the state handed to the restarted program – from RusTrace. |
 | `src/net/mod.rs` | `Connection`, `ConnKey`, `Protocol`, `TcpState`; `snapshot()` picks the platform backend. |
-| `src/net/winrows.rs` | Pure decoding of the iphlpapi table buffers (tested on every platform). |
-| `src/net/windows.rs` | Windows backend: `GetExtendedTcpTable` / `GetExtendedUdpTable`, declared directly with `unsafe extern "system"` (no binding crate). |
+| `src/net/winrows.rs` | Pure decoding of the iphlpapi `*_OWNER_MODULE` table buffers (tested on every platform). |
+| `src/net/windows.rs` | Windows backend: `GetExtendedTcpTable` / `GetExtendedUdpTable` with the owner module classes, `GetOwnerModuleFrom*Entry` with a cache (`ModuleCache`), declared directly with `unsafe extern "system"` (no binding crate). |
 | `src/net/procfs.rs` | Linux backend: `/proc/net/{tcp,tcp6,udp,udp6}` + socket inode → PID from `/proc/<pid>/fd`. |
 | `src/process.rs` | `ProcessInfo` (name, path, start time, user, command line, company, description, services, icon) and `ProcessCache` keyed by PID + start time (#7). |
 | `src/winproc.rs` | Windows process details: image path, start time, user (token), command line (`NtQueryInformationProcess`), version strings, icon (`ExtractIconExW` → RGBA), services per PID (`EnumServicesStatusExW`) (#7). |
@@ -35,14 +35,33 @@ with the change.
 
 ## Reading the connections
 
-`net::snapshot()` returns every endpoint once. On Windows four calls are made
-(TCP/UDP × IPv4/IPv6) with `TCP_TABLE_OWNER_PID_ALL` / `UDP_TABLE_OWNER_PID`; the buffer is a
-`Vec<u32>` (4-byte aligned) and grows when the API reports `ERROR_INSUFFICIENT_BUFFER`. The bytes
-are decoded by `winrows`, whose tests build buffers in the exact Windows layout, and the test
+`net::Reader::read()` returns every endpoint once (`net::snapshot()` is a one-off reader for the
+tests). On Windows four calls are made (TCP/UDP × IPv4/IPv6) with `TCP_TABLE_OWNER_MODULE_ALL` /
+`UDP_TABLE_OWNER_MODULE` (#14); the buffer is a `Vec<u64>` (the rows contain 8-byte fields, so they
+start at offset 8 after `dwNumEntries` + padding) and grows when the API reports
+`ERROR_INSUFFICIENT_BUFFER`. The bytes are decoded by `winrows`, whose tests build buffers in the
+exact Windows layout (row sizes 160 / 192 / 160 / 176), and the test
 `net::tests::live_snapshot_sees_own_sockets` opens a listener and a connection and checks that the
 real backend reports them with the own PID – on the Windows CI it validates the iphlpapi path.
 
 A listener has no remote side (`remote = None`), the same as UDP endpoints.
+
+### Creation time and owner module (#14)
+Every row carries `liCreateTimestamp` (a FILETIME, 0 when unknown) → `Connection::created` (ms
+since the Unix epoch) and `OwningModuleInfo` (16 opaque `u64`s). `GetOwnerModuleFrom{Tcp,Tcp6,Udp,
+Udp6}Entry` (class `TCPIP_OWNER_MODULE_INFO_BASIC`) turns the whole row (copied into an aligned
+buffer) into `pModuleName` – the executable, or for a service hosted in svchost the **service
+name** – stored in `Connection::module`. Windows answers this without administrator rights for
+services too. The call costs a process query, so `ModuleCache` keeps the result per
+(`ConnKey`, creation time) for as long as the endpoint exists; only new endpoints are asked (a
+refresh of ~170 endpoints then takes ~1 ms). The live tests check that an own new connection was
+created within a second of now and that its module is the test executable.
+
+Columns: **Created** (`timefmt::stamp`: `HH:MM:SS.mmm` today, else the date), **Duration**
+(`timefmt::duration`, from now; sorting by Duration is the reverse of Created), **Module**;
+**First seen** is hidden by default but stays as an option. The **Windows services** column shows
+the exact service when the module is one of the services of the process
+(`columns::win_services`), otherwise all of them. Linux has none of this (`None`).
 
 ### Invalid TCP states (issue #21)
 On some Windows 11 25H2 machines `GetExtendedTcpTable` (and `GetTcpTable`, `netstat`,
@@ -301,7 +320,8 @@ names changed; the logic is the same.
 
 ## Tests
 
-`cargo test` – decoding of the Windows tables and `/proc/net` lines, state codes, the tracker
+`cargo test` – decoding of the Windows owner module tables (incl. creation times, row offsets),
+the live creation time and owner module of an own connection, and `/proc/net` lines, state codes, the tracker
 (new / changed / closed / expiry / reappearing), column layout and sorting, settings round trip,
 language files, reverse DNS (cache TTL / negative results / pending, `sockaddr` layout, a
 300-address run through the worker pool with a slow fake resolver – never more than `WORKERS` at

@@ -253,6 +253,8 @@ mod tests {
             remote: remote.map(|r| r.parse().unwrap()),
             state,
             pid: 1234,
+            created: None,
+            module: None,
         }
     }
 

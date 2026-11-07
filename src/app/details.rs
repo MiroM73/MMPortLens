@@ -136,6 +136,9 @@ fn connection_grid(ui: &mut egui::Ui, r: &Row) {
                 ColumnId::RemoteHost,
                 ColumnId::Service,
                 ColumnId::Pid,
+                ColumnId::Module,
+                ColumnId::Created,
+                ColumnId::Duration,
                 ColumnId::FirstSeen,
             ] {
                 detail_row(ui, &c.title(), &cell_text(r, c));

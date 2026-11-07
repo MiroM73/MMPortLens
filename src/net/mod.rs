@@ -4,13 +4,15 @@
 //! The platform part only fills a list of connections ([`snapshot`]); everything else
 //! (process names, new / closed rows, sorting, filtering) is platform independent.
 //!
-//! * Windows (main target): `GetExtendedTcpTable` / `GetExtendedUdpTable` from iphlpapi.dll,
-//!   decoded by the pure functions in [`winrows`].
+//! * Windows (main target): `GetExtendedTcpTable` / `GetExtendedUdpTable` from iphlpapi.dll
+//!   with the owner module classes (creation time, module), decoded by the pure functions in
+//!   [`winrows`].
 //! * Linux: `/proc/net/{tcp,tcp6,udp,udp6}` and the socket inodes in `/proc/<pid>/fd`
 //!   ([`procfs`]) – so the program and its tests also run on the Linux CI.
 
 use std::fmt;
 use std::net::{IpAddr, SocketAddr};
+use std::sync::Arc;
 
 pub mod procfs;
 pub mod winrows;
@@ -137,6 +139,10 @@ pub struct Connection {
     pub state: Option<TcpState>,
     /// Owning process; 0 when unknown (e.g. Linux sockets of other users without root).
     pub pid: u32,
+    /// When the system created the endpoint (ms since the Unix epoch); Windows only (#14).
+    pub created: Option<u64>,
+    /// Owner module: the executable, or the service for one hosted in svchost (#14).
+    pub module: Option<Arc<str>>,
 }
 
 /// What identifies a row between two snapshots. The state is not part of it: a connection that
@@ -170,20 +176,36 @@ impl fmt::Display for NetError {
     }
 }
 
-/// All TCP and UDP endpoints (IPv4 and IPv6) of the system right now.
-pub fn snapshot() -> Result<Vec<Connection>, NetError> {
+/// Reads the endpoints again and again, keeping what is expensive to look up (the owner
+/// modules of the Windows endpoints) between the reads.
+#[derive(Default)]
+pub struct Reader {
     #[cfg(windows)]
-    {
-        windows::snapshot()
+    modules: windows::ModuleCache,
+}
+
+impl Reader {
+    /// All TCP and UDP endpoints (IPv4 and IPv6) of the system right now.
+    pub fn read(&mut self) -> Result<Vec<Connection>, NetError> {
+        #[cfg(windows)]
+        {
+            windows::snapshot(&mut self.modules)
+        }
+        #[cfg(target_os = "linux")]
+        {
+            procfs::snapshot()
+        }
+        #[cfg(not(any(windows, target_os = "linux")))]
+        {
+            Err(NetError("this operating system is not supported".into()))
+        }
     }
-    #[cfg(target_os = "linux")]
-    {
-        procfs::snapshot()
-    }
-    #[cfg(not(any(windows, target_os = "linux")))]
-    {
-        Err(NetError("this operating system is not supported".into()))
-    }
+}
+
+/// All TCP and UDP endpoints right now (a one-off [`Reader`]; used by the tests).
+#[cfg(test)]
+pub fn snapshot() -> Result<Vec<Connection>, NetError> {
+    Reader::default().read()
 }
 
 /// Address text for the table: IPv6 without brackets (the port has its own column), the
@@ -281,5 +303,39 @@ mod tests {
         if state_checkable("own outgoing connection", out.state) {
             assert_eq!(out.state, Some(TcpState::Established));
         }
+        // Windows knows when the connection was created and which module owns it (#14).
+        if cfg!(windows) {
+            let created = out.created.expect("creation time");
+            let now = crate::model::now_ms();
+            assert!(
+                created.abs_diff(now) < 60_000,
+                "created {created}, now {now}"
+            );
+            let exe = std::env::current_exe().unwrap();
+            let name = exe.file_name().unwrap().to_string_lossy().to_lowercase();
+            let module = out.module.as_deref().unwrap_or_default().to_lowercase();
+            assert_eq!(module, name);
+        }
+    }
+
+    /// The creation time of a fresh connection is within a second of now (#14 acceptance).
+    #[cfg(windows)]
+    #[test]
+    fn creation_time_of_a_new_connection() {
+        let listener = std::net::TcpListener::bind("127.0.0.1:0").unwrap();
+        let addr = listener.local_addr().unwrap();
+        let before = crate::model::now_ms();
+        let client = std::net::TcpStream::connect(addr).unwrap();
+        let (_server, _) = listener.accept().unwrap();
+        let conns = snapshot().unwrap();
+        let c = conns
+            .iter()
+            .find(|c| c.local == client.local_addr().unwrap() && c.remote == Some(addr))
+            .expect("own connection");
+        let created = c.created.expect("creation time");
+        assert!(
+            created.abs_diff(before) < 1000,
+            "created {created}, before {before}"
+        );
     }
 }
