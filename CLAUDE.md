@@ -29,6 +29,8 @@ updates, CLI), take its code and adapt it rather than writing it again.
 
 - **`docs/architecture.md`** – how every part works inside and the source layout.
 - **`docs/history.md`** – what was done when.
+- **`docs/roadmap.md`** – the agreed order of the issues in phases; "fáza N" from the owner means
+  phase N there. Read it before starting work on issues and update its status column with every commit.
 - **`docs/issues/`** – drafts of the planned GitHub issues (`scripts/create-issues.ps1` creates them).
 
 ## Code layout

@@ -76,6 +76,7 @@ with the same filters, **File → Always start as administrator** does it at eve
 
 - [`docs/architecture.md`](docs/architecture.md) – how it works inside, source layout.
 - [`docs/history.md`](docs/history.md) – what was done when.
+- [`docs/roadmap.md`](docs/roadmap.md) – the order in which the issues are solved.
 - [`CLAUDE.md`](CLAUDE.md) – working notes for Claude.
 
 ## License
