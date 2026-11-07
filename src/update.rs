@@ -497,6 +497,8 @@ pub struct SessionState {
     pub filter: String,
     /// The refresh was paused.
     pub paused: bool,
+    /// Column filters (#1).
+    pub col_filters: Vec<(crate::columns::ColumnId, String)>,
     pub window: Option<WindowState>,
 }
 
@@ -812,6 +814,7 @@ mod tests {
         let state = SessionState {
             filter: "chrome".into(),
             paused: true,
+            col_filters: vec![(crate::columns::ColumnId::LocalPort, "<1024".into())],
             window: Some(WindowState {
                 pos: Some([10.0, 20.0]),
                 size: Some([800.0, 600.0]),

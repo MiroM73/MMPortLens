@@ -1,5 +1,6 @@
 //! The connection table: visible columns in the user's order, sorting by a header click,
-//! the column menu on a header right click, highlighted new / changed / closed rows.
+//! the column menu on a header right click, the column filter row (#1), highlighted new / changed /
+//! closed rows.
 
 use crate::app::*;
 use egui_extras::{Column, TableBuilder};
@@ -15,6 +16,11 @@ impl App {
             ui.spacing().item_spacing.y * 0.5 + 0.5,
         );
 
+        let header_h = if self.cfg.show_column_filters {
+            22.0 + ui.spacing().interact_size.y + ui.spacing().item_spacing.y
+        } else {
+            22.0
+        };
         let mut tb = TableBuilder::new(ui)
             // A new column set gets fresh widths instead of shifted old ones.
             .id_salt(("conn_table", &cols))
@@ -40,27 +46,44 @@ impl App {
         let mut clicked_row: Option<ConnKey> = None;
         let mut copy: Option<String> = None;
 
-        tb.header(22.0, |mut h| {
-            for &c in &cols {
+        // Filter row under the headers: one field per visible column (edited in a copy, applied
+        // after the table is drawn).
+        let show_filters = self.cfg.show_column_filters;
+        let mut filter_texts: Vec<String> = cols
+            .iter()
+            .map(|c| self.col_filter_text.get(c).cloned().unwrap_or_default())
+            .collect();
+        let mut filters_changed = false;
+
+        tb.header(header_h, |mut h| {
+            for (i, &c) in cols.iter().enumerate() {
                 h.col(|ui| {
-                    let arrow = match (sort.column == c, sort.ascending) {
-                        (true, true) => " ⏶",
-                        (true, false) => " ⏷",
-                        _ => "",
-                    };
-                    let resp = ui.add(
-                        egui::Label::new(RichText::new(format!("{}{arrow}", c.title())).strong())
+                    ui.vertical(|ui| {
+                        let arrow = match (sort.column == c, sort.ascending) {
+                            (true, true) => " ⏶",
+                            (true, false) => " ⏷",
+                            _ => "",
+                        };
+                        let resp = ui.add(
+                            egui::Label::new(
+                                RichText::new(format!("{}{arrow}", c.title())).strong(),
+                            )
                             .truncate()
                             .selectable(false)
                             .sense(Sense::click()),
-                    );
-                    if resp.clicked() {
-                        clicked_header = Some(c);
-                    }
-                    if resp.secondary_clicked() {
-                        open_columns_menu = true;
-                    }
-                    resp.on_hover_text(t!("table.header.tip"));
+                        );
+                        if resp.clicked() {
+                            clicked_header = Some(c);
+                        }
+                        if resp.secondary_clicked() {
+                            open_columns_menu = true;
+                        }
+                        resp.on_hover_text(t!("table.header.tip"));
+                        if show_filters {
+                            filters_changed |=
+                                self.column_filter_field(ui, c, &mut filter_texts[i]);
+                        }
+                    });
                 });
             }
         })
@@ -107,6 +130,16 @@ impl App {
             });
         });
 
+        if filters_changed {
+            for (c, text) in cols.iter().zip(filter_texts) {
+                if text.trim().is_empty() {
+                    self.col_filter_text.remove(c);
+                } else {
+                    self.col_filter_text.insert(*c, text);
+                }
+            }
+            self.apply_column_filters();
+        }
         if let Some(c) = clicked_header {
             self.cfg.sort.click(c);
             self.view_dirty = true;

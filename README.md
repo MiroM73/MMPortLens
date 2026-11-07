@@ -28,6 +28,9 @@ Early skeleton (0.1.0). What works now:
 - Sorting by a click on a column header (numbers and addresses sort as values).
 - Columns on / off and their order: **View → Columns** or a right click on a header.
 - Switches TCP / UDP / IPv4 / IPv6 / Listening and a text filter over the visible columns.
+- **Column filters** under the headers: text, `=exact`, `/regex/`, `a|b`, `!not`; ports and PID
+  `>1024`, `1000-2000`; addresses `10.0.0.0/8`, `fe80::/10`, `loopback`, `private`, `public`
+  (hover a field for the syntax).
 - Copy a row (right click), status bar with counts, user interface in English, Slovak, Czech and
   German (more languages without recompiling – see `lang/en.lang`), dark / light theme.
 - Settings in `%APPDATA%\MMPortLens\config.json`.

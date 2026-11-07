@@ -8,6 +8,10 @@ menu.file = Datei
 menu.file.exit = Beenden
 menu.view = Ansicht
 menu.view.columns = Spalten
+menu.view.column_filters = Spaltenfilter anzeigen
+menu.view.remember_column_filters = Spaltenfilter merken
+menu.view.remember_column_filters.tip = Die Spaltenfilter werden gespeichert und beim nächsten Start wieder gesetzt
+menu.view.clear_column_filters = Spaltenfilter löschen
 menu.view.language = Sprache
 menu.view.language.system = Wie das System
 menu.view.theme = Design
@@ -49,6 +53,22 @@ toolbar.listening = Lauschend
 toolbar.listening.tip = Endpunkte ohne Gegenseite anzeigen (TCP im Status Listen, UDP)
 toolbar.filter.hint = Filter…
 toolbar.filter.tip = Zeigt Zeilen, in denen eine sichtbare Spalte den Text enthält (ohne Groß-/Kleinschreibung)
+
+# --- Spaltenfilter ---
+filter.hint = Filter…
+filter.tip.text = Filter dieser Spalte (ohne Groß-/Kleinschreibung):
+  Text – enthält den Text
+  =Text – ist genau der Text
+  /regex/ – passt zum regulären Ausdruck
+  a|b – eine der Alternativen
+  !… – keine der Alternativen
+filter.tip.number = Zahlen: >1024, >=1024, <1024, <=1024, 1000-2000, 1000..2000, =443
+filter.tip.address = Adressen: 10.0.0.0/8, fe80::/10 (Netz), loopback, private (privat), public (öffentlich)
+filter.error.regex = Ungültiger regulärer Ausdruck – dieser Filter wird ignoriert:
+{error}
+filter.error.network = Ungültiges Netz „{value}“ – dieser Filter wird ignoriert. Die Präfixlänge ist 0–32 für IPv4 und 0–128 für IPv6.
+filter.clear = Spaltenfilter: {count}
+filter.clear.tip = Alle Spaltenfilter löschen
 
 # --- Tabelle ---
 table.header.tip = Klick: nach dieser Spalte sortieren. Rechtsklick: Spalten.

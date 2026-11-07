@@ -19,6 +19,10 @@ menu.file = File
 menu.file.exit = Exit
 menu.view = View
 menu.view.columns = Columns
+menu.view.column_filters = Show column filters
+menu.view.remember_column_filters = Remember column filters
+menu.view.remember_column_filters.tip = The column filters are saved and set again at the next start
+menu.view.clear_column_filters = Clear column filters
 menu.view.language = Language
 menu.view.language.system = Same as the system
 menu.view.theme = Theme
@@ -60,6 +64,22 @@ toolbar.listening = Listening
 toolbar.listening.tip = Show endpoints without a remote side (TCP listeners, UDP)
 toolbar.filter.hint = Filter…
 toolbar.filter.tip = Shows rows where any visible column contains the text (case-insensitive)
+
+# --- Column filters ---
+filter.hint = Filter…
+filter.tip.text = Filter of this column (case-insensitive):
+  text – contains the text
+  =text – is exactly the text
+  /regex/ – matches the regular expression
+  a|b – any of the alternatives
+  !… – none of the alternatives
+filter.tip.number = Numbers: >1024, >=1024, <1024, <=1024, 1000-2000, 1000..2000, =443
+filter.tip.address = Addresses: 10.0.0.0/8, fe80::/10 (network), loopback, private, public
+filter.error.regex = Invalid regular expression – this filter is ignored:
+{error}
+filter.error.network = Invalid network "{value}" – this filter is ignored. The prefix length is 0–32 for IPv4 and 0–128 for IPv6.
+filter.clear = Column filters: {count}
+filter.clear.tip = Clear all column filters
 
 # --- Table ---
 table.header.tip = Click: sort by this column. Right click: columns.

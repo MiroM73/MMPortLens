@@ -5,6 +5,7 @@
 )]
 
 mod app;
+mod colfilter;
 mod columns;
 mod config;
 mod http;

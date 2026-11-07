@@ -152,6 +152,7 @@ impl App {
         SessionState {
             filter: self.filter.clone(),
             paused: self.paused(),
+            col_filters: self.column_filter_list(),
             window: Some(window),
         }
     }
@@ -161,6 +162,9 @@ impl App {
     pub(in crate::app) fn restore_session(&mut self, state: SessionState) {
         self.filter = state.filter;
         self.ctl.paused.store(state.paused, Ordering::Relaxed);
+        if !state.col_filters.is_empty() {
+            self.set_column_filters(state.col_filters);
+        }
         self.view_dirty = true;
     }
 

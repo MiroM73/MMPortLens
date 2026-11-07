@@ -4,6 +4,7 @@
 //! Conventions (same as RusTrace): each submodule starts with `use crate::app::*;`, methods used
 //! outside their own file are `pub(in crate::app) fn`.
 
+use crate::colfilter::{ColumnFilter, FilterError};
 use crate::columns::{ColumnId, cell_text};
 use crate::config::{Config, UpdateCheck};
 use crate::i18n;
@@ -13,11 +14,13 @@ use crate::poller::{self, PollControl, PollResult};
 use crate::t;
 use crate::update::{self, Release, SessionState, Updates, WindowState};
 use eframe::egui::{self, Color32, RichText, Sense};
+use std::collections::HashMap;
 use std::path::PathBuf;
 use std::sync::atomic::Ordering;
 use std::sync::{Arc, mpsc};
 use std::time::{Duration, Instant};
 
+mod colfilters;
 mod menu;
 mod statusbar;
 mod table;
@@ -82,6 +85,12 @@ pub struct App {
     counts: Counts,
     /// Text filter of the toolbar (any visible column contains it, case-insensitive).
     filter: String,
+    /// Texts of the column filter fields (#1), without empty ones.
+    col_filter_text: HashMap<ColumnId, String>,
+    /// The valid column filters, compiled.
+    col_filters: Vec<(ColumnId, ColumnFilter)>,
+    /// Column filter texts that are invalid (shown in red, not applied).
+    col_filter_errors: HashMap<ColumnId, FilterError>,
     selected: Option<ConnKey>,
     last_changes: Changes,
     last_took: Duration,
@@ -114,6 +123,9 @@ impl App {
             view_dirty: true,
             counts: Counts::default(),
             filter: String::new(),
+            col_filter_text: HashMap::new(),
+            col_filters: Vec::new(),
+            col_filter_errors: HashMap::new(),
             selected: None,
             last_changes: Changes::default(),
             last_took: Duration::ZERO,
@@ -127,6 +139,10 @@ impl App {
             update_available: None,
         };
         app.apply_theme(&cc.egui_ctx);
+        if app.cfg.remember_column_filters {
+            let saved = app.cfg.column_filters.clone();
+            app.set_column_filters(saved);
+        }
         if let Some(state) = restore {
             app.restore_session(state);
         }
@@ -176,7 +192,7 @@ impl App {
         }
     }
 
-    /// Does a row pass the protocol switches and the text filter?
+    /// Does a row pass the protocol switches, the text filter and the column filters?
     fn row_shown(&self, r: &Row, cols: &[ColumnId], needle: &str) -> bool {
         let p = r.conn.proto;
         let c = &self.cfg;
@@ -189,10 +205,11 @@ impl App {
         if !c.show_listening && r.conn.remote.is_none() {
             return false;
         }
-        needle.is_empty()
+        let text_ok = needle.is_empty()
             || cols
                 .iter()
-                .any(|&col| cell_text(r, col).to_lowercase().contains(needle))
+                .any(|&col| cell_text(r, col).to_lowercase().contains(needle));
+        text_ok && self.column_filters_match(r, cols)
     }
 
     fn rebuild_view(&mut self) {

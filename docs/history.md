@@ -34,3 +34,9 @@
   Markdown links and drop `*italic*` marks. Verified with `MMPORTLENS_UPDATE_AS_VERSION=0.0.9`:
   the window listed v0.1.0 with its notes, and *Download and install* replaced the exe in a test
   folder and started v0.1.0. Remaining in #15: the optional administrator variant.
+- #1: column filters under the headers (`src/colfilter.rs`, core from RusTrace): text, `=exact`,
+  `/regex/` (a `|` inside belongs to the regex), `a|b`, `!`; numbers `>n`, `<=n`, `a-b`, `a..b`;
+  addresses CIDR and `loopback` / `private` / `public`. Invalid regex / prefix = red field with
+  the error, not applied. View menu: show / remember / clear; toolbar button with the count;
+  kept over an update restart. Verified in the running program (port 443 + public, port range,
+  invalid `/33`, remembered `/^(code|claude)/` + `!loopback` after a restart).

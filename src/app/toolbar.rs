@@ -1,4 +1,5 @@
-//! The toolbar: pause / refresh, interval, protocol switches and the text filter.
+//! The toolbar: pause / refresh, interval, protocol switches, the text filter and clearing the
+//! column filters.
 
 use crate::app::*;
 use crate::config::INTERVALS;
@@ -78,6 +79,20 @@ impl App {
             if !self.filter.is_empty() && ui.small_button("✖").clicked() {
                 self.filter.clear();
                 self.view_dirty = true;
+            }
+
+            // Column filters (#1): shown also while the filter row is hidden, so a hidden
+            // filter is never forgotten.
+            let count = self.column_filter_count();
+            if count > 0 {
+                ui.separator();
+                if ui
+                    .button(format!("✖ {}", t!("filter.clear", count = count)))
+                    .on_hover_text(t!("filter.clear.tip"))
+                    .clicked()
+                {
+                    self.clear_column_filters();
+                }
             }
         });
     }

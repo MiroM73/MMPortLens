@@ -19,11 +19,12 @@ with the change.
 | `src/process.rs` | PID → name and path (`QueryFullProcessImageNameW` / `/proc/<pid>/exe`), cached per PID. |
 | `src/poller.rs` | Background thread: snapshot + process names every interval, sent over a channel. |
 | `src/model.rs` | `Tracker`: merges snapshots into rows, marks new / changed / closed rows and expires the marks. |
+| `src/colfilter.rs` | Column filter syntax: parsing and matching (`ColumnFilter`, `FilterKind`, `FilterError`) – core from RusTrace. |
 | `src/columns.rs` | `ColumnId`, cell texts, value-based sorting (`SortSpec`), `ColumnLayout` (visibility + order). |
 | `src/config.rs` | `Config` (JSON, every field has a default). |
 | `src/i18n.rs` | `t!()` and the language files – the same module as in RusTrace. |
 | `src/timefmt.rs` | Clock times for the table. |
-| `src/app/` | The UI, split by area like RusTrace: `mod.rs` (state, frame loop), `menu.rs`, `toolbar.rs`, `table.rs`, `statusbar.rs`, `update_window.rs` (Help → Check for updates). |
+| `src/app/` | The UI, split by area like RusTrace: `mod.rs` (state, frame loop), `menu.rs`, `toolbar.rs`, `table.rs`, `statusbar.rs`, `colfilters.rs` (column filter state and field), `update_window.rs` (Help → Check for updates). |
 | `lang/*.lang` | Built-in translations (en, sk, cs, de), embedded with `include_str!`. |
 
 ## Reading the connections
@@ -79,6 +80,35 @@ RusTrace).
 
 The table id contains the list of visible columns, so a changed column set starts with fresh
 default widths.
+
+## Column filters (#1)
+
+A filter row under the column headers has one text field per visible column (**View → Show column
+filters**). The syntax is implemented in `colfilter.rs`, whose core (alternatives, `=` exact,
+`!` negation, numeric ranges) comes from RusTrace:
+
+- every column: `text` (contains), `=text`, `/regex/`, `a|b`, `!…`; case-insensitive. A `|` inside
+  `/…/` belongs to the regex (`split_alternatives` tracks an open regex: it starts with `/` at the
+  beginning of an alternative and ends with a `/` followed by `|` or the end);
+- `FilterKind::Number` (PID, ports – `ColumnId::filter_kind`): `>n`, `>=n`, `<n`, `<=n`, `a-b`,
+  `a..b`; a value that is not a number never matches them;
+- `FilterKind::Address` (local / remote address): CIDR (`10.0.0.0/8`, `fe80::/10`, prefix compared
+  as bits; IPv4-mapped IPv6 is treated as IPv4) and `loopback`, `private` (RFC 1918, CGNAT
+  100.64/10, link-local, ULA fc00::/7, fe80::/10), `public` (none of these, nor unspecified,
+  multicast or broadcast). An empty address (listener, UDP) never matches them.
+
+`ColumnFilter::parse` returns `Err(FilterError)` for an invalid regex or prefix length; the field
+turns red with the error as a tooltip and the filter is not applied. Valid filters get a colored
+field. `App::apply_column_filters` recompiles them after every change (`col_filter_text` →
+`col_filters`, `col_filter_errors`); `row_shown` ANDs the filters of the **visible** columns with
+the protocol switches and the toolbar text filter, by matching the displayed cell text. Matching
+5 000 addresses takes well under a millisecond in a release build (test
+`five_thousand_rows_are_fast` checks < 50 ms even in debug).
+
+The toolbar shows "✖ Column filters: n" while any field has text (also when the row is hidden);
+it clears all of them, like **View → Clear column filters**. With **View → Remember column
+filters** the texts are saved in `Config::column_filters` and set again at start; they are also
+handed to the new version after an update (`SessionState::col_filters`).
 
 ## Settings and languages
 
@@ -137,7 +167,8 @@ names changed; the logic is the same.
 
 `cargo test` – decoding of the Windows tables and `/proc/net` lines, state codes, the tracker
 (new / changed / closed / expiry / reappearing), column layout and sorting, settings round trip,
-language files, the icon / `.ico` layout, update logic (versions, GitHub JSON, missed releases,
+language files, column filters (syntax, regex, numeric ranges, CIDR, address classes, errors,
+speed), the icon / `.ico` layout, update logic (versions, GitHub JSON, missed releases,
 release notes, SHA-256 files, ZIP reading, installation into a temporary folder, session state)
 and the live snapshot test.
 

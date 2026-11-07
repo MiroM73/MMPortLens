@@ -13,6 +13,38 @@ impl App {
             });
             ui.menu_button(t!("menu.view"), |ui| {
                 ui.menu_button(t!("menu.view.columns"), |ui| self.columns_menu(ui));
+                ui.separator();
+                if ui
+                    .checkbox(
+                        &mut self.cfg.show_column_filters,
+                        t!("menu.view.column_filters"),
+                    )
+                    .changed()
+                {
+                    self.settings_changed();
+                }
+                if ui
+                    .checkbox(
+                        &mut self.cfg.remember_column_filters,
+                        t!("menu.view.remember_column_filters"),
+                    )
+                    .on_hover_text(t!("menu.view.remember_column_filters.tip"))
+                    .changed()
+                {
+                    self.save_column_filters();
+                    self.settings_changed();
+                }
+                if ui
+                    .add_enabled(
+                        self.column_filter_count() > 0,
+                        egui::Button::new(t!("menu.view.clear_column_filters")),
+                    )
+                    .clicked()
+                {
+                    ui.close();
+                    self.clear_column_filters();
+                }
+                ui.separator();
                 ui.menu_button(t!("menu.view.language"), |ui| self.language_menu(ui));
                 ui.menu_button(t!("menu.view.theme"), |ui| self.theme_menu(ui));
             });

@@ -2,7 +2,7 @@
 //! (Windows: %APPDATA%\MMPortLens\config.json). Every field has a default, so older files keep
 //! loading when new settings are added.
 
-use crate::columns::{ColumnLayout, SortSpec};
+use crate::columns::{ColumnId, ColumnLayout, SortSpec};
 use crate::t;
 use serde::{Deserialize, Serialize};
 use std::path::PathBuf;
@@ -29,6 +29,12 @@ pub struct Config {
     pub show_ipv6: bool,
     /// Show TCP listeners (and UDP endpoints, which have no remote side either).
     pub show_listening: bool,
+    /// The filter row under the column headers is shown (#1).
+    pub show_column_filters: bool,
+    /// The column filters are saved and restored at the next start.
+    pub remember_column_filters: bool,
+    /// The saved column filters (only while `remember_column_filters` is on).
+    pub column_filters: Vec<(ColumnId, String)>,
     /// When to look for a new version at start-up (#15).
     pub update_when: UpdateCheck,
     /// Time of the last update check (Unix seconds).
@@ -84,6 +90,9 @@ impl Default for Config {
             show_ipv4: true,
             show_ipv6: true,
             show_listening: true,
+            show_column_filters: true,
+            remember_column_filters: false,
+            column_filters: Vec::new(),
             update_when: UpdateCheck::default(),
             update_last_check: 0,
             update_skipped: String::new(),
@@ -146,6 +155,17 @@ mod tests {
         assert!(partial.show_tcp);
         assert_eq!(partial.columns, ColumnLayout::default());
         assert_eq!(partial.update_when, UpdateCheck::Start);
+        assert!(partial.show_column_filters && !partial.remember_column_filters);
+        let filters =
+            Config::parse(r#"{"column_filters": [["remote_port", "443"], ["pid", ">4"]]}"#)
+                .unwrap();
+        assert_eq!(
+            filters.column_filters,
+            vec![
+                (ColumnId::RemotePort, "443".into()),
+                (ColumnId::Pid, ">4".into())
+            ]
+        );
         let daily = Config::parse(r#"{"update_when": "daily"}"#).unwrap();
         assert_eq!(daily.update_when, UpdateCheck::Daily);
     }

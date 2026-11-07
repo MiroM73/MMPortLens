@@ -8,6 +8,10 @@ menu.file = Súbor
 menu.file.exit = Koniec
 menu.view = Zobraziť
 menu.view.columns = Stĺpce
+menu.view.column_filters = Zobraziť filtre stĺpcov
+menu.view.remember_column_filters = Pamätať si filtre stĺpcov
+menu.view.remember_column_filters.tip = Filtre stĺpcov sa uložia a pri ďalšom spustení sa nastavia znova
+menu.view.clear_column_filters = Zrušiť filtre stĺpcov
 menu.view.language = Jazyk
 menu.view.language.system = Podľa systému
 menu.view.theme = Vzhľad
@@ -49,6 +53,22 @@ toolbar.listening = Načúvajúce
 toolbar.listening.tip = Zobraziť koncové body bez vzdialenej strany (TCP v stave Listen, UDP)
 toolbar.filter.hint = Filter…
 toolbar.filter.tip = Zobrazí riadky, v ktorých niektorý viditeľný stĺpec obsahuje text (bez ohľadu na veľkosť písmen)
+
+# --- Filtre stĺpcov ---
+filter.hint = Filter…
+filter.tip.text = Filter tohto stĺpca (bez ohľadu na veľkosť písmen):
+  text – obsahuje text
+  =text – je presne text
+  /regex/ – zodpovedá regulárnemu výrazu
+  a|b – ktorákoľvek z možností
+  !… – žiadna z možností
+filter.tip.number = Čísla: >1024, >=1024, <1024, <=1024, 1000-2000, 1000..2000, =443
+filter.tip.address = Adresy: 10.0.0.0/8, fe80::/10 (sieť), loopback, private (súkromné), public (verejné)
+filter.error.regex = Neplatný regulárny výraz – tento filter sa nepoužije:
+{error}
+filter.error.network = Neplatná sieť „{value}“ – tento filter sa nepoužije. Dĺžka prefixu je 0–32 pre IPv4 a 0–128 pre IPv6.
+filter.clear = Filtre stĺpcov: {count}
+filter.clear.tip = Zrušiť všetky filtre stĺpcov
 
 # --- Tabuľka ---
 table.header.tip = Klik: zoradiť podľa stĺpca. Pravý klik: stĺpce.

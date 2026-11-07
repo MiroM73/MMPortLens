@@ -74,6 +74,16 @@ impl ColumnId {
         }
     }
 
+    /// Which alternatives the column filter understands (#1).
+    pub fn filter_kind(self) -> crate::colfilter::FilterKind {
+        use crate::colfilter::FilterKind;
+        match self {
+            ColumnId::Pid | ColumnId::LocalPort | ColumnId::RemotePort => FilterKind::Number,
+            ColumnId::LocalAddress | ColumnId::RemoteAddress => FilterKind::Address,
+            _ => FilterKind::Text,
+        }
+    }
+
     /// Numbers are right-aligned.
     pub fn numeric(self) -> bool {
         matches!(
