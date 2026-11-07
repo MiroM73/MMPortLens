@@ -1,0 +1,239 @@
+//! Network endpoints of the system: one [`Connection`] per TCP connection / listener and per
+//! UDP endpoint, with the process that owns it.
+//!
+//! The platform part only fills a list of connections ([`snapshot`]); everything else
+//! (process names, new / closed rows, sorting, filtering) is platform independent.
+//!
+//! * Windows (main target): `GetExtendedTcpTable` / `GetExtendedUdpTable` from iphlpapi.dll,
+//!   decoded by the pure functions in [`winrows`].
+//! * Linux: `/proc/net/{tcp,tcp6,udp,udp6}` and the socket inodes in `/proc/<pid>/fd`
+//!   ([`procfs`]) – so the program and its tests also run on the Linux CI.
+
+use std::fmt;
+use std::net::{IpAddr, SocketAddr};
+
+pub mod procfs;
+pub mod winrows;
+
+#[cfg(windows)]
+mod windows;
+
+/// Transport protocol and IP version of an endpoint.
+#[derive(Clone, Copy, PartialEq, Eq, Hash, PartialOrd, Ord, Debug)]
+pub enum Protocol {
+    Tcp,
+    Tcp6,
+    Udp,
+    Udp6,
+}
+
+impl Protocol {
+    pub fn is_tcp(self) -> bool {
+        matches!(self, Protocol::Tcp | Protocol::Tcp6)
+    }
+
+    pub fn is_v6(self) -> bool {
+        matches!(self, Protocol::Tcp6 | Protocol::Udp6)
+    }
+
+    /// The name shown in the table (same as TCPView: "TCP", "TCPv6", "UDP", "UDPv6").
+    pub fn label(self) -> &'static str {
+        match self {
+            Protocol::Tcp => "TCP",
+            Protocol::Tcp6 => "TCPv6",
+            Protocol::Udp => "UDP",
+            Protocol::Udp6 => "UDPv6",
+        }
+    }
+}
+
+/// State of a TCP connection (UDP endpoints have none).
+#[derive(Clone, Copy, PartialEq, Eq, Hash, PartialOrd, Ord, Debug)]
+pub enum TcpState {
+    Closed,
+    Listen,
+    SynSent,
+    SynReceived,
+    Established,
+    FinWait1,
+    FinWait2,
+    CloseWait,
+    Closing,
+    LastAck,
+    TimeWait,
+    DeleteTcb,
+    Unknown(u32),
+}
+
+impl TcpState {
+    /// From the `MIB_TCP_STATE` value of the Windows tables (1 = CLOSED … 12 = DELETE_TCB).
+    pub fn from_mib(v: u32) -> Self {
+        match v {
+            1 => TcpState::Closed,
+            2 => TcpState::Listen,
+            3 => TcpState::SynSent,
+            4 => TcpState::SynReceived,
+            5 => TcpState::Established,
+            6 => TcpState::FinWait1,
+            7 => TcpState::FinWait2,
+            8 => TcpState::CloseWait,
+            9 => TcpState::Closing,
+            10 => TcpState::LastAck,
+            11 => TcpState::TimeWait,
+            12 => TcpState::DeleteTcb,
+            o => TcpState::Unknown(o),
+        }
+    }
+
+    /// From the `st` column of `/proc/net/tcp` (Linux `TCP_*` constants).
+    pub fn from_linux(v: u32) -> Self {
+        match v {
+            0x01 => TcpState::Established,
+            0x02 => TcpState::SynSent,
+            0x03 => TcpState::SynReceived,
+            0x04 => TcpState::FinWait1,
+            0x05 => TcpState::FinWait2,
+            0x06 => TcpState::TimeWait,
+            0x07 => TcpState::Closed,
+            0x08 => TcpState::CloseWait,
+            0x09 => TcpState::LastAck,
+            0x0A => TcpState::Listen,
+            0x0B => TcpState::Closing,
+            o => TcpState::Unknown(o),
+        }
+    }
+
+    /// The name shown in the table – the usual names from netstat / TCPView; they are not
+    /// translated, admins search for them as they are.
+    pub fn label(self) -> String {
+        match self {
+            TcpState::Closed => "Closed".into(),
+            TcpState::Listen => "Listen".into(),
+            TcpState::SynSent => "SynSent".into(),
+            TcpState::SynReceived => "SynReceived".into(),
+            TcpState::Established => "Established".into(),
+            TcpState::FinWait1 => "FinWait1".into(),
+            TcpState::FinWait2 => "FinWait2".into(),
+            TcpState::CloseWait => "CloseWait".into(),
+            TcpState::Closing => "Closing".into(),
+            TcpState::LastAck => "LastAck".into(),
+            TcpState::TimeWait => "TimeWait".into(),
+            TcpState::DeleteTcb => "DeleteTcb".into(),
+            TcpState::Unknown(v) => format!("? ({v})"),
+        }
+    }
+}
+
+/// One endpoint as the operating system reports it.
+#[derive(Clone, PartialEq, Eq, Debug)]
+pub struct Connection {
+    pub proto: Protocol,
+    pub local: SocketAddr,
+    /// `None` for UDP endpoints (they have no remote side).
+    pub remote: Option<SocketAddr>,
+    /// `None` for UDP.
+    pub state: Option<TcpState>,
+    /// Owning process; 0 when unknown (e.g. Linux sockets of other users without root).
+    pub pid: u32,
+}
+
+/// What identifies a row between two snapshots. The state is not part of it: a connection that
+/// goes from Established to TimeWait is the same row with a changed state.
+#[derive(Clone, Copy, PartialEq, Eq, Hash, PartialOrd, Ord, Debug)]
+pub struct ConnKey {
+    pub proto: Protocol,
+    pub local: SocketAddr,
+    pub remote: Option<SocketAddr>,
+    pub pid: u32,
+}
+
+impl Connection {
+    pub fn key(&self) -> ConnKey {
+        ConnKey {
+            proto: self.proto,
+            local: self.local,
+            remote: self.remote,
+            pid: self.pid,
+        }
+    }
+}
+
+/// An error of the platform part, shown in the status bar.
+#[derive(Debug)]
+pub struct NetError(pub String);
+
+impl fmt::Display for NetError {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        f.write_str(&self.0)
+    }
+}
+
+/// All TCP and UDP endpoints (IPv4 and IPv6) of the system right now.
+pub fn snapshot() -> Result<Vec<Connection>, NetError> {
+    #[cfg(windows)]
+    {
+        windows::snapshot()
+    }
+    #[cfg(target_os = "linux")]
+    {
+        procfs::snapshot()
+    }
+    #[cfg(not(any(windows, target_os = "linux")))]
+    {
+        Err(NetError("this operating system is not supported".into()))
+    }
+}
+
+/// Address text for the table: IPv6 without brackets (the port has its own column), the
+/// unspecified address as `0.0.0.0` / `::`.
+pub fn ip_text(ip: IpAddr) -> String {
+    ip.to_string()
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn state_codes() {
+        assert_eq!(TcpState::from_mib(2), TcpState::Listen);
+        assert_eq!(TcpState::from_mib(5), TcpState::Established);
+        assert_eq!(TcpState::from_mib(11), TcpState::TimeWait);
+        assert_eq!(TcpState::from_mib(99), TcpState::Unknown(99));
+        assert_eq!(TcpState::from_linux(0x0A), TcpState::Listen);
+        assert_eq!(TcpState::from_linux(0x01), TcpState::Established);
+        assert_eq!(TcpState::from_linux(0x06), TcpState::TimeWait);
+    }
+
+    #[test]
+    fn protocol_flags() {
+        assert!(Protocol::Tcp6.is_tcp() && Protocol::Tcp6.is_v6());
+        assert!(!Protocol::Udp.is_tcp() && !Protocol::Udp.is_v6());
+        assert_eq!(Protocol::Udp6.label(), "UDPv6");
+    }
+
+    /// The real backend of the platform finds a listener and a connection of this process
+    /// (on the Windows CI this checks the iphlpapi decoding against the real API).
+    #[cfg(any(windows, target_os = "linux"))]
+    #[test]
+    fn live_snapshot_sees_own_sockets() {
+        let listener = std::net::TcpListener::bind("127.0.0.1:0").unwrap();
+        let addr = listener.local_addr().unwrap();
+        let client = std::net::TcpStream::connect(addr).unwrap();
+        let (_server, _) = listener.accept().unwrap();
+        let conns = snapshot().unwrap();
+        let me = std::process::id();
+        let lis = conns
+            .iter()
+            .find(|c| c.proto == Protocol::Tcp && c.local == addr && c.remote.is_none())
+            .expect("own listener");
+        assert_eq!(lis.state, Some(TcpState::Listen));
+        assert_eq!(lis.pid, me);
+        let out = conns
+            .iter()
+            .find(|c| c.local == client.local_addr().unwrap() && c.remote == Some(addr))
+            .expect("own outgoing connection");
+        assert_eq!(out.state, Some(TcpState::Established));
+        assert_eq!(out.pid, me);
+    }
+}

@@ -1,0 +1,76 @@
+# RusNet language file – English (reference / template)
+#
+# How to add a new language (no recompiling needed):
+#   1. Copy this file and name it by the language code, e.g. "fr.lang", "pl.lang", "pt-BR.lang".
+#   2. Translate the text after "=" on every line. Keep the key before "=" unchanged.
+#   3. Keep placeholders in curly braces, e.g. {count}, {error}, unchanged (their order may change).
+#   4. Put the file into one of these folders:
+#        - "lang" next to rusnet.exe
+#        - %APPDATA%\RusNet\lang   (Linux: ~/.config/RusNet/lang)
+#   5. Restart the program and pick the language in View → Language.
+#
+# Format: one "key = value" per line, lines starting with # are comments,
+# "\n" in a value is a line break. Missing keys fall back to English.
+
+language.name = English
+
+# --- Menu ---
+menu.file = File
+menu.file.exit = Exit
+menu.view = View
+menu.view.columns = Columns
+menu.view.language = Language
+menu.view.language.system = Same as the system
+menu.view.theme = Theme
+menu.view.theme.system = Same as the system
+menu.view.theme.dark = Dark
+menu.view.theme.light = Light
+menu.help = Help
+menu.help.about = About RusNet
+
+about.title = About RusNet
+about.text = A viewer of network connections in the style of TCPView (Sysinternals).\nCreated by Claude (Anthropic) by the requirements of the project owner.
+
+# --- Columns ---
+column.process = Process
+column.pid = PID
+column.protocol = Protocol
+column.state = State
+column.local_address = Local address
+column.local_port = Local port
+column.remote_address = Remote address
+column.remote_port = Remote port
+column.first_seen = First seen
+column.process_path = Process path
+columns.move_left = Move left
+columns.move_right = Move right
+columns.reset = Default columns
+
+# --- Toolbar ---
+toolbar.pause = Pause the refresh
+toolbar.resume = Resume the refresh
+toolbar.refresh = Refresh now
+toolbar.interval = Refresh interval
+interval.ms = {n} ms
+interval.s = {n} s
+toolbar.listening = Listening
+toolbar.listening.tip = Show endpoints without a remote side (TCP listeners, UDP)
+toolbar.filter.hint = Filter…
+toolbar.filter.tip = Shows rows where any visible column contains the text (case-insensitive)
+
+# --- Table ---
+table.header.tip = Click: sort by this column. Right click: columns.
+table.copy_row = Copy row
+
+# --- Status bar ---
+status.endpoints = Endpoints: {shown} of {total}
+status.tcp_udp = TCP: {tcp}  UDP: {udp}
+status.states = Established: {established}  Listening: {listening}  TimeWait: {time_wait}
+status.changes = Last refresh: +{new} −{closed} ~{changed}
+status.changes.tip = New (green), closed (red) and changed state (yellow) in the last refresh
+status.paused = Paused
+status.refreshed = Refreshed {time} ({ms} ms)
+
+# --- Errors ---
+error.poll = Reading connections failed: {error}
+error.save_settings = Saving settings failed: {error}

@@ -1,0 +1,65 @@
+# RusNet – čeština
+# Formát a návod na přidání jazyka najdeš v souboru en.lang.
+
+language.name = Čeština
+
+# --- Menu ---
+menu.file = Soubor
+menu.file.exit = Konec
+menu.view = Zobrazit
+menu.view.columns = Sloupce
+menu.view.language = Jazyk
+menu.view.language.system = Podle systému
+menu.view.theme = Vzhled
+menu.view.theme.system = Podle systému
+menu.view.theme.dark = Tmavý
+menu.view.theme.light = Světlý
+menu.help = Nápověda
+menu.help.about = O programu RusNet
+
+about.title = O programu RusNet
+about.text = Prohlížeč síťových spojení ve stylu TCPView (Sysinternals).\nVytvořil Claude (Anthropic) podle požadavků vlastníka projektu.
+
+# --- Sloupce ---
+column.process = Proces
+column.pid = PID
+column.protocol = Protokol
+column.state = Stav
+column.local_address = Místní adresa
+column.local_port = Místní port
+column.remote_address = Vzdálená adresa
+column.remote_port = Vzdálený port
+column.first_seen = První výskyt
+column.process_path = Cesta k procesu
+columns.move_left = Posunout doleva
+columns.move_right = Posunout doprava
+columns.reset = Výchozí sloupce
+
+# --- Panel nástrojů ---
+toolbar.pause = Pozastavit obnovování
+toolbar.resume = Pokračovat v obnovování
+toolbar.refresh = Obnovit nyní
+toolbar.interval = Interval obnovování
+interval.ms = {n} ms
+interval.s = {n} s
+toolbar.listening = Naslouchající
+toolbar.listening.tip = Zobrazit koncové body bez vzdálené strany (TCP ve stavu Listen, UDP)
+toolbar.filter.hint = Filtr…
+toolbar.filter.tip = Zobrazí řádky, ve kterých některý viditelný sloupec obsahuje text (bez ohledu na velikost písmen)
+
+# --- Tabulka ---
+table.header.tip = Klik: seřadit podle sloupce. Pravý klik: sloupce.
+table.copy_row = Kopírovat řádek
+
+# --- Stavový řádek ---
+status.endpoints = Koncové body: {shown} z {total}
+status.tcp_udp = TCP: {tcp}  UDP: {udp}
+status.states = Established: {established}  Listen: {listening}  TimeWait: {time_wait}
+status.changes = Poslední obnovení: +{new} −{closed} ~{changed}
+status.changes.tip = Nové (zelené), zavřené (červené) a se změněným stavem (žluté) při posledním obnovení
+status.paused = Pozastaveno
+status.refreshed = Obnoveno {time} ({ms} ms)
+
+# --- Chyby ---
+error.poll = Načtení spojení selhalo: {error}
+error.save_settings = Uložení nastavení selhalo: {error}

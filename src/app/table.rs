@@ -1,0 +1,136 @@
+//! The connection table: visible columns in the user's order, sorting by a header click,
+//! the column menu on a header right click, highlighted new / changed / closed rows.
+
+use crate::app::*;
+use egui_extras::{Column, TableBuilder};
+
+impl App {
+    pub(in crate::app) fn table(&mut self, ui: &mut egui::Ui) {
+        let cols = self.cfg.columns.visible();
+        let dark = ui.visuals().dark_mode;
+        let row_h = ui.text_style_height(&egui::TextStyle::Body) + 4.0;
+        // How far a row color reaches past its cell, so a marked row has no gaps between cells.
+        let gap = egui::vec2(
+            ui.spacing().item_spacing.x,
+            ui.spacing().item_spacing.y * 0.5 + 0.5,
+        );
+
+        let mut tb = TableBuilder::new(ui)
+            // A new column set gets fresh widths instead of shifted old ones.
+            .id_salt(("conn_table", &cols))
+            .striped(true)
+            .resizable(true)
+            .sense(Sense::click())
+            .auto_shrink([false, false])
+            .cell_layout(egui::Layout::left_to_right(egui::Align::Center));
+        for (i, c) in cols.iter().enumerate() {
+            let col = if i + 1 == cols.len() {
+                Column::remainder().at_least(60.0)
+            } else {
+                Column::initial(c.width()).at_least(40.0)
+            };
+            // No clipping: labels truncate themselves, and the row color must reach into the gap
+            // between the cells.
+            tb = tb.column(col.clip(false));
+        }
+
+        let sort = self.cfg.sort;
+        let mut clicked_header: Option<ColumnId> = None;
+        let mut open_columns_menu = false;
+        let mut clicked_row: Option<ConnKey> = None;
+        let mut copy: Option<String> = None;
+
+        tb.header(22.0, |mut h| {
+            for &c in &cols {
+                h.col(|ui| {
+                    let arrow = match (sort.column == c, sort.ascending) {
+                        (true, true) => " ⏶",
+                        (true, false) => " ⏷",
+                        _ => "",
+                    };
+                    let resp = ui.add(
+                        egui::Label::new(RichText::new(format!("{}{arrow}", c.title())).strong())
+                            .truncate()
+                            .selectable(false)
+                            .sense(Sense::click()),
+                    );
+                    if resp.clicked() {
+                        clicked_header = Some(c);
+                    }
+                    if resp.secondary_clicked() {
+                        open_columns_menu = true;
+                    }
+                    resp.on_hover_text(t!("table.header.tip"));
+                });
+            }
+        })
+        .body(|body| {
+            body.rows(row_h, self.view.len(), |mut row| {
+                let r = &self.view[row.index()];
+                let key = r.conn.key();
+                row.set_selected(self.selected == Some(key));
+                let bg = mark_color(r.mark, dark);
+                for &c in &cols {
+                    row.col(|ui| {
+                        if let Some(bg) = bg {
+                            ui.painter()
+                                .rect_filled(ui.max_rect().expand2(gap), 0.0, bg);
+                        }
+                        let text = cell_text(r, c);
+                        let label = egui::Label::new(text).truncate().selectable(false);
+                        if c.numeric() {
+                            ui.with_layout(
+                                egui::Layout::right_to_left(egui::Align::Center),
+                                |ui| ui.add(label),
+                            );
+                        } else {
+                            ui.add(label);
+                        }
+                    });
+                }
+                let resp = row.response();
+                if resp.clicked() {
+                    clicked_row = Some(key);
+                }
+                resp.context_menu(|ui| {
+                    if ui.button(t!("table.copy_row")).clicked() {
+                        let line: Vec<String> = cols.iter().map(|&c| cell_text(r, c)).collect();
+                        copy = Some(line.join("\t"));
+                        ui.close();
+                    }
+                });
+            });
+        });
+
+        if let Some(c) = clicked_header {
+            self.cfg.sort.click(c);
+            self.view_dirty = true;
+            self.settings_changed();
+        }
+        if let Some(k) = clicked_row {
+            self.selected = (self.selected != Some(k)).then_some(k);
+        }
+        if let Some(text) = copy {
+            ui.ctx().copy_text(text);
+        }
+        if open_columns_menu {
+            // A small window rather than a context menu: it stays open while columns are
+            // switched and moved.
+            self.show_columns_popup = true;
+        }
+        self.columns_popup(ui.ctx());
+    }
+
+    fn columns_popup(&mut self, ctx: &egui::Context) {
+        if !self.show_columns_popup {
+            return;
+        }
+        let mut open = true;
+        egui::Window::new(t!("menu.view.columns"))
+            .open(&mut open)
+            .collapsible(false)
+            .resizable(false)
+            .show(ctx, |ui| self.columns_menu(ui));
+        self.show_columns_popup = open;
+    }
+}

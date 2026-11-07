@@ -1,0 +1,65 @@
+# RusNet – slovenčina
+# Formát a návod na pridanie jazyka nájdeš v súbore en.lang.
+
+language.name = Slovenčina
+
+# --- Menu ---
+menu.file = Súbor
+menu.file.exit = Koniec
+menu.view = Zobraziť
+menu.view.columns = Stĺpce
+menu.view.language = Jazyk
+menu.view.language.system = Podľa systému
+menu.view.theme = Vzhľad
+menu.view.theme.system = Podľa systému
+menu.view.theme.dark = Tmavý
+menu.view.theme.light = Svetlý
+menu.help = Pomocník
+menu.help.about = O programe RusNet
+
+about.title = O programe RusNet
+about.text = Prehliadač sieťových spojení v štýle TCPView (Sysinternals).\nVytvoril Claude (Anthropic) podľa požiadaviek vlastníka projektu.
+
+# --- Stĺpce ---
+column.process = Proces
+column.pid = PID
+column.protocol = Protokol
+column.state = Stav
+column.local_address = Lokálna adresa
+column.local_port = Lokálny port
+column.remote_address = Vzdialená adresa
+column.remote_port = Vzdialený port
+column.first_seen = Prvý výskyt
+column.process_path = Cesta k procesu
+columns.move_left = Posunúť doľava
+columns.move_right = Posunúť doprava
+columns.reset = Predvolené stĺpce
+
+# --- Panel nástrojov ---
+toolbar.pause = Pozastaviť obnovovanie
+toolbar.resume = Pokračovať v obnovovaní
+toolbar.refresh = Obnoviť teraz
+toolbar.interval = Interval obnovovania
+interval.ms = {n} ms
+interval.s = {n} s
+toolbar.listening = Načúvajúce
+toolbar.listening.tip = Zobraziť koncové body bez vzdialenej strany (TCP v stave Listen, UDP)
+toolbar.filter.hint = Filter…
+toolbar.filter.tip = Zobrazí riadky, v ktorých niektorý viditeľný stĺpec obsahuje text (bez ohľadu na veľkosť písmen)
+
+# --- Tabuľka ---
+table.header.tip = Klik: zoradiť podľa stĺpca. Pravý klik: stĺpce.
+table.copy_row = Kopírovať riadok
+
+# --- Stavový riadok ---
+status.endpoints = Koncové body: {shown} z {total}
+status.tcp_udp = TCP: {tcp}  UDP: {udp}
+status.states = Established: {established}  Listen: {listening}  TimeWait: {time_wait}
+status.changes = Posledné obnovenie: +{new} −{closed} ~{changed}
+status.changes.tip = Nové (zelené), zatvorené (červené) a so zmeneným stavom (žlté) pri poslednom obnovení
+status.paused = Pozastavené
+status.refreshed = Obnovené {time} ({ms} ms)
+
+# --- Chyby ---
+error.poll = Načítanie spojení zlyhalo: {error}
+error.save_settings = Uloženie nastavení zlyhalo: {error}

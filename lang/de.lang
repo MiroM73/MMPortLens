@@ -1,0 +1,65 @@
+# RusNet – Deutsch
+# Format und Anleitung zum Hinzufügen einer Sprache: siehe en.lang.
+
+language.name = Deutsch
+
+# --- Menü ---
+menu.file = Datei
+menu.file.exit = Beenden
+menu.view = Ansicht
+menu.view.columns = Spalten
+menu.view.language = Sprache
+menu.view.language.system = Wie das System
+menu.view.theme = Design
+menu.view.theme.system = Wie das System
+menu.view.theme.dark = Dunkel
+menu.view.theme.light = Hell
+menu.help = Hilfe
+menu.help.about = Über RusNet
+
+about.title = Über RusNet
+about.text = Ein Betrachter für Netzwerkverbindungen im Stil von TCPView (Sysinternals).\nErstellt von Claude (Anthropic) nach den Anforderungen des Projektinhabers.
+
+# --- Spalten ---
+column.process = Prozess
+column.pid = PID
+column.protocol = Protokoll
+column.state = Status
+column.local_address = Lokale Adresse
+column.local_port = Lokaler Port
+column.remote_address = Remote-Adresse
+column.remote_port = Remote-Port
+column.first_seen = Zuerst gesehen
+column.process_path = Prozesspfad
+columns.move_left = Nach links
+columns.move_right = Nach rechts
+columns.reset = Standardspalten
+
+# --- Symbolleiste ---
+toolbar.pause = Aktualisierung anhalten
+toolbar.resume = Aktualisierung fortsetzen
+toolbar.refresh = Jetzt aktualisieren
+toolbar.interval = Aktualisierungsintervall
+interval.ms = {n} ms
+interval.s = {n} s
+toolbar.listening = Lauschend
+toolbar.listening.tip = Endpunkte ohne Gegenseite anzeigen (TCP im Status Listen, UDP)
+toolbar.filter.hint = Filter…
+toolbar.filter.tip = Zeigt Zeilen, in denen eine sichtbare Spalte den Text enthält (ohne Groß-/Kleinschreibung)
+
+# --- Tabelle ---
+table.header.tip = Klick: nach dieser Spalte sortieren. Rechtsklick: Spalten.
+table.copy_row = Zeile kopieren
+
+# --- Statusleiste ---
+status.endpoints = Endpunkte: {shown} von {total}
+status.tcp_udp = TCP: {tcp}  UDP: {udp}
+status.states = Established: {established}  Listen: {listening}  TimeWait: {time_wait}
+status.changes = Letzte Aktualisierung: +{new} −{closed} ~{changed}
+status.changes.tip = Neu (grün), geschlossen (rot) und mit geändertem Status (gelb) bei der letzten Aktualisierung
+status.paused = Angehalten
+status.refreshed = Aktualisiert {time} ({ms} ms)
+
+# --- Fehler ---
+error.poll = Lesen der Verbindungen fehlgeschlagen: {error}
+error.save_settings = Speichern der Einstellungen fehlgeschlagen: {error}
