@@ -18,7 +18,7 @@ its structure and conventions.
 
 ## Status
 
-Early skeleton (0.1.0). What works now:
+Early version (0.1.5). What works now:
 
 - TCP and UDP endpoints, IPv4 and IPv6, with PID, process name and process path
   (Windows: `GetExtendedTcpTable` / `GetExtendedUdpTable`; Linux: `/proc/net`).

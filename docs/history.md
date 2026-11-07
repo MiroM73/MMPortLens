@@ -24,7 +24,7 @@
   as a translated "Invalid (0)" with a tooltip instead of `? (0)`; documented in
   architecture.md. Part 3 (status bar hint) remains open.
 
-## 0.2.0 (in progress)
+## 0.1.5 (2026-11-07)
 - #15: program icon drawn in code (`src/icon.rs`: lens over three rows in the mark colors) used
   for the window and, through `build.rs` + `winresource`, as the exe icon with version
   information. Update check and in-place update taken over from RusTrace (`src/http.rs`,
