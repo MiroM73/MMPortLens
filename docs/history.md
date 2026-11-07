@@ -39,6 +39,9 @@
   filters and window; File → Always start as administrator (`run_as_admin`) elevates at start;
   `--elevated` prevents a loop; a cancelled UAC is reported in the status bar; the title says
   "(Administrator)".
+- Released **v0.1.5** (`scripts/release.ps1 0.1.5`, written release notes). #15 acceptance: the
+  released ZIP (checksum OK) started with `MMPORTLENS_UPDATE_AS_VERSION=0.1.0` showed the v0.1.5
+  notes in the update window, and *Download and install* replaced and restarted it; #15 closed.
 - #1: column filters under the headers (`src/colfilter.rs`, core from RusTrace): text, `=exact`,
   `/regex/` (a `|` inside belongs to the regex), `a|b`, `!`; numbers `>n`, `<=n`, `a-b`, `a..b`;
   addresses CIDR and `loopback` / `private` / `public`. Invalid regex / prefix = red field with

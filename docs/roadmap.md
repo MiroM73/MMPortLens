@@ -19,7 +19,7 @@ program, README / `docs/architecture.md` / `docs/history.md`, detailed commit wi
 |-------|------|--------|
 | #15 | Icon (`src/icon.rs`), `build.rs` + `winresource`, update check / in-place update (`update.rs`, `http.rs` from RusTrace) | done (734d765) |
 | #15 | Administrator mode: restart as administrator, always start as administrator (one exe) | done (10588a3) |
-| #15 | Acceptance: a release built by the workflow (v0.1.5) shows its notes in the update window (v0.1.0 has no update check: checked with the released v0.1.5 and `MMPORTLENS_UPDATE_AS_VERSION=0.1.0`) | in progress (v0.1.5) |
+| #15 | Acceptance: a release built by the workflow (v0.1.5) shows its notes in the update window (v0.1.0 has no update check: checked with the released v0.1.5 and `MMPORTLENS_UPDATE_AS_VERSION=0.1.0`) | done (v0.1.5) |
 | #1 | Column filters under the headers (`colfilter.rs` from RusTrace + regex, ranges, CIDR, address classes) | done (d7cf3fe) |
 
 ## Phase 2 – the table and shared code
