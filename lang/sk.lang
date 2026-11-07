@@ -2,9 +2,13 @@
 # Formát a návod na pridanie jazyka nájdeš v súbore en.lang.
 
 language.name = Slovenčina
+title.admin = Administrátor
 
 # --- Menu ---
 menu.file = Súbor
+menu.file.restart_admin = Reštartovať ako administrátor
+menu.file.always_admin = Vždy spúšťať ako administrátor
+menu.file.always_admin.tip = Program spustený bez administrátorských práv sa sám znova spustí cez UAC (od ďalšieho spustenia)
 menu.file.exit = Koniec
 menu.view = Zobraziť
 menu.view.columns = Stĺpce
@@ -82,11 +86,15 @@ status.changes = Posledné obnovenie: +{new} −{closed} ~{changed}
 status.changes.tip = Nové (zelené), zatvorené (červené) a so zmeneným stavom (žlté) pri poslednom obnovení
 status.paused = Pozastavené
 status.refreshed = Obnovené {time} ({ms} ms)
+status.not_admin = Nie ako administrátor
+status.not_admin.tip = Bez administrátorských práv Windows skryje cesty k systémovým procesom a procesom iných používateľov. Klikni na reštart ako administrátor (UAC) s rovnakými filtrami.
 
 # --- Chyby ---
 error.poll = Načítanie spojení zlyhalo: {error}
 error.save_settings = Uloženie nastavení zlyhalo: {error}
 error.internal = interná chyba (vlákno na pozadí skončilo)
+error.elevate = Reštart ako administrátor zlyhal: {error}
+error.elevate_cancelled = Reštart ako administrátor bol zrušený v dialógu UAC
 
 # --- Aktualizácie ---
 update.title = Aktualizácie

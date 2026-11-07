@@ -35,6 +35,9 @@ pub struct Config {
     pub remember_column_filters: bool,
     /// The saved column filters (only while `remember_column_filters` is on).
     pub column_filters: Vec<(ColumnId, String)>,
+    /// Always start elevated: a program started without administrator rights starts itself
+    /// again through UAC (#15).
+    pub run_as_admin: bool,
     /// When to look for a new version at start-up (#15).
     pub update_when: UpdateCheck,
     /// Time of the last update check (Unix seconds).
@@ -93,6 +96,7 @@ impl Default for Config {
             show_column_filters: true,
             remember_column_filters: false,
             column_filters: Vec::new(),
+            run_as_admin: false,
             update_when: UpdateCheck::default(),
             update_last_check: 0,
             update_skipped: String::new(),
@@ -156,6 +160,7 @@ mod tests {
         assert_eq!(partial.columns, ColumnLayout::default());
         assert_eq!(partial.update_when, UpdateCheck::Start);
         assert!(partial.show_column_filters && !partial.remember_column_filters);
+        assert!(!partial.run_as_admin);
         let filters =
             Config::parse(r#"{"column_filters": [["remote_port", "443"], ["pid", ">4"]]}"#)
                 .unwrap();

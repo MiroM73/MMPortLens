@@ -68,7 +68,9 @@ cargo test
 ```
 
 Run it **as administrator** to see the paths of all processes (without admin rights Windows does
-not give the path of other users' and system processes; the PID is always shown).
+not give the path of other users' and system processes; the PID is always shown): **File → Restart
+as administrator** (or the "Not administrator" button in the status bar) restarts it through UAC
+with the same filters, **File → Always start as administrator** does it at every start.
 
 ## Documentation
 

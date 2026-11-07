@@ -2,9 +2,13 @@
 # Format und Anleitung zum Hinzufügen einer Sprache: siehe en.lang.
 
 language.name = Deutsch
+title.admin = Administrator
 
 # --- Menü ---
 menu.file = Datei
+menu.file.restart_admin = Als Administrator neu starten
+menu.file.always_admin = Immer als Administrator starten
+menu.file.always_admin.tip = Ein ohne Administratorrechte gestartetes Programm startet sich über UAC neu (ab dem nächsten Start)
 menu.file.exit = Beenden
 menu.view = Ansicht
 menu.view.columns = Spalten
@@ -82,11 +86,15 @@ status.changes = Letzte Aktualisierung: +{new} −{closed} ~{changed}
 status.changes.tip = Neu (grün), geschlossen (rot) und mit geändertem Status (gelb) bei der letzten Aktualisierung
 status.paused = Angehalten
 status.refreshed = Aktualisiert {time} ({ms} ms)
+status.not_admin = Nicht als Administrator
+status.not_admin.tip = Ohne Administratorrechte verbirgt Windows die Pfade von Systemprozessen und Prozessen anderer Benutzer. Klicken, um mit denselben Filtern als Administrator neu zu starten (UAC).
 
 # --- Fehler ---
 error.poll = Lesen der Verbindungen fehlgeschlagen: {error}
 error.save_settings = Speichern der Einstellungen fehlgeschlagen: {error}
 error.internal = interner Fehler (der Hintergrund-Thread wurde beendet)
+error.elevate = Neustart als Administrator fehlgeschlagen: {error}
+error.elevate_cancelled = Der Neustart als Administrator wurde im UAC-Dialog abgebrochen
 
 # --- Updates ---
 update.title = Updates

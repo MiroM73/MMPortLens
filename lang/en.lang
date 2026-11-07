@@ -13,9 +13,13 @@
 # "\n" in a value is a line break. Missing keys fall back to English.
 
 language.name = English
+title.admin = Administrator
 
 # --- Menu ---
 menu.file = File
+menu.file.restart_admin = Restart as administrator
+menu.file.always_admin = Always start as administrator
+menu.file.always_admin.tip = A program started without administrator rights starts itself again through UAC (from the next start)
 menu.file.exit = Exit
 menu.view = View
 menu.view.columns = Columns
@@ -93,11 +97,15 @@ status.changes = Last refresh: +{new} −{closed} ~{changed}
 status.changes.tip = New (green), closed (red) and changed state (yellow) in the last refresh
 status.paused = Paused
 status.refreshed = Refreshed {time} ({ms} ms)
+status.not_admin = Not administrator
+status.not_admin.tip = Without administrator rights Windows hides the paths of system processes and of other users' processes. Click to restart as administrator (UAC) with the same filters.
 
 # --- Errors ---
 error.poll = Reading connections failed: {error}
 error.save_settings = Saving settings failed: {error}
 error.internal = internal error (the background thread ended)
+error.elevate = Restarting as administrator failed: {error}
+error.elevate_cancelled = Restart as administrator was cancelled in the UAC dialog
 
 # --- Updates ---
 update.title = Updates

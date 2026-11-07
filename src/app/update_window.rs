@@ -130,7 +130,7 @@ impl App {
     }
 
     /// The filters and the window, for the restarted program.
-    fn session_state(&self, ctx: &egui::Context) -> SessionState {
+    pub(in crate::app) fn session_state(&self, ctx: &egui::Context) -> SessionState {
         // egui points include the UI zoom, the window is placed in unzoomed logical pixels.
         let zoom = ctx.zoom_factor();
         let window = ctx.input(|i| {

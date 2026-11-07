@@ -7,6 +7,7 @@
 use crate::colfilter::{ColumnFilter, FilterError};
 use crate::columns::{ColumnId, cell_text};
 use crate::config::{Config, UpdateCheck};
+use crate::elevation::{self, ElevateError};
 use crate::i18n;
 use crate::model::{Changes, Mark, Row, Tracker, now_ms};
 use crate::net::{ConnKey, TcpState};
@@ -20,6 +21,7 @@ use std::sync::atomic::Ordering;
 use std::sync::{Arc, mpsc};
 use std::time::{Duration, Instant};
 
+mod admin;
 mod colfilters;
 mod menu;
 mod statusbar;
@@ -32,8 +34,13 @@ pub const VERSION: &str = env!("CARGO_PKG_VERSION");
 /// Project page on GitHub (Cargo.toml `repository`).
 const REPOSITORY: &str = env!("CARGO_PKG_REPOSITORY");
 
+/// Window title; an elevated program says so (#15).
 pub fn base_title() -> String {
-    format!("MM PortLens {VERSION}")
+    if elevation::is_elevated() {
+        format!("MM PortLens {VERSION} ({})", t!("title.admin"))
+    } else {
+        format!("MM PortLens {VERSION}")
+    }
 }
 
 /// Update check and installation (#15).
@@ -104,10 +111,18 @@ pub struct App {
     show_update: bool,
     /// A newer version found by a check (button in the status bar).
     update_available: Option<Updates>,
+    /// Runs with an administrator token (checked once at start).
+    elevated: bool,
+    /// The last elevated start failed or was cancelled (shown in the status bar).
+    elevate_error: Option<String>,
 }
 
 impl App {
-    pub fn new(cc: &eframe::CreationContext<'_>, restore: Option<SessionState>) -> Self {
+    pub fn new(
+        cc: &eframe::CreationContext<'_>,
+        restore: Option<SessionState>,
+        elevate_error: Option<ElevateError>,
+    ) -> Self {
         let cfg = Config::load();
         i18n::set_language(&cfg.language);
         let ctx = cc.egui_ctx.clone();
@@ -137,6 +152,8 @@ impl App {
             update: UpdateState::Idle,
             show_update: false,
             update_available: None,
+            elevated: elevation::is_elevated(),
+            elevate_error: elevate_error.as_ref().map(admin::elevate_error_text),
         };
         app.apply_theme(&cc.egui_ctx);
         if app.cfg.remember_column_filters {

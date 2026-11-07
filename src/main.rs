@@ -8,6 +8,7 @@ mod app;
 mod colfilter;
 mod columns;
 mod config;
+mod elevation;
 mod http;
 mod i18n;
 mod icon;
@@ -21,20 +22,38 @@ mod update;
 use eframe::egui;
 use std::sync::Arc;
 
-/// The state of the previous version after an update (`--restore <file>`), if the program was
-/// started that way.
-fn restore_arg() -> Option<update::SessionState> {
-    let mut args = std::env::args_os().skip(1);
-    while let Some(a) = args.next() {
-        if a == update::RESTORE_ARG {
-            return update::SessionState::take(std::path::Path::new(&args.next()?));
-        }
-    }
-    None
+/// The state of the previous version after an update or an elevated restart
+/// (`--restore <file>`), if the program was started that way. Reading deletes the file.
+fn restore_arg(args: &[String]) -> Option<update::SessionState> {
+    let i = args.iter().position(|a| a == update::RESTORE_ARG)?;
+    update::SessionState::take(std::path::Path::new(args.get(i + 1)?))
 }
 
 fn main() -> eframe::Result {
-    let restore = restore_arg();
+    let args: Vec<String> = std::env::args_os()
+        .skip(1)
+        .map(|a| a.to_string_lossy().into_owned())
+        .collect();
+    let cfg = config::Config::load();
+    i18n::set_language(&cfg.language);
+
+    // "Always start as administrator": start again through UAC and end this one. The elevated
+    // child gets ELEVATED_ARG and never tries again. Before `restore_arg`, which deletes the
+    // file the child still needs.
+    let mut elevate_error = None;
+    if cfg.run_as_admin
+        && !args.iter().any(|a| a == elevation::ELEVATED_ARG)
+        && !elevation::is_elevated()
+    {
+        let mut child_args = args.clone();
+        child_args.push(elevation::ELEVATED_ARG.into());
+        match elevation::relaunch_elevated(&child_args) {
+            Ok(()) => return Ok(()),
+            Err(e) => elevate_error = Some(e),
+        }
+    }
+
+    let restore = restore_arg(&args);
     update::cleanup_old();
 
     let mut viewport = egui::ViewportBuilder::default().with_inner_size([1300.0, 750.0]);
@@ -61,6 +80,6 @@ fn main() -> eframe::Result {
     eframe::run_native(
         "MMPortLens",
         options,
-        Box::new(|cc| Ok(Box::new(app::App::new(cc, restore)))),
+        Box::new(|cc| Ok(Box::new(app::App::new(cc, restore, elevate_error)))),
     )
 }

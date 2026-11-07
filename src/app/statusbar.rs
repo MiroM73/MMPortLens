@@ -25,6 +25,7 @@ impl App {
                 changed = ch.changed
             ))
             .on_hover_text(t!("status.changes.tip"));
+            self.admin_status(ui);
             if let Some(err) = &self.error {
                 ui.separator();
                 ui.colored_label(ui.visuals().error_fg_color, err);

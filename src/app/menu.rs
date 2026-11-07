@@ -6,6 +6,10 @@ impl App {
     pub(in crate::app) fn menu_bar(&mut self, ui: &mut egui::Ui) {
         egui::MenuBar::new().ui(ui, |ui| {
             ui.menu_button(t!("menu.file"), |ui| {
+                if cfg!(windows) {
+                    self.admin_menu(ui);
+                    ui.separator();
+                }
                 if ui.button(t!("menu.file.exit")).clicked() {
                     ui.close();
                     ui.ctx().send_viewport_cmd(egui::ViewportCommand::Close);

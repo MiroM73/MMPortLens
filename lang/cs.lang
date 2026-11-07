@@ -2,9 +2,13 @@
 # Formát a návod na přidání jazyka najdeš v souboru en.lang.
 
 language.name = Čeština
+title.admin = Správce
 
 # --- Menu ---
 menu.file = Soubor
+menu.file.restart_admin = Restartovat jako správce
+menu.file.always_admin = Vždy spouštět jako správce
+menu.file.always_admin.tip = Program spuštěný bez práv správce se sám znovu spustí přes UAC (od dalšího spuštění)
 menu.file.exit = Konec
 menu.view = Zobrazit
 menu.view.columns = Sloupce
@@ -82,11 +86,15 @@ status.changes = Poslední obnovení: +{new} −{closed} ~{changed}
 status.changes.tip = Nové (zelené), zavřené (červené) a se změněným stavem (žluté) při posledním obnovení
 status.paused = Pozastaveno
 status.refreshed = Obnoveno {time} ({ms} ms)
+status.not_admin = Ne jako správce
+status.not_admin.tip = Bez práv správce Windows skryje cesty k systémovým procesům a procesům jiných uživatelů. Klikněte pro restart jako správce (UAC) se stejnými filtry.
 
 # --- Chyby ---
 error.poll = Načtení spojení selhalo: {error}
 error.save_settings = Uložení nastavení selhalo: {error}
 error.internal = interní chyba (vlákno na pozadí skončilo)
+error.elevate = Restart jako správce selhal: {error}
+error.elevate_cancelled = Restart jako správce byl zrušen v dialogu UAC
 
 # --- Aktualizace ---
 update.title = Aktualizace

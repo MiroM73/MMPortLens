@@ -10,6 +10,7 @@ with the change.
 | `src/main.rs` | Window start-up: icon, `--restore <file>` after an update, `update::cleanup_old`. |
 | `build.rs` | Windows: icon (from `src/icon.rs`) and version information as a resource of the exe (`winresource`). |
 | `src/icon.rs` | The program icon drawn in code (window icon, `.ico` for `build.rs`). |
+| `src/elevation.rs` | Administrator mode: `is_elevated` (token elevation), `relaunch_elevated` (`ShellExecuteW` "runas"), command-line quoting. |
 | `src/http.rs` | HTTPS GET over WinHTTP (raw FFI) for the update check – from RusTrace. |
 | `src/update.rs` | GitHub releases, version compare, release notes as plain lines, ZIP download + SHA-256 check + in-place install, the state handed to the restarted program – from RusTrace. |
 | `src/net/mod.rs` | `Connection`, `ConnKey`, `Protocol`, `TcpState`; `snapshot()` picks the platform backend. |
@@ -24,7 +25,7 @@ with the change.
 | `src/config.rs` | `Config` (JSON, every field has a default). |
 | `src/i18n.rs` | `t!()` and the language files – the same module as in RusTrace. |
 | `src/timefmt.rs` | Clock times for the table. |
-| `src/app/` | The UI, split by area like RusTrace: `mod.rs` (state, frame loop), `menu.rs`, `toolbar.rs`, `table.rs`, `statusbar.rs`, `colfilters.rs` (column filter state and field), `update_window.rs` (Help → Check for updates). |
+| `src/app/` | The UI, split by area like RusTrace: `mod.rs` (state, frame loop), `menu.rs`, `toolbar.rs`, `table.rs`, `statusbar.rs`, `colfilters.rs` (column filter state and field), `admin.rs` (restart as administrator), `update_window.rs` (Help → Check for updates). |
 | `lang/*.lang` | Built-in translations (en, sk, cs, de), embedded with `include_str!`. |
 
 ## Reading the connections
@@ -129,6 +130,30 @@ used for the window icon (64 px); `icon::ico(sizes)` writes a 32-bit `.ico` (16 
 compiles it with `FileDescription` / `ProductName` (the version comes from Cargo) through
 `winresource` – this needs `rc.exe` from the Windows SDK (present on the GitHub runners and with
 Visual Studio). On other platforms `build.rs` does nothing.
+
+## Administrator mode (#15)
+
+One executable (no `requireAdministrator` manifest, no second exe); it can start itself again
+elevated, like *Show details for all processes* in Process Explorer.
+
+- `elevation::is_elevated` reads `TokenElevation` of the own process token; `App::elevated` keeps
+  the answer, the window title gets "(Administrator)".
+- **File → Restart as administrator** and the "Not administrator" button in the status bar call
+  `App::restart_elevated`: the `SessionState` of the update restart (filter, column filters,
+  pause, window) is written to a temporary file and the exe is started with
+  `ShellExecuteW("runas", exe, "--restore <file> --elevated")`. Confirmed UAC → settings saved,
+  poller stopped, window closed. Cancelled UAC (`ERROR_CANCELLED`) or another error → the file is
+  deleted, the program keeps running and the status bar shows why.
+- **File → Always start as administrator** (`Config::run_as_admin`): `main` checks it before the
+  window is created; a program that is not elevated and was not started with `--elevated`
+  starts itself elevated with its own arguments plus `--elevated` and ends. `--elevated` stops a
+  loop when elevation does not produce an elevated token. A failure is shown in the status bar.
+  The check runs before `restore_arg`, which deletes the restore file the child still needs.
+- `join_args` quotes the arguments by the `CommandLineToArgvW` rules (unit-tested).
+- Elevating to a *different* account (over-the-shoulder UAC) uses that account's `%APPDATA%`
+  settings and `%TEMP%`; the restore file path is absolute, so it is still found.
+- An update installed by an elevated program restarts it elevated (a child of an elevated
+  process); a non-elevated one elevates itself again when the setting is on.
 
 ## Updates (#15)
 
