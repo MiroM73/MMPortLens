@@ -12,3 +12,4 @@
 - Renamed from the working name RusNet to **MM PortLens** (`MMPortLens`) before publishing:
   RusNet collides with RustNet (a Rust network monitor) and the Russian IRC network, and all of the
   owner's programs get the MM prefix.
+- Fixed the executable name left over from RusTrace in the comment of `.cargo/config.toml`.
