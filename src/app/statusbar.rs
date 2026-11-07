@@ -25,6 +25,11 @@ impl App {
                 changed = ch.changed
             ))
             .on_hover_text(t!("status.changes.tip"));
+            let resolving = self.resolver.pending();
+            if resolving > 0 {
+                ui.separator();
+                ui.label(t!("status.resolving", count = resolving));
+            }
             if self.sel.count() > 1 {
                 ui.separator();
                 ui.label(t!("status.selected", count = self.sel.count()));

@@ -57,3 +57,10 @@
   running program: Shift+↓ / Shift+PgDn ranges, Ctrl+click, re-sorting by PID kept 23 selected
   rows, Ctrl+F + text + Esc, Ctrl+A + Ctrl+C = header + 123 rows. Ctrl+E (export) comes with #9,
   Del (close connection) with #6.
+- #5: reverse DNS (`src/dns.rs`): columns Remote host / Local host, cache with 10 min TTL and
+  5 min for "no name", 8 worker threads, `GetNameInfoW` / `getnameinfo` with `NI_NAMEREQD`;
+  Service column and port tooltips from a built-in port table (`src/services.rs`); View → Resolve
+  addresses and the DNS toolbar button; "Resolving: n" in the status bar. Verified in the running
+  program: names of ~40 public addresses arrived in the background while the table kept
+  refreshing (github.com, akamai, amazonaws, 1e100.net, 127.0.0.1 → the computer name), sorting by
+  Remote host, the column filter `github` on the names, DNS off shows the addresses again.

@@ -20,26 +20,36 @@ pub enum ColumnId {
     RemotePort,
     FirstSeen,
     ProcessPath,
+    /// Host name of the remote address (#5).
+    RemoteHost,
+    /// Host name of the local address (#5).
+    LocalHost,
+    /// Name of the well-known port (#5).
+    Service,
 }
 
 impl ColumnId {
     /// All columns in the default order (the order of TCPView, then the additional ones).
-    pub const ALL: [ColumnId; 10] = [
+    pub const ALL: [ColumnId; 13] = [
         ColumnId::Process,
         ColumnId::Pid,
         ColumnId::Protocol,
         ColumnId::State,
         ColumnId::LocalAddress,
         ColumnId::LocalPort,
+        ColumnId::LocalHost,
         ColumnId::RemoteAddress,
         ColumnId::RemotePort,
+        ColumnId::RemoteHost,
+        ColumnId::Service,
         ColumnId::FirstSeen,
         ColumnId::ProcessPath,
     ];
 
-    /// Shown by default (the path is long, so it starts hidden).
+    /// Shown by default (the path is long and the local host name is mostly the own computer,
+    /// so they start hidden).
     fn default_visible(self) -> bool {
-        self != ColumnId::ProcessPath
+        !matches!(self, ColumnId::ProcessPath | ColumnId::LocalHost)
     }
 
     fn key(self) -> &'static str {
@@ -54,6 +64,9 @@ impl ColumnId {
             ColumnId::RemotePort => "column.remote_port",
             ColumnId::FirstSeen => "column.first_seen",
             ColumnId::ProcessPath => "column.process_path",
+            ColumnId::RemoteHost => "column.remote_host",
+            ColumnId::LocalHost => "column.local_host",
+            ColumnId::Service => "column.service",
         }
     }
 
@@ -71,6 +84,8 @@ impl ColumnId {
             ColumnId::LocalAddress | ColumnId::RemoteAddress => 200.0,
             ColumnId::FirstSeen => 90.0,
             ColumnId::ProcessPath => 360.0,
+            ColumnId::RemoteHost | ColumnId::LocalHost => 220.0,
+            ColumnId::Service => 90.0,
         }
     }
 
@@ -116,7 +131,25 @@ pub fn cell_text(row: &Row, col: ColumnId) -> String {
         ColumnId::RemotePort => c.remote.map(|r| r.port().to_string()).unwrap_or_default(),
         ColumnId::FirstSeen => crate::timefmt::clock(row.first_seen),
         ColumnId::ProcessPath => row.process.path.clone(),
+        ColumnId::RemoteHost => match (&row.remote_host, c.remote) {
+            (Some(name), _) => name.to_string(),
+            (None, Some(r)) => ip_text(r.ip()),
+            (None, None) => String::new(),
+        },
+        ColumnId::LocalHost => match &row.local_host {
+            Some(name) => name.to_string(),
+            None => ip_text(c.local.ip()),
+        },
+        ColumnId::Service => service(row).unwrap_or_default().to_owned(),
     }
+}
+
+/// Service of a row: the name of the remote port, for endpoints without a remote side (listeners,
+/// UDP) the name of the local port.
+pub fn service(row: &Row) -> Option<&'static str> {
+    let c = &row.conn;
+    let port = c.remote.map_or(c.local.port(), |r| r.port());
+    crate::services::name(port, c.proto)
 }
 
 /// Order of two rows by a column; numbers and addresses compare as values, not as text.
@@ -141,6 +174,19 @@ pub fn compare(a: &Row, b: &Row, col: ColumnId) -> Ordering {
             .path
             .to_lowercase()
             .cmp(&b.process.path.to_lowercase()),
+        // Names before bare addresses, then alphabetically.
+        ColumnId::RemoteHost | ColumnId::LocalHost => {
+            let host = |r: &Row| {
+                let name = if col == ColumnId::RemoteHost {
+                    &r.remote_host
+                } else {
+                    &r.local_host
+                };
+                (name.is_none(), cell_text(r, col).to_lowercase())
+            };
+            host(a).cmp(&host(b))
+        }
+        ColumnId::Service => service(a).cmp(&service(b)),
     }
 }
 
@@ -266,8 +312,9 @@ mod tests {
     #[test]
     fn layout_default_and_visibility() {
         let mut l = ColumnLayout::default();
-        assert_eq!(l.visible().len(), ColumnId::ALL.len() - 1);
+        assert_eq!(l.visible().len(), ColumnId::ALL.len() - 2);
         assert!(!l.visible().contains(&ColumnId::ProcessPath));
+        assert!(l.visible().contains(&ColumnId::RemoteHost));
         l.set_visible(ColumnId::ProcessPath, true);
         assert!(l.visible().contains(&ColumnId::ProcessPath));
         // The last visible column stays.
@@ -298,6 +345,43 @@ mod tests {
         assert_eq!(l.0.len(), ColumnId::ALL.len());
         assert_eq!(l.0[0].id, ColumnId::Pid);
         assert_eq!(l.visible(), vec![ColumnId::Pid]);
+    }
+
+    #[test]
+    fn host_and_service_cells() {
+        use crate::net::{Connection, Protocol};
+        let mut row = Row {
+            conn: Connection {
+                proto: Protocol::Tcp,
+                local: "10.0.0.5:50000".parse().unwrap(),
+                remote: Some("140.82.112.3:443".parse().unwrap()),
+                state: Some(TcpState::Established),
+                pid: 1,
+            },
+            process: Default::default(),
+            first_seen: 0,
+            mark: crate::model::Mark::None,
+            mark_until: 0,
+            local_host: None,
+            remote_host: None,
+        };
+        // Unresolved: the address.
+        assert_eq!(cell_text(&row, ColumnId::RemoteHost), "140.82.112.3");
+        assert_eq!(cell_text(&row, ColumnId::Service), "https");
+        let bare = row.clone();
+        row.remote_host = Some("lb-140-82-112-3-iad.github.com".into());
+        assert_eq!(
+            cell_text(&row, ColumnId::RemoteHost),
+            "lb-140-82-112-3-iad.github.com"
+        );
+        // Names sort before bare addresses.
+        assert_eq!(compare(&row, &bare, ColumnId::RemoteHost), Ordering::Less);
+        // A listener: the service of the local port, no remote host.
+        row.conn.remote = None;
+        row.conn.local = "0.0.0.0:3389".parse().unwrap();
+        row.remote_host = None;
+        assert_eq!(cell_text(&row, ColumnId::RemoteHost), "");
+        assert_eq!(cell_text(&row, ColumnId::Service), "rdp");
     }
 
     #[test]

@@ -33,7 +33,7 @@ program, README / `docs/architecture.md` / `docs/history.md`, detailed commit wi
 | Issue | What | Status |
 |-------|------|--------|
 | #17 | Keyboard shortcuts and multi-selection (needed for bulk actions in #6 and copying) | done |
-| #5 | Reverse DNS (off the UI thread) | |
+| #5 | Reverse DNS (off the UI thread) | done |
 | #6 | Close a connection, end a process | |
 | #7 | Process details (svchost services, user, command line, icon) | |
 | #14 | Real creation time and owner module of TCP connections | |

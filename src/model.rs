@@ -40,6 +40,9 @@ pub struct Row {
     pub mark: Mark,
     /// When the mark ends (a closed row is removed then).
     pub mark_until: u64,
+    /// Host names from the reverse DNS cache (#5); filled in the view, `None` in the tracker.
+    pub local_host: Option<Arc<str>>,
+    pub remote_host: Option<Arc<str>>,
 }
 
 /// What one refresh changed – the base for the status bar and later for recording.
@@ -102,6 +105,8 @@ impl Tracker {
                             first_seen: now,
                             mark,
                             mark_until: until,
+                            local_host: None,
+                            remote_host: None,
                         },
                     );
                 }

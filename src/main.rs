@@ -8,6 +8,7 @@ mod app;
 mod colfilter;
 mod columns;
 mod config;
+mod dns;
 mod elevation;
 mod http;
 mod i18n;
@@ -17,6 +18,7 @@ mod net;
 mod poller;
 mod process;
 mod selection;
+mod services;
 mod timefmt;
 mod update;
 

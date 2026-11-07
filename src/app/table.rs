@@ -106,10 +106,21 @@ impl App {
                         let text = cell_text(r, c);
                         let label = egui::Label::new(text).truncate().selectable(false);
                         if c.numeric() {
-                            ui.with_layout(
+                            let resp = ui.with_layout(
                                 egui::Layout::right_to_left(egui::Align::Center),
                                 |ui| ui.add(label),
                             );
+                            // The service name of a well-known port (#5).
+                            let port = match c {
+                                ColumnId::LocalPort => Some(r.conn.local.port()),
+                                ColumnId::RemotePort => r.conn.remote.map(|a| a.port()),
+                                _ => None,
+                            };
+                            if let Some(name) =
+                                port.and_then(|p| crate::services::name(p, r.conn.proto))
+                            {
+                                resp.inner.on_hover_text(name);
+                            }
                         } else {
                             let resp = ui.add(label);
                             if c == ColumnId::State

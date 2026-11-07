@@ -60,6 +60,10 @@ impl App {
                 .toggle_value(&mut self.cfg.show_listening, t!("toolbar.listening"))
                 .on_hover_text(t!("toolbar.listening.tip"))
                 .changed();
+            changed |= ui
+                .toggle_value(&mut self.cfg.resolve_addresses, "DNS")
+                .on_hover_text(t!("menu.view.resolve_addresses.tip"))
+                .changed();
             if changed {
                 self.view_dirty = true;
                 self.settings_changed();

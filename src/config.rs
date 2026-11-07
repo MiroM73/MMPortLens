@@ -29,6 +29,8 @@ pub struct Config {
     pub show_ipv6: bool,
     /// Show TCP listeners (and UDP endpoints, which have no remote side either).
     pub show_listening: bool,
+    /// Host names of the addresses are looked up (reverse DNS, #5).
+    pub resolve_addresses: bool,
     /// The filter row under the column headers is shown (#1).
     pub show_column_filters: bool,
     /// The column filters are saved and restored at the next start.
@@ -93,6 +95,7 @@ impl Default for Config {
             show_ipv4: true,
             show_ipv6: true,
             show_listening: true,
+            resolve_addresses: true,
             show_column_filters: true,
             remember_column_filters: false,
             column_filters: Vec::new(),
@@ -161,6 +164,7 @@ mod tests {
         assert_eq!(partial.update_when, UpdateCheck::Start);
         assert!(partial.show_column_filters && !partial.remember_column_filters);
         assert!(!partial.run_as_admin);
+        assert!(partial.resolve_addresses);
         let filters =
             Config::parse(r#"{"column_filters": [["remote_port", "443"], ["pid", ">4"]]}"#)
                 .unwrap();

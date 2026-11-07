@@ -7,6 +7,7 @@
 use crate::colfilter::{ColumnFilter, FilterError};
 use crate::columns::{ColumnId, cell_text};
 use crate::config::{Config, UpdateCheck};
+use crate::dns::Resolver;
 use crate::elevation::{self, ElevateError};
 use crate::i18n;
 use crate::model::{Changes, Mark, Row, Tracker, now_ms};
@@ -103,6 +104,8 @@ pub struct App {
     col_filter_errors: HashMap<ColumnId, FilterError>,
     /// Selected rows and the cursor row, by key (#17).
     sel: Selection,
+    /// Reverse DNS cache and its worker threads (#5).
+    resolver: Resolver,
     /// Table position to scroll to in the next frame (keyboard navigation).
     scroll_to: Option<usize>,
     /// Help → Keyboard shortcuts.
@@ -150,6 +153,13 @@ impl App {
             col_filters: Vec::new(),
             col_filter_errors: HashMap::new(),
             sel: Selection::default(),
+            resolver: {
+                let ctx = cc.egui_ctx.clone();
+                Resolver::new(
+                    Arc::new(crate::dns::system_lookup),
+                    Arc::new(move || ctx.request_repaint()),
+                )
+            },
             scroll_to: None,
             show_shortcuts: false,
             last_changes: Changes::default(),
@@ -217,6 +227,9 @@ impl App {
         if self.tracker.expire(now_ms()) {
             self.view_dirty = true;
         }
+        if self.resolver.receive(now_ms()) {
+            self.view_dirty = true;
+        }
         if self.view_dirty {
             // Rows removed from the tracker cannot stay selected.
             let tracker = &self.tracker;
@@ -250,7 +263,15 @@ impl App {
         let needle = self.filter.trim().to_lowercase();
         let mut counts = Counts::default();
         let mut view = Vec::with_capacity(self.tracker.len());
-        for r in self.tracker.rows() {
+        // Host names only while a host column is shown (the filters search the shown columns).
+        let resolve = self.cfg.resolve_addresses
+            && cols
+                .iter()
+                .any(|c| matches!(c, ColumnId::RemoteHost | ColumnId::LocalHost));
+        let local_names = resolve && cols.contains(&ColumnId::LocalHost);
+        let now = now_ms();
+        let rows: Vec<Row> = self.tracker.rows().cloned().collect();
+        for mut r in rows {
             counts.total += 1;
             if r.conn.proto.is_tcp() {
                 counts.tcp += 1;
@@ -263,8 +284,14 @@ impl App {
                 Some(TcpState::TimeWait) => counts.time_wait += 1,
                 _ => {}
             }
-            if self.row_shown(r, &cols, &needle) {
-                view.push(r.clone());
+            if resolve {
+                r.remote_host = r.conn.remote.and_then(|a| self.resolver.name(a.ip(), now));
+                if local_names {
+                    r.local_host = self.resolver.name(r.conn.local.ip(), now);
+                }
+            }
+            if self.row_shown(&r, &cols, &needle) {
+                view.push(r);
             }
         }
         let sort = self.cfg.sort;

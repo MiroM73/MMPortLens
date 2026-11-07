@@ -20,6 +20,18 @@ impl App {
                 ui.separator();
                 if ui
                     .checkbox(
+                        &mut self.cfg.resolve_addresses,
+                        t!("menu.view.resolve_addresses"),
+                    )
+                    .on_hover_text(t!("menu.view.resolve_addresses.tip"))
+                    .changed()
+                {
+                    self.view_dirty = true;
+                    self.settings_changed();
+                }
+                ui.separator();
+                if ui
+                    .checkbox(
                         &mut self.cfg.show_column_filters,
                         t!("menu.view.column_filters"),
                     )

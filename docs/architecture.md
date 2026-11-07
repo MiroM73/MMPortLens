@@ -22,6 +22,8 @@ with the change.
 | `src/model.rs` | `Tracker`: merges snapshots into rows, marks new / changed / closed rows and expires the marks. |
 | `src/colfilter.rs` | Column filter syntax: parsing and matching (`ColumnFilter`, `FilterKind`, `FilterError`) – core from RusTrace. |
 | `src/selection.rs` | `Selection` (cursor, anchor, selected `ConnKey`s) and `Nav` (arrow / page targets) – pure, tested (#17). |
+| `src/dns.rs` | Reverse DNS (#5): `DnsCache` (TTL, negative results, pending – pure), `Resolver` (cache + worker pool), `system_lookup` (`GetNameInfoW` / `getnameinfo`). |
+| `src/services.rs` | Built-in table of well-known port names (#5). |
 | `src/columns.rs` | `ColumnId`, cell texts, value-based sorting (`SortSpec`), `ColumnLayout` (visibility + order). |
 | `src/config.rs` | `Config` (JSON, every field has a default). |
 | `src/i18n.rs` | `t!()` and the language files – the same module as in RusTrace. |
@@ -104,6 +106,32 @@ and the table scrolls to it (`TableBuilder::scroll_to_row`). Ctrl+C arrives as `
 `copy_selection` writes the selected rows in table order, tab-separated in the visible columns,
 with a header line when there are several. The shortcut list (`app/help.rs`, F1) uses `kb()` to
 localize Ctrl / Shift / Space and matches `docs/keyboard-shortcuts.md`.
+
+## Host names and services (#5)
+
+Columns **Remote host** and **Local host** (hidden by default) show the name of the address from
+reverse DNS, **Service** the name of the well-known port (the remote port; for listeners and UDP the
+local port) from the built-in table in `services.rs` – no `services` file. The port cells have the
+service name as a tooltip.
+
+- `dns::DnsCache` keeps per address the last result, when it came and whether a lookup is pending.
+  A name lives 10 minutes (`TTL_MS`), "no name" 5 minutes (`NEGATIVE_TTL_MS`); an expired name is
+  still shown while it is asked again. `0.0.0.0` / `::` are never asked. Above 20 000 entries the
+  expired ones are dropped.
+- `dns::Resolver` adds a queue (`Mutex<VecDeque>` + `Condvar`) and `WORKERS` (8) threads started at
+  the first lookup; each finished lookup goes back over a channel and wakes the UI. An address
+  without a PTR record can take seconds (measured ~4.5 s per address on the development PC with
+  .NET `Dns.GetHostEntry` as well), which is why several run in parallel; the UI never waits.
+- `dns::system_lookup` builds a `sockaddr_in` / `sockaddr_in6` by hand (same layout on Windows
+  and Linux, only `AF_INET6` differs: 23 / 10) and calls `GetNameInfoW` (after a one-time
+  `WSAStartup`) or `getnameinfo` with `NI_NAMEREQD`, so a missing name is an error, not the address
+  text.
+- `App::rebuild_view` fills `Row::remote_host` / `local_host` of the view copies from the cache
+  (only while **View → Resolve addresses** / the *DNS* button is on and a host column is visible;
+  `Config::resolve_addresses`, default on). `Resolver::receive` in the frame loop marks the view
+  dirty when names arrive. Unresolved addresses show the IP, so the text filter, the column filters
+  and sorting work on what is shown; sorting puts names before bare addresses.
+- The status bar shows "Resolving: n" while lookups are pending.
 
 ## Column filters (#1)
 
@@ -215,7 +243,10 @@ names changed; the logic is the same.
 
 `cargo test` – decoding of the Windows tables and `/proc/net` lines, state codes, the tracker
 (new / changed / closed / expiry / reappearing), column layout and sorting, settings round trip,
-language files, selection (clicks, ranges, re-sorting, navigation targets), column filters (syntax, regex, numeric ranges, CIDR, address classes, errors,
+language files, reverse DNS (cache TTL / negative results / pending, `sockaddr` layout, a
+300-address run through the worker pool with a slow fake resolver – never more than `WORKERS` at
+once, the caller never blocks –, the system resolver on 127.0.0.1), port names, host / service
+cells, selection (clicks, ranges, re-sorting, navigation targets), column filters (syntax, regex, numeric ranges, CIDR, address classes, errors,
 speed), the icon / `.ico` layout, update logic (versions, GitHub JSON, missed releases,
 release notes, SHA-256 files, ZIP reading, installation into a temporary folder, session state)
 and the live snapshot test.
