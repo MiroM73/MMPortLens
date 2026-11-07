@@ -16,6 +16,7 @@ with the change.
 | `src/net/mod.rs` | `Connection`, `ConnKey`, `Protocol`, `TcpState`; `snapshot()` picks the platform backend. |
 | `src/net/winrows.rs` | Pure decoding of the iphlpapi `*_OWNER_MODULE` table buffers (tested on every platform). |
 | `src/net/windows.rs` | Windows backend: `GetExtendedTcpTable` / `GetExtendedUdpTable` with the owner module classes, `GetOwnerModuleFrom*Entry` with a cache (`ModuleCache`), declared directly with `unsafe extern "system"` (no binding crate). |
+| `src/net/estats.rs` | Traffic counters per TCP connection (ESTATS, #8): `Collector`, the pure `tcp_row` / `tcp6_row` / `decode_data`. |
 | `src/net/procfs.rs` | Linux backend: `/proc/net/{tcp,tcp6,udp,udp6}` + socket inode → PID from `/proc/<pid>/fd`. |
 | `src/process.rs` | `ProcessInfo` (name, path, start time, user, command line, company, description, services, icon) and `ProcessCache` keyed by PID + start time (#7). |
 | `src/winproc.rs` | Windows process details: image path, start time, user (token), command line (`NtQueryInformationProcess`), version strings, icon (`ExtractIconExW` → RGBA), services per PID (`EnumServicesStatusExW`) (#7). |
@@ -78,6 +79,30 @@ others. It is an OS problem, not a decoding one. Consequences in the code:
 
 Limit of polling: a connection that opens and closes between two refreshes is never seen. ETW
 (Microsoft-Windows-Kernel-Network) would catch those – see the issues.
+
+### Traffic per connection (#8)
+`net::estats::Collector` runs in the poll thread after the tables are read, only while
+`PollControl::collect_stats` is set – `App::rebuild_view` sets it when a traffic column (Sent,
+Received, Sent/s, Received/s, Sent packets, Received packets – `ColumnId::traffic`) is visible,
+because the counters cost CPU in the TCP stack. For every TCP connection with a remote side that is
+not Listen / TimeWait / Closed (`has_stats`):
+
+- the first time (per `ConnKey` + creation time) `SetPerTcp[6]ConnectionEStats(TcpConnectionEstatsData,
+  EnableCollection = 1)` switches the collection on; the counters start then, not when the
+  connection was opened;
+- every refresh `GetPerTcp[6]ConnectionEStats` reads `TCP_ESTATS_DATA_ROD_v0` (DataBytesOut,
+  DataSegsOut, DataBytesIn, DataSegsIn) into `Connection::stats`.
+
+The rows passed to the API are `MIB_TCPROW` / `MIB_TCP6ROW` built by the pure `tcp_row` /
+`tcp6_row` (state Established – Windows matches the addresses; the reported state may be invalid,
+#21); `actions::tcp_row` (DELETE_TCB) uses the same builder. Windows allows this only to
+administrators: the first `ERROR_ACCESS_DENIED` stops the collector for the rest of the run, the
+snapshot carries `stats_denied` and the status bar shows "Traffic: administrator only" with an
+explanation; the cells stay empty.
+
+`Tracker::update` computes the rates from the difference to the previous snapshot of the same row
+(`model::rate`: bytes × 1000 / ms between the snapshots, 0 when a counter went back); the texts are
+`columns::bytes` (1 KB = 1024 B) and `columns::rate`. UDP has no per-endpoint counters (ETW, #4).
 
 ## Rows, marks and refresh
 
@@ -321,7 +346,9 @@ names changed; the logic is the same.
 ## Tests
 
 `cargo test` – decoding of the Windows owner module tables (incl. creation times, row offsets),
-the live creation time and owner module of an own connection, and `/proc/net` lines, state codes, the tracker
+the live creation time and owner module of an own connection, `/proc/net` lines, ESTATS rows and
+counters (elevated: 200 KB over an own connection are counted; not elevated: exactly
+AccessDenied), traffic rates between snapshots, byte / rate texts, state codes, the tracker
 (new / changed / closed / expiry / reappearing), column layout and sorting, settings round trip,
 language files, reverse DNS (cache TTL / negative results / pending, `sockaddr` layout, a
 300-address run through the worker pool with a slow fake resolver – never more than `WORKERS` at

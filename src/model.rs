@@ -43,6 +43,20 @@ pub struct Row {
     /// Host names from the reverse DNS cache (#5); filled in the view, `None` in the tracker.
     pub local_host: Option<Arc<str>>,
     pub remote_host: Option<Arc<str>>,
+    /// Bytes per second sent / received since the previous snapshot (#8).
+    pub rate_out: Option<f64>,
+    pub rate_in: Option<f64>,
+    /// Time of the snapshot that last updated the row (base of the rates).
+    pub updated: u64,
+}
+
+/// Bytes per second between two counter readings `dt_ms` apart; `None` without both readings or
+/// time, 0 when the counter went back (the collection was switched on again).
+pub fn rate(old: Option<u64>, new: Option<u64>, dt_ms: u64) -> Option<f64> {
+    match (old, new) {
+        (Some(a), Some(b)) if dt_ms > 0 => Some(b.saturating_sub(a) as f64 * 1000.0 / dt_ms as f64),
+        _ => None,
+    }
 }
 
 /// What one refresh changed – the base for the status bar and later for recording.
@@ -89,6 +103,11 @@ impl Tracker {
                         row.mark_until = until;
                         ch.changed += 1;
                     }
+                    let dt = now.saturating_sub(row.updated);
+                    let (old, new) = (row.conn.stats, conn.stats);
+                    row.rate_out = rate(old.map(|s| s.bytes_out), new.map(|s| s.bytes_out), dt);
+                    row.rate_in = rate(old.map(|s| s.bytes_in), new.map(|s| s.bytes_in), dt);
+                    row.updated = now;
                     row.conn = conn;
                     row.process = process;
                 }
@@ -107,6 +126,9 @@ impl Tracker {
                             mark_until: until,
                             local_host: None,
                             remote_host: None,
+                            rate_out: None,
+                            rate_in: None,
+                            updated: now,
                         },
                     );
                 }
@@ -176,6 +198,7 @@ mod tests {
                 pid: 100,
                 created: None,
                 module: None,
+                stats: None,
             },
             Arc::new(ProcessInfo::default()),
         )
@@ -241,6 +264,36 @@ mod tests {
         assert_eq!(mark_of(&t, 3), Some(Mark::None));
         assert!(!t.expire(4000));
         assert_eq!(t.next_expiry(), None);
+    }
+
+    #[test]
+    fn rates_between_snapshots() {
+        use crate::net::estats::TcpStats;
+        let with = |out: u64, inn: u64| {
+            let (mut c, p) = conn(1, TcpState::Established);
+            c.stats = Some(TcpStats {
+                bytes_out: out,
+                bytes_in: inn,
+                ..Default::default()
+            });
+            (c, p)
+        };
+        let mut t = Tracker::default();
+        t.update(vec![with(1000, 0)], 0, 2000);
+        let r = t.rows().next().unwrap();
+        assert_eq!((r.rate_out, r.rate_in), (None, None));
+        // 2 s later: 4000 B more sent, 1 MB received.
+        t.update(vec![with(5000, 1_000_000)], 2000, 2000);
+        let r = t.rows().next().unwrap();
+        assert_eq!(r.rate_out, Some(2000.0));
+        assert_eq!(r.rate_in, Some(500_000.0));
+        // Collection switched on again: the counter starts over, no negative rate.
+        t.update(vec![with(10, 1_000_000)], 3000, 2000);
+        assert_eq!(t.rows().next().unwrap().rate_out, Some(0.0));
+        // No statistics any more.
+        t.update(vec![conn(1, TcpState::Established)], 4000, 2000);
+        assert_eq!(t.rows().next().unwrap().rate_in, None);
+        assert_eq!(rate(Some(1), Some(2), 0), None);
     }
 
     #[test]

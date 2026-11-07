@@ -11,7 +11,7 @@
 //! pure [`tcp_row`] – both tested everywhere.
 
 use crate::net::{Connection, Protocol, TcpState};
-use std::net::{IpAddr, SocketAddr};
+use std::net::SocketAddr;
 
 /// Why a connection cannot be closed.
 #[derive(Clone, Copy, PartialEq, Eq, Debug)]
@@ -84,20 +84,10 @@ pub enum ActionError {
 /// `MIB_TCP_STATE_DELETE_TCB`.
 const DELETE_TCB: u32 = 12;
 
-/// `MIB_TCPROW` for `SetTcpEntry`: state, local address, local port, remote address, remote port
-/// as `DWORD`s; addresses in network order (the octets in memory), ports in network order in the
-/// low 16 bits. `None` for anything but IPv4.
+/// `MIB_TCPROW` for `SetTcpEntry` with the state DELETE_TCB (the layout is built by
+/// `net::estats::tcp_row`). `None` for anything but IPv4.
 pub fn tcp_row(local: SocketAddr, remote: SocketAddr) -> Option<[u8; 20]> {
-    let (IpAddr::V4(l), IpAddr::V4(r)) = (local.ip(), remote.ip()) else {
-        return None;
-    };
-    let mut b = [0u8; 20];
-    b[0..4].copy_from_slice(&DELETE_TCB.to_le_bytes());
-    b[4..8].copy_from_slice(&l.octets());
-    b[8..10].copy_from_slice(&local.port().to_be_bytes());
-    b[12..16].copy_from_slice(&r.octets());
-    b[16..18].copy_from_slice(&remote.port().to_be_bytes());
-    Some(b)
+    crate::net::estats::tcp_row(DELETE_TCB, local, remote)
 }
 
 /// Closes a TCP connection (resets it).
@@ -255,6 +245,7 @@ mod tests {
             pid: 1234,
             created: None,
             module: None,
+            stats: None,
         }
     }
 

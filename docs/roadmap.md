@@ -37,7 +37,7 @@ program, README / `docs/architecture.md` / `docs/history.md`, detailed commit wi
 | #6 | Close a connection, end a process | done |
 | #7 | Process details (svchost services, user, command line, icon) | done |
 | #14 | Real creation time and owner module of TCP connections | done |
-| #8 | Bytes sent / received per connection (ESTATS, needs admin – administrator mode of #15 exists) | |
+| #8 | Bytes sent / received per connection (ESTATS, needs admin – administrator mode of #15 exists) | done |
 
 ## Phase 4 – comfort
 | Issue | What | Status |

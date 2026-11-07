@@ -2,6 +2,7 @@
 //! thread never waits for the system. The UI controls it through [`PollControl`] and receives
 //! [`Snapshot`]s over a channel.
 
+use crate::net::estats::Collector;
 use crate::net::{Connection, NetError, Reader};
 use crate::process::{ProcessCache, ProcessInfo};
 use std::collections::HashSet;
@@ -15,6 +16,8 @@ pub struct Snapshot {
     pub taken: u64,
     /// How long reading the tables took (shown in the status bar).
     pub took: Duration,
+    /// The traffic counters were wanted but Windows refused them (not elevated, #8).
+    pub stats_denied: bool,
 }
 
 pub type PollResult = Result<Snapshot, NetError>;
@@ -26,6 +29,8 @@ pub struct PollControl {
     /// Set by the UI for an immediate refresh (also while paused).
     pub refresh_now: AtomicBool,
     pub stop: AtomicBool,
+    /// Read the traffic counters of the TCP connections (a traffic column is visible, #8).
+    pub collect_stats: AtomicBool,
 }
 
 /// Starts the thread; `wake` is called after every snapshot (the UI's repaint request).
@@ -38,6 +43,7 @@ pub fn start(
         paused: AtomicBool::new(false),
         refresh_now: AtomicBool::new(true),
         stop: AtomicBool::new(false),
+        collect_stats: AtomicBool::new(false),
     });
     let (tx, rx) = mpsc::channel();
     let c = ctl.clone();
@@ -51,6 +57,7 @@ pub fn start(
 fn run(ctl: &PollControl, tx: &mpsc::Sender<PollResult>, wake: impl Fn()) {
     let mut cache = ProcessCache::default();
     let mut reader = Reader::default();
+    let mut stats = Collector::default();
     let mut last: Option<Instant> = None;
     while !ctl.stop.load(Ordering::Relaxed) {
         let interval = Duration::from_millis(ctl.interval_ms.load(Ordering::Relaxed));
@@ -58,7 +65,8 @@ fn run(ctl: &PollControl, tx: &mpsc::Sender<PollResult>, wake: impl Fn()) {
         let now_requested = ctl.refresh_now.swap(false, Ordering::Relaxed);
         if now_requested || (due && !ctl.paused.load(Ordering::Relaxed)) {
             last = Some(Instant::now());
-            let res = poll_once(&mut reader, &mut cache);
+            let collect = ctl.collect_stats.load(Ordering::Relaxed);
+            let res = poll_once(&mut reader, &mut cache, collect.then_some(&mut stats));
             if tx.send(res).is_err() {
                 return; // the UI is gone
             }
@@ -69,9 +77,17 @@ fn run(ctl: &PollControl, tx: &mpsc::Sender<PollResult>, wake: impl Fn()) {
     }
 }
 
-fn poll_once(reader: &mut Reader, cache: &mut ProcessCache) -> PollResult {
+fn poll_once(
+    reader: &mut Reader,
+    cache: &mut ProcessCache,
+    stats: Option<&mut Collector>,
+) -> PollResult {
     let start = Instant::now();
-    let conns = reader.read()?;
+    let mut conns = reader.read()?;
+    let stats_denied = match stats {
+        Some(s) => s.fill(&mut conns).is_err(),
+        None => false,
+    };
     let pids: HashSet<u32> = conns.iter().map(|c| c.pid).collect();
     cache.retain(&pids);
     cache.refresh_services();
@@ -86,5 +102,6 @@ fn poll_once(reader: &mut Reader, cache: &mut ProcessCache) -> PollResult {
         rows,
         taken: crate::model::now_ms(),
         took: start.elapsed(),
+        stats_denied,
     })
 }

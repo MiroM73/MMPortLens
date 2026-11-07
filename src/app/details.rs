@@ -140,6 +140,10 @@ fn connection_grid(ui: &mut egui::Ui, r: &Row) {
                 ColumnId::Created,
                 ColumnId::Duration,
                 ColumnId::FirstSeen,
+                ColumnId::BytesSent,
+                ColumnId::BytesReceived,
+                ColumnId::RateSent,
+                ColumnId::RateReceived,
             ] {
                 detail_row(ui, &c.title(), &cell_text(r, c));
             }

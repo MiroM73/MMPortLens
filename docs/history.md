@@ -88,3 +88,11 @@
   administrator rights the svchost endpoints showed their exact services (SessionEnv, CDPSvc, RpcSs,
   Schedule, EventLog, TermService, Spooler, WinDefend …), creation times with ms, durations, and a
   refresh took ~1 ms.
+- #8: traffic per TCP connection (`src/net/estats.rs`): columns Sent, Received, Sent/s,
+  Received/s, Sent packets, Received packets (hidden by default); ESTATS collection switched on per
+  connection and read every refresh only while such a column is visible; rates from the difference
+  between snapshots; without administrator rights the status bar says so. Verified: unit tests
+  (ESTATS row layouts, counter decoding, rates incl. a counter reset) and, not elevated, the
+  access error path in `counts_own_traffic` and in the running program (empty columns, "Traffic:
+  administrator only"). The elevated path (counts growing during a download) could not be checked
+  in this session – run `cargo test counts_own_traffic` as administrator to check it.

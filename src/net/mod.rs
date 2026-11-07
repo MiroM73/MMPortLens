@@ -14,6 +14,7 @@ use std::fmt;
 use std::net::{IpAddr, SocketAddr};
 use std::sync::Arc;
 
+pub mod estats;
 pub mod procfs;
 pub mod winrows;
 
@@ -143,6 +144,8 @@ pub struct Connection {
     pub created: Option<u64>,
     /// Owner module: the executable, or the service for one hosted in svchost (#14).
     pub module: Option<Arc<str>>,
+    /// Bytes / segments sent and received, while collected (Windows, administrator, #8).
+    pub stats: Option<estats::TcpStats>,
 }
 
 /// What identifies a row between two snapshots. The state is not part of it: a connection that

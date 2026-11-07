@@ -40,11 +40,18 @@ pub enum ColumnId {
     Duration,
     /// Owner module: the executable or the service in svchost (#14).
     Module,
+    /// Traffic counters of TCP connections (#8).
+    BytesSent,
+    BytesReceived,
+    RateSent,
+    RateReceived,
+    PacketsSent,
+    PacketsReceived,
 }
 
 impl ColumnId {
     /// All columns in the default order (the order of TCPView, then the additional ones).
-    pub const ALL: [ColumnId; 21] = [
+    pub const ALL: [ColumnId; 27] = [
         ColumnId::Process,
         ColumnId::Pid,
         ColumnId::Protocol,
@@ -60,6 +67,12 @@ impl ColumnId {
         ColumnId::Duration,
         ColumnId::FirstSeen,
         ColumnId::Module,
+        ColumnId::BytesSent,
+        ColumnId::BytesReceived,
+        ColumnId::RateSent,
+        ColumnId::RateReceived,
+        ColumnId::PacketsSent,
+        ColumnId::PacketsReceived,
         ColumnId::ProcessPath,
         ColumnId::WinServices,
         ColumnId::User,
@@ -83,6 +96,19 @@ impl ColumnId {
                 | ColumnId::FirstSeen
                 | ColumnId::Duration
                 | ColumnId::Module
+        ) && !self.traffic()
+    }
+
+    /// The traffic columns of #8: while one is visible, the counters are collected.
+    pub fn traffic(self) -> bool {
+        matches!(
+            self,
+            ColumnId::BytesSent
+                | ColumnId::BytesReceived
+                | ColumnId::RateSent
+                | ColumnId::RateReceived
+                | ColumnId::PacketsSent
+                | ColumnId::PacketsReceived
         )
     }
 
@@ -109,6 +135,12 @@ impl ColumnId {
             ColumnId::Created => "column.created",
             ColumnId::Duration => "column.duration",
             ColumnId::Module => "column.module",
+            ColumnId::BytesSent => "column.bytes_sent",
+            ColumnId::BytesReceived => "column.bytes_received",
+            ColumnId::RateSent => "column.rate_sent",
+            ColumnId::RateReceived => "column.rate_received",
+            ColumnId::PacketsSent => "column.packets_sent",
+            ColumnId::PacketsReceived => "column.packets_received",
         }
     }
 
@@ -135,6 +167,11 @@ impl ColumnId {
             ColumnId::Created => 110.0,
             ColumnId::Duration => 100.0,
             ColumnId::Module => 150.0,
+            ColumnId::BytesSent
+            | ColumnId::BytesReceived
+            | ColumnId::RateSent
+            | ColumnId::RateReceived => 100.0,
+            ColumnId::PacketsSent | ColumnId::PacketsReceived => 90.0,
         }
     }
 
@@ -142,7 +179,11 @@ impl ColumnId {
     pub fn filter_kind(self) -> crate::colfilter::FilterKind {
         use crate::colfilter::FilterKind;
         match self {
-            ColumnId::Pid | ColumnId::LocalPort | ColumnId::RemotePort => FilterKind::Number,
+            ColumnId::Pid
+            | ColumnId::LocalPort
+            | ColumnId::RemotePort
+            | ColumnId::PacketsSent
+            | ColumnId::PacketsReceived => FilterKind::Number,
             ColumnId::LocalAddress | ColumnId::RemoteAddress => FilterKind::Address,
             _ => FilterKind::Text,
         }
@@ -152,7 +193,16 @@ impl ColumnId {
     pub fn numeric(self) -> bool {
         matches!(
             self,
-            ColumnId::Pid | ColumnId::LocalPort | ColumnId::RemotePort | ColumnId::Duration
+            ColumnId::Pid
+                | ColumnId::LocalPort
+                | ColumnId::RemotePort
+                | ColumnId::Duration
+                | ColumnId::BytesSent
+                | ColumnId::BytesReceived
+                | ColumnId::RateSent
+                | ColumnId::RateReceived
+                | ColumnId::PacketsSent
+                | ColumnId::PacketsReceived
         )
     }
 }
@@ -204,7 +254,37 @@ pub fn cell_text(row: &Row, col: ColumnId) -> String {
             .map(|t| crate::timefmt::duration(crate::model::now_ms().saturating_sub(t)))
             .unwrap_or_default(),
         ColumnId::Module => c.module.as_deref().unwrap_or_default().to_owned(),
+        ColumnId::BytesSent => c.stats.map(|s| bytes(s.bytes_out)).unwrap_or_default(),
+        ColumnId::BytesReceived => c.stats.map(|s| bytes(s.bytes_in)).unwrap_or_default(),
+        ColumnId::RateSent => row.rate_out.map(rate).unwrap_or_default(),
+        ColumnId::RateReceived => row.rate_in.map(rate).unwrap_or_default(),
+        ColumnId::PacketsSent => c.stats.map(|s| s.segs_out.to_string()).unwrap_or_default(),
+        ColumnId::PacketsReceived => c.stats.map(|s| s.segs_in.to_string()).unwrap_or_default(),
     }
+}
+
+/// A byte count: `512 B`, `1.5 KB`, `12.3 MB`, `1.21 GB` (1 KB = 1024 B).
+pub fn bytes(n: u64) -> String {
+    const UNITS: [&str; 5] = ["B", "KB", "MB", "GB", "TB"];
+    if n < 1024 {
+        return format!("{n} B");
+    }
+    let mut v = n as f64;
+    let mut u = 0;
+    while v >= 1024.0 && u < UNITS.len() - 1 {
+        v /= 1024.0;
+        u += 1;
+    }
+    if v < 10.0 && u >= 3 {
+        format!("{v:.2} {}", UNITS[u])
+    } else {
+        format!("{v:.1} {}", UNITS[u])
+    }
+}
+
+/// A transfer rate: `0 B/s`, `1.5 KB/s` …
+pub fn rate(per_s: f64) -> String {
+    format!("{}/s", bytes(per_s.round().max(0.0) as u64))
 }
 
 /// Windows services of a row: the exact service when the owner module of the endpoint is one of
@@ -272,6 +352,15 @@ pub fn compare(a: &Row, b: &Row, col: ColumnId) -> Ordering {
         // The longest-living first when ascending would surprise; shorter = created later.
         ColumnId::Duration => (x.created.is_none(), std::cmp::Reverse(x.created))
             .cmp(&(y.created.is_none(), std::cmp::Reverse(y.created))),
+        ColumnId::BytesSent => stat(x, |s| s.bytes_out).cmp(&stat(y, |s| s.bytes_out)),
+        ColumnId::BytesReceived => stat(x, |s| s.bytes_in).cmp(&stat(y, |s| s.bytes_in)),
+        ColumnId::PacketsSent => stat(x, |s| s.segs_out).cmp(&stat(y, |s| s.segs_out)),
+        ColumnId::PacketsReceived => stat(x, |s| s.segs_in).cmp(&stat(y, |s| s.segs_in)),
+        ColumnId::RateSent => a
+            .rate_out
+            .partial_cmp(&b.rate_out)
+            .unwrap_or(Ordering::Equal),
+        ColumnId::RateReceived => a.rate_in.partial_cmp(&b.rate_in).unwrap_or(Ordering::Equal),
         ColumnId::WinServices
         | ColumnId::Module
         | ColumnId::User
@@ -281,6 +370,14 @@ pub fn compare(a: &Row, b: &Row, col: ColumnId) -> Ordering {
             .to_lowercase()
             .cmp(&cell_text(b, col).to_lowercase()),
     }
+}
+
+/// A traffic counter of a connection for sorting (none before any value).
+fn stat(
+    c: &crate::net::Connection,
+    f: impl Fn(&crate::net::estats::TcpStats) -> u64,
+) -> Option<u64> {
+    c.stats.as_ref().map(f)
 }
 
 /// Sorting of the table: by a column, then always by a stable tie-breaker so rows do not jump
@@ -405,7 +502,7 @@ mod tests {
     #[test]
     fn layout_default_and_visibility() {
         let mut l = ColumnLayout::default();
-        assert_eq!(l.visible().len(), ColumnId::ALL.len() - 10);
+        assert_eq!(l.visible().len(), ColumnId::ALL.len() - 16);
         assert!(l.visible().contains(&ColumnId::Created));
         assert!(!l.visible().contains(&ColumnId::ProcessPath));
         assert!(l.visible().contains(&ColumnId::RemoteHost));
@@ -453,6 +550,7 @@ mod tests {
                 pid: 1,
                 created: None,
                 module: None,
+                stats: None,
             },
             process: Default::default(),
             first_seen: 0,
@@ -460,6 +558,9 @@ mod tests {
             mark_until: 0,
             local_host: None,
             remote_host: None,
+            rate_out: None,
+            rate_in: None,
+            updated: 0,
         };
         // Unresolved: the address.
         assert_eq!(cell_text(&row, ColumnId::RemoteHost), "140.82.112.3");
@@ -493,6 +594,7 @@ mod tests {
                 pid: 1,
                 created: Some(1_000),
                 module: Some("dnscache".into()),
+                stats: None,
             },
             process: std::sync::Arc::new(ProcessInfo {
                 services: vec![
@@ -506,6 +608,9 @@ mod tests {
             mark_until: 0,
             local_host: None,
             remote_host: None,
+            rate_out: None,
+            rate_in: None,
+            updated: 0,
         };
         assert_eq!(cell_text(&row, ColumnId::WinServices), "Dnscache");
         assert_eq!(cell_text(&row, ColumnId::Module), "dnscache");
@@ -520,6 +625,24 @@ mod tests {
         row.conn.created = None;
         assert_eq!(compare(&older, &row, ColumnId::Created), Ordering::Less);
         assert_eq!(cell_text(&row, ColumnId::Duration), "");
+    }
+
+    #[test]
+    fn byte_and_rate_texts() {
+        assert_eq!(bytes(0), "0 B");
+        assert_eq!(bytes(1023), "1023 B");
+        assert_eq!(bytes(1536), "1.5 KB");
+        assert_eq!(bytes(12_900_000), "12.3 MB");
+        assert_eq!(bytes(1_300_000_000), "1.21 GB");
+        assert_eq!(rate(1536.4), "1.5 KB/s");
+        assert_eq!(rate(-3.0), "0 B/s");
+        assert!(ColumnId::RateSent.traffic() && !ColumnId::Pid.traffic());
+        assert!(
+            !ColumnLayout::default()
+                .visible()
+                .iter()
+                .any(|c| c.traffic())
+        );
     }
 
     #[test]

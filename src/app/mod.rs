@@ -116,6 +116,8 @@ pub struct App {
     pending_action: Option<actions::Pending>,
     /// Result of the last action (status bar).
     action_result: Option<actions::ActionResult>,
+    /// The traffic counters were refused by Windows (not elevated, #8).
+    stats_denied: bool,
     /// Textures of the process icons by executable path (#7).
     icons: HashMap<String, egui::TextureHandle>,
     last_changes: Changes,
@@ -173,6 +175,7 @@ impl App {
             pending_action: None,
             action_result: None,
             icons: HashMap::new(),
+            stats_denied: false,
             last_changes: Changes::default(),
             last_took: Duration::ZERO,
             last_poll: None,
@@ -229,6 +232,7 @@ impl App {
                             .update(snap.rows, snap.taken, self.cfg.highlight_ms);
                     self.last_took = snap.took;
                     self.last_poll = Some(snap.taken);
+                    self.stats_denied = snap.stats_denied;
                     self.error = None;
                 }
                 Err(e) => self.error = Some(t!("error.poll", error = e)),
@@ -271,6 +275,10 @@ impl App {
     fn rebuild_view(&mut self) {
         use crate::net::TcpState;
         let cols = self.cfg.columns.visible();
+        // Traffic counters only while a traffic column is shown (they cost CPU, #8).
+        self.ctl
+            .collect_stats
+            .store(cols.iter().any(|c| c.traffic()), Ordering::Relaxed);
         let needle = self.filter.trim().to_lowercase();
         let mut counts = Counts::default();
         let mut view = Vec::with_capacity(self.tracker.len());

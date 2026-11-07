@@ -100,6 +100,7 @@ pub fn decode_tcp4(buf: &[u8]) -> Vec<Connection> {
                 pid: dword(r, 20),
                 created: created(r, 24),
                 module: None,
+                stats: None,
             }
         })
         .collect()
@@ -118,6 +119,7 @@ pub fn decode_tcp6(buf: &[u8]) -> Vec<Connection> {
                 pid: dword(r, 52),
                 created: created(r, 56),
                 module: None,
+                stats: None,
             }
         })
         .collect()
@@ -133,6 +135,7 @@ pub fn decode_udp4(buf: &[u8]) -> Vec<Connection> {
             pid: dword(r, 8),
             created: created(r, 16),
             module: None,
+            stats: None,
         })
         .collect()
 }
@@ -147,6 +150,7 @@ pub fn decode_udp6(buf: &[u8]) -> Vec<Connection> {
             pid: dword(r, 24),
             created: created(r, 32),
             module: None,
+            stats: None,
         })
         .collect()
 }

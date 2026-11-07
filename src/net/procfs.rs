@@ -79,6 +79,7 @@ pub fn parse_table(text: &str, proto: Protocol) -> Vec<ProcLine> {
                     pid: 0,
                     created: None,
                     module: None,
+                    stats: None,
                 },
                 inode,
             })

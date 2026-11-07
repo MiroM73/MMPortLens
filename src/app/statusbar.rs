@@ -34,6 +34,11 @@ impl App {
                 ui.separator();
                 ui.label(t!("status.selected", count = self.sel.count()));
             }
+            if self.stats_denied {
+                ui.separator();
+                ui.colored_label(ui.visuals().warn_fg_color, t!("status.traffic_denied"))
+                    .on_hover_text(t!("status.traffic_denied.tip"));
+            }
             self.admin_status(ui);
             self.action_status(ui);
             if let Some(err) = &self.error {
