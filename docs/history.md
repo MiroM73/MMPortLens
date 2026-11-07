@@ -13,3 +13,6 @@
   RusNet collides with RustNet (a Rust network monitor) and the Russian IRC network, and all of the
   owner's programs get the MM prefix.
 - Fixed the executable name left over from RusTrace in the comment of `.cargo/config.toml`.
+- Fixed `scripts/create-issues.ps1`: `Get-ChildItem -Filter` does not understand `[0-9]`, so the
+  script found no drafts; it now matches the `NN-` prefix with a regex. Issues #1–#20 created from it,
+  #21 for the invalid TCP states Windows reported on the development PC.

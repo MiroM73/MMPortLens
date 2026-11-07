@@ -23,7 +23,10 @@ $existing = @(gh issue list --repo $Repo --state all --limit 1000 --json title |
     ConvertFrom-Json | ForEach-Object { $_.title })
 $utf8 = New-Object System.Text.UTF8Encoding($false)
 
-Get-ChildItem $dir -Filter "[0-9][0-9]-*.md" | Sort-Object Name | ForEach-Object {
+# -Filter is passed to the file system and does not understand [0-9] ranges, so match the
+# NN- prefix with a regular expression instead.
+Get-ChildItem $dir -Filter "*.md" | Where-Object { $_.Name -match '^\d\d-' } |
+    Sort-Object Name | ForEach-Object {
     $lines = Get-Content $_.FullName -Encoding UTF8
     $title = $lines[0] -replace '^#\s*', ''
     if ($existing -contains $title) {
