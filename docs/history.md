@@ -96,3 +96,9 @@
   access error path in `counts_own_traffic` and in the running program (empty columns, "Traffic:
   administrator only"). The elevated path (counts growing during a download) could not be checked
   in this session – run `cargo test counts_own_traffic` as administrator to check it.
+- Released **v0.2.0** (`scripts/release.ps1 0.2.0`, written release notes). The local tests passed
+  (86); the script pushed and tagged, then stopped while waiting for the workflow under Windows
+  PowerShell 5.1 (#25) – the workflow was watched by hand (tests on the runner OK) and the draft
+  published. Check of the released ZIP (checksum OK) started with
+  `MMPORTLENS_UPDATE_AS_VERSION=0.1.5`: the window title says 0.2.0 and the update window shows the
+  v0.2.0 notes.

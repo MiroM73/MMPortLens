@@ -29,7 +29,7 @@ program, README / `docs/architecture.md` / `docs/history.md`, detailed commit wi
 | #9 | Export CSV / Excel / JSON (`tabexport/` from RusTrace; exports the filtered view of #1) | |
 | #20 | Shared crate with RusTrace – decide after the filters and the export are ported (i18n, colfilter, update/http, tabexport are then copied) | |
 
-## Phase 3 – parity with TCPView
+## Phase 3 – parity with TCPView (released in v0.2.0)
 | Issue | What | Status |
 |-------|------|--------|
 | #17 | Keyboard shortcuts and multi-selection (needed for bulk actions in #6 and copying) | done (a85607f) |
@@ -63,3 +63,4 @@ program, README / `docs/architecture.md` / `docs/history.md`, detailed commit wi
 | #22 | Sort arrow in the header drawn as an empty box | |
 | #23 | Live snapshot test failed once (flaky) – better message, retry; reproduced: own connection reported as Listen (#21) | |
 | #24 | Listener rows flicker between two keys when Windows alternates state 0 and Listen | |
+| #25 | `release.ps1` loses the jq quotes under Windows PowerShell 5.1 while waiting for the workflow | |
