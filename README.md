@@ -31,6 +31,8 @@ Early skeleton (0.1.0). What works now:
 - Copy a row (right click), status bar with counts, user interface in English, Slovak, Czech and
   German (more languages without recompiling – see `lang/en.lang`), dark / light theme.
 - Settings in `%APPDATA%\MMPortLens\config.json`.
+- Update check at start (or daily / never) with the release notes of the missed versions and
+  in-place installation with restart (**Help → Check for updates**).
 
 Planned features are tracked as [GitHub issues](https://github.com/MiroM73/MMPortLens/issues)
 (drafts in [`docs/issues/`](docs/issues/README.md)).

@@ -5,13 +5,15 @@
 //! outside their own file are `pub(in crate::app) fn`.
 
 use crate::columns::{ColumnId, cell_text};
-use crate::config::Config;
+use crate::config::{Config, UpdateCheck};
 use crate::i18n;
 use crate::model::{Changes, Mark, Row, Tracker, now_ms};
 use crate::net::{ConnKey, TcpState};
 use crate::poller::{self, PollControl, PollResult};
 use crate::t;
+use crate::update::{self, Release, SessionState, Updates, WindowState};
 use eframe::egui::{self, Color32, RichText, Sense};
+use std::path::PathBuf;
 use std::sync::atomic::Ordering;
 use std::sync::{Arc, mpsc};
 use std::time::{Duration, Instant};
@@ -20,6 +22,7 @@ mod menu;
 mod statusbar;
 mod table;
 mod toolbar;
+mod update_window;
 
 /// Program version from Cargo.toml (window title, About window).
 pub const VERSION: &str = env!("CARGO_PKG_VERSION");
@@ -28,6 +31,30 @@ const REPOSITORY: &str = env!("CARGO_PKG_REPOSITORY");
 
 pub fn base_title() -> String {
     format!("MM PortLens {VERSION}")
+}
+
+/// Update check and installation (#15).
+enum UpdateState {
+    Idle,
+    /// Asking GitHub; `silent` = automatic check at start-up (no window unless a new version).
+    Checking {
+        rx: mpsc::Receiver<Result<Updates, String>>,
+        silent: bool,
+    },
+    Failed(String),
+    /// The latest release (newer or not) and the missed ones.
+    Checked(Updates),
+    /// Download + installation; `exe` = the program path before it was renamed.
+    Installing {
+        rx: mpsc::Receiver<Result<Vec<String>, String>>,
+        progress: Arc<update::Progress>,
+        release: Release,
+        exe: PathBuf,
+    },
+    InstallFailed {
+        error: String,
+        release: Release,
+    },
 }
 
 /// Counters for the status bar, computed when the view is rebuilt.
@@ -63,15 +90,20 @@ pub struct App {
     show_about: bool,
     /// The column window opened by a right click on a header.
     show_columns_popup: bool,
+    ctx: egui::Context,
+    update: UpdateState,
+    show_update: bool,
+    /// A newer version found by a check (button in the status bar).
+    update_available: Option<Updates>,
 }
 
 impl App {
-    pub fn new(cc: &eframe::CreationContext<'_>) -> Self {
+    pub fn new(cc: &eframe::CreationContext<'_>, restore: Option<SessionState>) -> Self {
         let cfg = Config::load();
         i18n::set_language(&cfg.language);
         let ctx = cc.egui_ctx.clone();
         let (ctl, rx) = poller::start(cfg.interval_ms, move || ctx.request_repaint());
-        let app = Self {
+        let mut app = Self {
             cfg,
             cfg_dirty: false,
             last_save: Instant::now(),
@@ -89,8 +121,19 @@ impl App {
             error: None,
             show_about: false,
             show_columns_popup: false,
+            ctx: cc.egui_ctx.clone(),
+            update: UpdateState::Idle,
+            show_update: false,
+            update_available: None,
         };
         app.apply_theme(&cc.egui_ctx);
+        if let Some(state) = restore {
+            app.restore_session(state);
+        }
+        let now = chrono::Local::now().timestamp();
+        if app.cfg.update_when.due(app.cfg.update_last_check, now) {
+            app.start_update_check(true);
+        }
         app
     }
 
@@ -223,6 +266,8 @@ impl eframe::App for App {
         egui::Panel::bottom("status").show(ui, |ui| self.status_bar(ui));
         egui::CentralPanel::default().show(ui, |ui| self.table(ui));
         self.about_window(&ctx);
+        self.poll_update(&ctx);
+        self.update_window(&ctx);
 
         // Repaint when the next highlight ends (new / closed rows lose their color).
         if let Some(t) = self.tracker.next_expiry() {

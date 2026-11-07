@@ -1,4 +1,4 @@
-//! The status bar: counts, the last refresh and errors.
+//! The status bar: counts, the last refresh, errors and a newer version (#15).
 
 use crate::app::*;
 
@@ -28,6 +28,22 @@ impl App {
             if let Some(err) = &self.error {
                 ui.separator();
                 ui.colored_label(ui.visuals().error_fg_color, err);
+            }
+            if let Some(u) = &self.update_available {
+                ui.separator();
+                let version = u.latest.version.clone();
+                if ui
+                    .button(
+                        RichText::new(format!("⬆ {version}")).color(Color32::from_rgb(60, 170, 80)),
+                    )
+                    .on_hover_text(t!("update.available", version = version))
+                    .clicked()
+                {
+                    self.show_update = true;
+                    if matches!(self.update, UpdateState::Idle | UpdateState::Failed(_)) {
+                        self.update = UpdateState::Checked(u.clone());
+                    }
+                }
             }
             ui.with_layout(egui::Layout::right_to_left(egui::Align::Center), |ui| {
                 if self.paused() {

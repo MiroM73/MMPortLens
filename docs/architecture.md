@@ -7,7 +7,11 @@ with the change.
 
 | File | What it does |
 |------|--------------|
-| `src/main.rs` | Window start-up. |
+| `src/main.rs` | Window start-up: icon, `--restore <file>` after an update, `update::cleanup_old`. |
+| `build.rs` | Windows: icon (from `src/icon.rs`) and version information as a resource of the exe (`winresource`). |
+| `src/icon.rs` | The program icon drawn in code (window icon, `.ico` for `build.rs`). |
+| `src/http.rs` | HTTPS GET over WinHTTP (raw FFI) for the update check – from RusTrace. |
+| `src/update.rs` | GitHub releases, version compare, release notes as plain lines, ZIP download + SHA-256 check + in-place install, the state handed to the restarted program – from RusTrace. |
 | `src/net/mod.rs` | `Connection`, `ConnKey`, `Protocol`, `TcpState`; `snapshot()` picks the platform backend. |
 | `src/net/winrows.rs` | Pure decoding of the iphlpapi table buffers (tested on every platform). |
 | `src/net/windows.rs` | Windows backend: `GetExtendedTcpTable` / `GetExtendedUdpTable`, declared directly with `unsafe extern "system"` (no binding crate). |
@@ -19,7 +23,7 @@ with the change.
 | `src/config.rs` | `Config` (JSON, every field has a default). |
 | `src/i18n.rs` | `t!()` and the language files – the same module as in RusTrace. |
 | `src/timefmt.rs` | Clock times for the table. |
-| `src/app/` | The UI, split by area like RusTrace: `mod.rs` (state, frame loop), `menu.rs`, `toolbar.rs`, `table.rs`, `statusbar.rs`. |
+| `src/app/` | The UI, split by area like RusTrace: `mod.rs` (state, frame loop), `menu.rs`, `toolbar.rs`, `table.rs`, `statusbar.rs`, `update_window.rs` (Help → Check for updates). |
 | `lang/*.lang` | Built-in translations (en, sk, cs, de), embedded with `include_str!`. |
 
 ## Reading the connections
@@ -85,11 +89,57 @@ added hidden at the end, at least one column visible.
 Every user-visible string goes through `t!("key")`; `i18n::tests::builtin_languages_are_complete`
 checks that all four built-in languages have the same keys and placeholders.
 
+## Icon and version resource (#15)
+
+`icon::sample(x, y)` gives the color of a point of the icon (coordinates 0..1): a teal rounded
+square, a white magnifying lens and inside it three rows in the colors of the row marks (new
+green, changed yellow, closed red). `icon::rgba(size)` renders it with 4 × 4 anti-aliasing and is
+used for the window icon (64 px); `icon::ico(sizes)` writes a 32-bit `.ico` (16 – 256 px).
+`build.rs` includes `src/icon.rs` with `#[path]`, writes `mmportlens.ico` into `OUT_DIR` and
+compiles it with `FileDescription` / `ProductName` (the version comes from Cargo) through
+`winresource` – this needs `rc.exe` from the Windows SDK (present on the GitHub runners and with
+Visual Studio). On other platforms `build.rs` does nothing.
+
+## Updates (#15)
+
+Taken over from RusTrace (`update.rs`, `http.rs`, the window in `app/update_window.rs`) with the
+names changed; the logic is the same.
+
+- **Check:** `update::fetch_updates` (background thread) reads
+  `api.github.com/repos/MiroM73/MMPortLens/releases?per_page=100` over WinHTTP (system proxy and
+  certificates, no TLS crate), drops drafts, pre-releases and tags that are no version, and returns
+  the latest release plus the *missed* ones (newer than this program). `Config::update_when` =
+  `start` (default) / `daily` / `never`; the time of the last check is `update_last_check`. A
+  check at start-up is *silent*: it opens the window only for a newer version that the user did
+  not skip (`update_skipped`) and reports no errors (offline). A newer version also shows a
+  green "⬆ <version>" button in the status bar.
+- **Window:** release notes of every missed version (Markdown shown as plain lines by
+  `plain_notes`: headings, bullets, link text without the URL, no bold / italic / code marks),
+  *Download and install*, *Release page*, *Skip this version*, *Later*, *Check again* and the
+  check setting.
+- **Install:** the release must have `MMPortLens-v<version>-windows-x64.zip` and its `.zip.sha256`
+  (made by `scripts/package.ps1`). The ZIP is downloaded with progress (cancellable, max 200 MB),
+  its SHA-256 compared, unpacked by the built-in reader (`unzip`: stored / deflate, CRC checked, no
+  absolute paths or `..`) and installed: write access is probed first, the running exe is renamed
+  to `mmportlens.exe.old` (Windows allows renaming a running exe), the new one written under the
+  original name (renamed back on failure), the other files (`lang/*.lang`, `LICENSE`) written next
+  to it; own files in the folder stay. The next start deletes `.old` (`cleanup_old`).
+- **Restart:** the settings are saved, `SessionState` (toolbar filter, paused, window position /
+  size / maximized) is written to `%TEMP%\mmportlens-restore-<pid>.json` and the new exe is started
+  with `--restore <file>`; it reads and deletes the file, opens the window at the same place and
+  takes the filter over.
+- **Testing:** `MMPORTLENS_UPDATE_AS_VERSION=0.0.9` makes the program pretend an older version, so
+  the window and the installation can be tried with the published release;
+  `cargo test fetch_latest_release -- --ignored` downloads and installs the latest release into a
+  temporary folder.
+
 ## Tests
 
 `cargo test` – decoding of the Windows tables and `/proc/net` lines, state codes, the tracker
 (new / changed / closed / expiry / reappearing), column layout and sorting, settings round trip,
-language files, and the live snapshot test.
+language files, the icon / `.ico` layout, update logic (versions, GitHub JSON, missed releases,
+release notes, SHA-256 files, ZIP reading, installation into a temporary folder, session state)
+and the live snapshot test.
 
 ## Release
 

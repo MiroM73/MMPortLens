@@ -23,3 +23,14 @@
   finds its sockets by address and PID and skips only the state check; an invalid state is shown
   as a translated "Invalid (0)" with a tooltip instead of `? (0)`; documented in
   architecture.md. Part 3 (status bar hint) remains open.
+
+## 0.2.0 (in progress)
+- #15: program icon drawn in code (`src/icon.rs`: lens over three rows in the mark colors) used
+  for the window and, through `build.rs` + `winresource`, as the exe icon with version
+  information. Update check and in-place update taken over from RusTrace (`src/http.rs`,
+  `src/update.rs`, `src/app/update_window.rs`): check at start / daily / never, release notes of
+  all missed versions, skip a version, status bar button, SHA-256-checked ZIP install with
+  restart keeping the filter, pause and window. Release notes now show link text instead of raw
+  Markdown links and drop `*italic*` marks. Verified with `MMPORTLENS_UPDATE_AS_VERSION=0.0.9`:
+  the window listed v0.1.0 with its notes, and *Download and install* replaced the exe in a test
+  folder and started v0.1.0. Remaining in #15: the optional administrator variant.

@@ -17,6 +17,16 @@ impl App {
                 ui.menu_button(t!("menu.view.theme"), |ui| self.theme_menu(ui));
             });
             ui.menu_button(t!("menu.help"), |ui| {
+                if ui
+                    .button(format!("⬆ {}", t!("menu.help.updates")))
+                    .clicked()
+                {
+                    ui.close();
+                    self.show_update = true;
+                    if !matches!(self.update, UpdateState::Installing { .. }) {
+                        self.start_update_check(false);
+                    }
+                }
                 if ui.button(t!("menu.help.about")).clicked() {
                     ui.close();
                     self.show_about = true;

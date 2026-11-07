@@ -7,26 +7,59 @@
 mod app;
 mod columns;
 mod config;
+mod http;
 mod i18n;
+mod icon;
 mod model;
 mod net;
 mod poller;
 mod process;
 mod timefmt;
+mod update;
 
 use eframe::egui;
+use std::sync::Arc;
+
+/// The state of the previous version after an update (`--restore <file>`), if the program was
+/// started that way.
+fn restore_arg() -> Option<update::SessionState> {
+    let mut args = std::env::args_os().skip(1);
+    while let Some(a) = args.next() {
+        if a == update::RESTORE_ARG {
+            return update::SessionState::take(std::path::Path::new(&args.next()?));
+        }
+    }
+    None
+}
 
 fn main() -> eframe::Result {
+    let restore = restore_arg();
+    update::cleanup_old();
+
+    let mut viewport = egui::ViewportBuilder::default().with_inner_size([1300.0, 750.0]);
+    if let Some(w) = restore.as_ref().and_then(|s| s.window.as_ref()) {
+        if let Some(pos) = w.pos {
+            viewport = viewport.with_position(pos);
+        }
+        if let Some(size) = w.size {
+            viewport = viewport.with_inner_size(size);
+        }
+        viewport = viewport.with_maximized(w.maximized);
+    }
     let options = eframe::NativeOptions {
-        viewport: egui::ViewportBuilder::default()
-            .with_inner_size([1300.0, 750.0])
+        viewport: viewport
             .with_min_inner_size([700.0, 350.0])
-            .with_title(app::base_title()),
+            .with_title(app::base_title())
+            .with_icon(Arc::new(egui::IconData {
+                rgba: icon::rgba(64),
+                width: 64,
+                height: 64,
+            })),
         ..Default::default()
     };
     eframe::run_native(
         "MMPortLens",
         options,
-        Box::new(|cc| Ok(Box::new(app::App::new(cc)))),
+        Box::new(|cc| Ok(Box::new(app::App::new(cc, restore)))),
     )
 }

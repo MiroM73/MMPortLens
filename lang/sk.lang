@@ -15,6 +15,7 @@ menu.view.theme.system = Podľa systému
 menu.view.theme.dark = Tmavý
 menu.view.theme.light = Svetlý
 menu.help = Pomocník
+menu.help.updates = Skontrolovať aktualizácie…
 menu.help.about = O programe MM PortLens
 
 about.title = O programe MM PortLens
@@ -65,3 +66,30 @@ status.refreshed = Obnovené {time} ({ms} ms)
 # --- Chyby ---
 error.poll = Načítanie spojení zlyhalo: {error}
 error.save_settings = Uloženie nastavení zlyhalo: {error}
+error.internal = interná chyba (vlákno na pozadí skončilo)
+
+# --- Aktualizácie ---
+update.title = Aktualizácie
+update.current = Nainštalovaná verzia: {version}
+update.checking = Hľadá sa nová verzia na GitHube…
+update.check_failed = Kontrola zlyhala: {error}
+update.check_again = Skontrolovať znova
+update.up_to_date = Máš najnovšiu verziu ({version}).
+update.new_version = Je k dispozícii nová verzia {version}.
+update.install_hint = „Stiahnuť a nainštalovať“ stiahne vydanie z GitHubu, overí jeho kontrolný súčet SHA-256, nahradí program v {dir} a spustí ho znova s rovnakým filtrom a polohou okna.
+update.no_package = Toto vydanie nemá balík na automatickú inštaláciu – stiahni ho zo stránky vydania.
+update.install = Stiahnuť a nainštalovať
+update.release_page = Stránka vydania
+update.skip = Preskočiť túto verziu
+update.later = Neskôr
+update.downloading = Sťahuje sa a inštaluje verzia {version}…
+update.cancel = Zrušiť
+update.install_failed = Aktualizácia zlyhala: {error}
+update.install_failed_hint = Ak sa do priečinka programu nedá zapisovať (napr. Program Files), stiahni novú verziu zo stránky vydania a nahraď súbory sám.
+update.restart_failed = nová verzia je nainštalovaná, ale nepodarilo sa ju spustiť ({error}) – spusti MM PortLens znova
+update.behind = Verzie vydané od tvojej: {count} – zmeny všetkých sú nižšie.
+update.when = Hľadať novú verziu:
+update.when.start = pri každom spustení
+update.when.daily = raz denne
+update.when.never = nikdy
+update.available = Je k dispozícii verzia {version} – klikni pre novinky a aktualizáciu

@@ -3,6 +3,7 @@
 //! loading when new settings are added.
 
 use crate::columns::{ColumnLayout, SortSpec};
+use crate::t;
 use serde::{Deserialize, Serialize};
 use std::path::PathBuf;
 
@@ -28,6 +29,45 @@ pub struct Config {
     pub show_ipv6: bool,
     /// Show TCP listeners (and UDP endpoints, which have no remote side either).
     pub show_listening: bool,
+    /// When to look for a new version at start-up (#15).
+    pub update_when: UpdateCheck,
+    /// Time of the last update check (Unix seconds).
+    pub update_last_check: i64,
+    /// Version the user chose to skip ("Skip this version"): no window at start-up for it.
+    pub update_skipped: String,
+}
+
+/// When MM PortLens looks for a new version at start-up.
+#[derive(Clone, Copy, PartialEq, Eq, Serialize, Deserialize, Debug, Default)]
+#[serde(rename_all = "lowercase")]
+pub enum UpdateCheck {
+    /// At every start.
+    #[default]
+    Start,
+    /// At most once a day.
+    Daily,
+    Never,
+}
+
+impl UpdateCheck {
+    pub const ALL: [UpdateCheck; 3] = [UpdateCheck::Start, UpdateCheck::Daily, UpdateCheck::Never];
+
+    /// The automatic check runs now (`last` / `now` in Unix seconds).
+    pub fn due(self, last: i64, now: i64) -> bool {
+        match self {
+            UpdateCheck::Start => true,
+            UpdateCheck::Daily => now - last >= 24 * 3600,
+            UpdateCheck::Never => false,
+        }
+    }
+
+    pub fn label(self) -> String {
+        match self {
+            UpdateCheck::Start => t!("update.when.start"),
+            UpdateCheck::Daily => t!("update.when.daily"),
+            UpdateCheck::Never => t!("update.when.never"),
+        }
+    }
 }
 
 impl Default for Config {
@@ -44,6 +84,9 @@ impl Default for Config {
             show_ipv4: true,
             show_ipv6: true,
             show_listening: true,
+            update_when: UpdateCheck::default(),
+            update_last_check: 0,
+            update_skipped: String::new(),
         }
     }
 }
@@ -102,5 +145,17 @@ mod tests {
         assert_eq!(partial.interval_ms, 100);
         assert!(partial.show_tcp);
         assert_eq!(partial.columns, ColumnLayout::default());
+        assert_eq!(partial.update_when, UpdateCheck::Start);
+        let daily = Config::parse(r#"{"update_when": "daily"}"#).unwrap();
+        assert_eq!(daily.update_when, UpdateCheck::Daily);
+    }
+
+    #[test]
+    fn update_check_due() {
+        let day = 24 * 3600;
+        assert!(UpdateCheck::Start.due(100, 100));
+        assert!(!UpdateCheck::Daily.due(100, 100 + day - 1));
+        assert!(UpdateCheck::Daily.due(100, 100 + day));
+        assert!(!UpdateCheck::Never.due(0, i64::MAX));
     }
 }
