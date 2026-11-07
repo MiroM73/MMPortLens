@@ -77,3 +77,26 @@ checks that all four built-in languages have the same keys and placeholders.
 `cargo test` – decoding of the Windows tables and `/proc/net` lines, state codes, the tracker
 (new / changed / closed / expiry / reappearing), column layout and sorting, settings round trip,
 language files, and the live snapshot test.
+
+## Release
+
+Taken over from RusTrace, same procedure and file names (with `MMPortLens` in place of `RusTrace`).
+
+- `scripts/release.ps1 <version> [-Publish] [-SkipTests] [-DryRun] [-Yes] [-NoWatch]` – checks
+  (tools, `gh` login, branch `master`, clean tree, not behind `origin`, tag free), writes the version
+  into `Cargo.toml`, runs `cargo test` (backs up and restores `%APPDATA%\MMPortLens\config.json`),
+  commits `Release v<version>`, pushes `master`, creates and pushes the annotated tag `v<version>`,
+  waits for the workflow and with `-Publish` publishes the draft as the latest release.
+  `-SkipTests` skips the local tests when they cannot pass for a reason outside the code (#21) and
+  runs `cargo update --workspace` instead, so `Cargo.lock` still gets the new version.
+- `.github/workflows/release.yml` – on a `v*` tag: `cargo test --locked`, `cargo build --release
+  --locked`, `scripts/package.ps1 -Version <tag>`, then a **draft** release titled
+  `MM PortLens v<version>` with generated notes and the four files from `dist/`. A manual run only
+  uploads `dist/*` as an artifact.
+- `scripts/package.ps1` – stages `MMPortLens\{mmportlens.exe, lang\*.lang, LICENSE}` and produces
+  `dist\MMPortLens-v<version>-windows-x64.exe` (7-Zip `7z.sfx` module + 7z archive),
+  `…-windows-x64.zip` and a `.sha256` file for each (`<hash>  <file name>` + LF, readable by
+  `sha256sum -c`). Needs 7-Zip with `7z.sfx` (preinstalled on the GitHub Windows runners).
+- The release notes follow RusTrace: *What's new*, *What's changed*, *What's fixed*, *Removed*,
+  each item with its issue number, and a *Full Changelog* link.
+- The CRT is linked statically (`.cargo/config.toml`), so the exe needs no Visual C++ runtime.

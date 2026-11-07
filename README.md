@@ -35,6 +35,26 @@ Early skeleton (0.1.0). What works now:
 Planned features are tracked as [GitHub issues](https://github.com/MiroM73/MMPortLens/issues)
 (drafts in [`docs/issues/`](docs/issues/README.md)).
 
+## Download
+
+Ready-made Windows builds are on the [Releases](https://github.com/MiroM73/MMPortLens/releases)
+page, in two forms with the same content:
+
+- `MMPortLens-<version>-windows-x64.exe` – self-extracting archive: run it and choose a destination folder,
+- `MMPortLens-<version>-windows-x64.zip` – plain ZIP to extract yourself (e.g. Explorer → Extract all).
+
+Both create:
+
+```
+MMPortLens\
+    mmportlens.exe    the program (no installation, no Visual C++ runtime needed)
+    lang\*.lang       language files – edit or add translations here
+    LICENSE           the Unlicense (public domain)
+```
+
+The programs are not code-signed, so Windows SmartScreen may ask for confirmation
+("More info" → "Run anyway"). The `.sha256` files contain the checksums.
+
 ## Build
 
 ```

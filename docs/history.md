@@ -16,3 +16,6 @@
 - Fixed `scripts/create-issues.ps1`: `Get-ChildItem -Filter` does not understand `[0-9]`, so the
   script found no drafts; it now matches the `NN-` prefix with a regex. Issues #1–#20 created from it,
   #21 for the invalid TCP states Windows reported on the development PC.
+- Release infrastructure from RusTrace (part of #15): `scripts/package.ps1` (SFX `.exe` + `.zip` +
+  `.sha256`), `scripts/release.ps1` (with `-SkipTests` for #21) and `.github/workflows/release.yml`;
+  README got a Download section. First release **v0.1.0**.
