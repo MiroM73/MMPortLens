@@ -33,6 +33,19 @@ real backend reports them with the own PID – on the Windows CI it validates th
 
 A listener has no remote side (`remote = None`), the same as UDP endpoints.
 
+### Invalid TCP states (issue #21)
+On some Windows 11 25H2 machines `GetExtendedTcpTable` (and `GetTcpTable`, `netstat`,
+`Get-NetTCPConnection`, TCPView) report the state **0**, which is not a `MIB_TCP_STATE` (1–12), for
+live sockets – even a freshly bound listener of our own process – and valid but wrong states for
+others. It is an OS problem, not a decoding one. Consequences in the code:
+- `TcpState::from_mib` maps any value outside 1–12 to `Unknown(n)`; `columns::state_text` shows it
+  as the translated `state.invalid` ("Invalid (0)") and the table cell has the `state.invalid.tip`
+  tooltip.
+- Such a listener keeps its remote side `0.0.0.0:0` (the decoder only drops it for `Listen`).
+- The live test finds its own sockets by protocol, local address and PID and skips only the state
+  assertion when Windows reports an invalid state (`state_checkable`, prints a message); on a clean
+  Windows (CI) the full check runs.
+
 Limit of polling: a connection that opens and closes between two refreshes is never seen. ETW
 (Microsoft-Windows-Kernel-Network) would catch those – see the issues.
 

@@ -8,7 +8,7 @@ use crate::columns::{ColumnId, cell_text};
 use crate::config::Config;
 use crate::i18n;
 use crate::model::{Changes, Mark, Row, Tracker, now_ms};
-use crate::net::ConnKey;
+use crate::net::{ConnKey, TcpState};
 use crate::poller::{self, PollControl, PollResult};
 use crate::t;
 use eframe::egui::{self, Color32, RichText, Sense};

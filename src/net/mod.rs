@@ -67,6 +67,8 @@ pub enum TcpState {
 
 impl TcpState {
     /// From the `MIB_TCP_STATE` value of the Windows tables (1 = CLOSED … 12 = DELETE_TCB).
+    /// Anything else becomes `Unknown`; Windows 11 25H2 has been seen to report 0 even for live
+    /// listeners (issue #21).
     pub fn from_mib(v: u32) -> Self {
         match v {
             1 => TcpState::Closed,
@@ -203,6 +205,34 @@ mod tests {
         assert_eq!(TcpState::from_linux(0x0A), TcpState::Listen);
         assert_eq!(TcpState::from_linux(0x01), TcpState::Established);
         assert_eq!(TcpState::from_linux(0x06), TcpState::TimeWait);
+        assert_eq!(TcpState::from_mib(0), TcpState::Unknown(0));
+        assert_eq!(TcpState::from_mib(12), TcpState::DeleteTcb);
+        assert_eq!(TcpState::from_mib(13), TcpState::Unknown(13));
+    }
+
+    /// Whether the live test can check the state the OS reported. Windows sometimes reports an
+    /// invalid TCP state (0) even for a socket that is certainly listening (issue #21); that is
+    /// an OS problem, not a decoding one, so the state check is skipped there with a message.
+    fn state_checkable(what: &str, state: Option<TcpState>) -> bool {
+        match state {
+            Some(s @ TcpState::Unknown(_)) if cfg!(windows) => {
+                eprintln!(
+                    "{what}: Windows reported an invalid TCP state {s:?}, state check skipped (issue #21)"
+                );
+                false
+            }
+            _ => true,
+        }
+    }
+
+    #[test]
+    fn state_check_is_skipped_only_for_invalid_states_on_windows() {
+        assert!(state_checkable("t", Some(TcpState::Listen)));
+        assert!(state_checkable("t", None));
+        assert_eq!(
+            state_checkable("t", Some(TcpState::Unknown(0))),
+            !cfg!(windows)
+        );
     }
 
     #[test]
@@ -223,17 +253,33 @@ mod tests {
         let (_server, _) = listener.accept().unwrap();
         let conns = snapshot().unwrap();
         let me = std::process::id();
+        // Found by protocol, local address and PID only: with an invalid state the decoder
+        // cannot tell a listener and keeps its remote side 0.0.0.0:0 (issue #21).
         let lis = conns
             .iter()
-            .find(|c| c.proto == Protocol::Tcp && c.local == addr && c.remote.is_none())
+            .find(|c| {
+                c.proto == Protocol::Tcp
+                    && c.local == addr
+                    && c.pid == me
+                    && c.remote
+                        .is_none_or(|r| r.port() == 0 && r.ip().is_unspecified())
+            })
             .expect("own listener");
-        assert_eq!(lis.state, Some(TcpState::Listen));
-        assert_eq!(lis.pid, me);
+        if state_checkable("own listener", lis.state) {
+            assert_eq!(lis.state, Some(TcpState::Listen));
+            assert_eq!(lis.remote, None);
+        }
         let out = conns
             .iter()
-            .find(|c| c.local == client.local_addr().unwrap() && c.remote == Some(addr))
+            .find(|c| {
+                c.proto == Protocol::Tcp
+                    && c.local == client.local_addr().unwrap()
+                    && c.remote == Some(addr)
+            })
             .expect("own outgoing connection");
-        assert_eq!(out.state, Some(TcpState::Established));
         assert_eq!(out.pid, me);
+        if state_checkable("own outgoing connection", out.state) {
+            assert_eq!(out.state, Some(TcpState::Established));
+        }
     }
 }

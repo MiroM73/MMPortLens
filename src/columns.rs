@@ -2,7 +2,7 @@
 //! in which order), stored in the settings.
 
 use crate::model::Row;
-use crate::net::ip_text;
+use crate::net::{TcpState, ip_text};
 use crate::t;
 use serde::{Deserialize, Serialize};
 use std::cmp::Ordering;
@@ -83,6 +83,15 @@ impl ColumnId {
     }
 }
 
+/// State column text: the netstat name, or a translated "Invalid (n)" for a value the OS should
+/// never report (issue #21) instead of a bare `? (n)`.
+pub fn state_text(s: TcpState) -> String {
+    match s {
+        TcpState::Unknown(v) => t!("state.invalid", value = v),
+        s => s.label(),
+    }
+}
+
 /// Text of a cell as shown in the table (also what the text filter searches).
 pub fn cell_text(row: &Row, col: ColumnId) -> String {
     let c = &row.conn;
@@ -90,7 +99,7 @@ pub fn cell_text(row: &Row, col: ColumnId) -> String {
         ColumnId::Process => row.process.name.clone(),
         ColumnId::Pid => c.pid.to_string(),
         ColumnId::Protocol => c.proto.label().into(),
-        ColumnId::State => c.state.map(|s| s.label()).unwrap_or_default(),
+        ColumnId::State => c.state.map(state_text).unwrap_or_default(),
         ColumnId::LocalAddress => ip_text(c.local.ip()),
         ColumnId::LocalPort => c.local.port().to_string(),
         ColumnId::RemoteAddress => c.remote.map(|r| ip_text(r.ip())).unwrap_or_default(),
@@ -236,6 +245,13 @@ impl ColumnLayout {
 #[cfg(test)]
 mod tests {
     use super::*;
+
+    #[test]
+    fn invalid_state_has_its_own_text() {
+        assert_eq!(state_text(TcpState::Listen), "Listen");
+        let t = state_text(TcpState::Unknown(0));
+        assert!(t.contains('0') && !t.starts_with('?'), "{t}");
+    }
 
     #[test]
     fn layout_default_and_visibility() {

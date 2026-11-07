@@ -84,7 +84,12 @@ impl App {
                                 |ui| ui.add(label),
                             );
                         } else {
-                            ui.add(label);
+                            let resp = ui.add(label);
+                            if c == ColumnId::State
+                                && let Some(TcpState::Unknown(v)) = r.conn.state
+                            {
+                                resp.on_hover_text(t!("state.invalid.tip", value = v));
+                            }
                         }
                     });
                 }

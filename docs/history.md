@@ -19,3 +19,7 @@
 - Release infrastructure from RusTrace (part of #15): `scripts/package.ps1` (SFX `.exe` + `.zip` +
   `.sha256`), `scripts/release.ps1` (with `-SkipTests` for #21) and `.github/workflows/release.yml`;
   README got a Download section. First release **v0.1.0**.
+- #21 (parts 1, 2, 4): the live test no longer fails on a PC where Windows reports TCP state 0 – it
+  finds its sockets by address and PID and skips only the state check; an invalid state is shown
+  as a translated "Invalid (0)" with a tooltip instead of `? (0)`; documented in
+  architecture.md. Part 3 (status bar hint) remains open.
