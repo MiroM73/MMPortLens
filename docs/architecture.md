@@ -21,11 +21,12 @@ with the change.
 | `src/poller.rs` | Background thread: snapshot + process names every interval, sent over a channel. |
 | `src/model.rs` | `Tracker`: merges snapshots into rows, marks new / changed / closed rows and expires the marks. |
 | `src/colfilter.rs` | Column filter syntax: parsing and matching (`ColumnFilter`, `FilterKind`, `FilterError`) – core from RusTrace. |
+| `src/selection.rs` | `Selection` (cursor, anchor, selected `ConnKey`s) and `Nav` (arrow / page targets) – pure, tested (#17). |
 | `src/columns.rs` | `ColumnId`, cell texts, value-based sorting (`SortSpec`), `ColumnLayout` (visibility + order). |
 | `src/config.rs` | `Config` (JSON, every field has a default). |
 | `src/i18n.rs` | `t!()` and the language files – the same module as in RusTrace. |
 | `src/timefmt.rs` | Clock times for the table. |
-| `src/app/` | The UI, split by area like RusTrace: `mod.rs` (state, frame loop), `menu.rs`, `toolbar.rs`, `table.rs`, `statusbar.rs`, `colfilters.rs` (column filter state and field), `admin.rs` (restart as administrator), `update_window.rs` (Help → Check for updates). |
+| `src/app/` | The UI, split by area like RusTrace: `mod.rs` (state, frame loop), `menu.rs`, `toolbar.rs`, `table.rs`, `statusbar.rs`, `colfilters.rs` (column filter state and field), `admin.rs` (restart as administrator), `update_window.rs` (Help → Check for updates), `input.rs` (keyboard shortcuts, copying the selection), `help.rs` (Help → Keyboard shortcuts). |
 | `lang/*.lang` | Built-in translations (en, sk, cs, de), embedded with `include_str!`. |
 
 ## Reading the connections
@@ -81,6 +82,28 @@ RusTrace).
 
 The table id contains the list of visible columns, so a changed column set starts with fresh
 default widths.
+
+## Selection and keyboard (#17)
+
+`App::sel` is a `selection::Selection`: the cursor row, the anchor of Shift ranges and the set of
+selected rows, all as `ConnKey`. Positions are never stored, so the selection survives refreshes,
+re-sorting and filtering; functions that need positions get the keys of the rows shown
+(`App::view_keys`, in table order). Clicks follow Windows Explorer (`Selection::click`): plain =
+only the row, Ctrl = toggle (moves the anchor), Shift = range from the anchor, Ctrl+Shift = add the
+range; an anchor that is filtered out starts the range at the clicked row. A right click on a row
+outside the selection selects only that row before the context menu opens. After each snapshot
+`Selection::retain` drops keys the tracker no longer has (closed rows that expired).
+
+`App::handle_input` (`app/input.rs`) runs at the start of a frame, before the panels, so a
+consumed key (Space, arrows) does not reach a focused button too. Keys go to a focused text field
+first (`egui_wants_keyboard_input`) and to an open popup (`Popup::is_any_open`); Ctrl+F focuses the
+toolbar filter (fixed id `toolbar_filter`), Esc clears it even from inside the field, otherwise
+the selection. Navigation reads the Shift state itself, because `consume_key` ignores an extra
+Shift (RusTrace #46); `selection::Nav::target` computes the new position (PgUp / PgDn = 20 rows)
+and the table scrolls to it (`TableBuilder::scroll_to_row`). Ctrl+C arrives as `Event::Copy`;
+`copy_selection` writes the selected rows in table order, tab-separated in the visible columns,
+with a header line when there are several. The shortcut list (`app/help.rs`, F1) uses `kb()` to
+localize Ctrl / Shift / Space and matches `docs/keyboard-shortcuts.md`.
 
 ## Column filters (#1)
 
@@ -192,7 +215,7 @@ names changed; the logic is the same.
 
 `cargo test` – decoding of the Windows tables and `/proc/net` lines, state codes, the tracker
 (new / changed / closed / expiry / reappearing), column layout and sorting, settings round trip,
-language files, column filters (syntax, regex, numeric ranges, CIDR, address classes, errors,
+language files, selection (clicks, ranges, re-sorting, navigation targets), column filters (syntax, regex, numeric ranges, CIDR, address classes, errors,
 speed), the icon / `.ico` layout, update logic (versions, GitHub JSON, missed releases,
 release notes, SHA-256 files, ZIP reading, installation into a temporary folder, session state)
 and the live snapshot test.

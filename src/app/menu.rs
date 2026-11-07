@@ -54,6 +54,13 @@ impl App {
             });
             ui.menu_button(t!("menu.help"), |ui| {
                 if ui
+                    .add(egui::Button::new(t!("menu.help.shortcuts")).shortcut_text(help::kb("F1")))
+                    .clicked()
+                {
+                    ui.close();
+                    self.show_shortcuts = true;
+                }
+                if ui
                     .button(format!("⬆ {}", t!("menu.help.updates")))
                     .clicked()
                 {

@@ -67,6 +67,7 @@ impl App {
 
             ui.separator();
             let edit = egui::TextEdit::singleline(&mut self.filter)
+                .id(egui::Id::unique(input::FILTER_ID))
                 .hint_text(t!("toolbar.filter.hint"))
                 .desired_width(260.0);
             if ui

@@ -3,6 +3,9 @@
 
 language.name = Čeština
 title.admin = Správce
+key.ctrl = Ctrl
+key.shift = Shift
+key.space = Mezerník
 
 # --- Menu ---
 menu.file = Soubor
@@ -23,11 +26,25 @@ menu.view.theme.system = Podle systému
 menu.view.theme.dark = Tmavý
 menu.view.theme.light = Světlý
 menu.help = Nápověda
+menu.help.shortcuts = Klávesové zkratky
 menu.help.updates = Zkontrolovat aktualizace…
 menu.help.about = O programu MM PortLens
 
 about.title = O programu MM PortLens
 about.text = Prohlížeč síťových spojení ve stylu TCPView (Sysinternals).\nVytvořil Claude (Anthropic) podle požadavků vlastníka projektu.
+
+# --- Klávesové zkratky ---
+help.title = Klávesové zkratky
+help.refresh = Obnovit hned
+help.pause = Pozastavit / obnovit načítání
+help.filter = Přejít do pole filtru
+help.escape = Zrušit filtr; když je prázdný, zrušit výběr
+help.navigate = Pohyb v tabulce
+help.extend = Rozšířit výběr
+help.select_click = Přidat / odebrat řádek, vybrat rozsah řádků
+help.select_all = Vybrat všechny zobrazené řádky
+help.copy = Kopírovat vybrané řádky (oddělené tabulátorem, u více řádků s hlavičkou)
+help.shortcuts = Tento seznam
 
 # --- Sloupce ---
 column.process = Proces
@@ -76,7 +93,7 @@ filter.clear.tip = Zrušit všechny filtry sloupců
 
 # --- Tabulka ---
 table.header.tip = Klik: seřadit podle sloupce. Pravý klik: sloupce.
-table.copy_row = Kopírovat řádek
+table.copy_rows = Kopírovat vybrané řádky
 
 # --- Stavový řádek ---
 status.endpoints = Koncové body: {shown} z {total}
@@ -84,6 +101,7 @@ status.tcp_udp = TCP: {tcp}  UDP: {udp}
 status.states = Established: {established}  Listen: {listening}  TimeWait: {time_wait}
 status.changes = Poslední obnovení: +{new} −{closed} ~{changed}
 status.changes.tip = Nové (zelené), zavřené (červené) a se změněným stavem (žluté) při posledním obnovení
+status.selected = Vybráno: {count}
 status.paused = Pozastaveno
 status.refreshed = Obnoveno {time} ({ms} ms)
 status.not_admin = Ne jako správce

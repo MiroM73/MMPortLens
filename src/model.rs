@@ -147,6 +147,10 @@ impl Tracker {
         self.rows.values()
     }
 
+    pub fn contains(&self, key: &ConnKey) -> bool {
+        self.rows.contains_key(key)
+    }
+
     pub fn len(&self) -> usize {
         self.rows.len()
     }

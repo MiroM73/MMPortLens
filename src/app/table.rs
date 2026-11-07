@@ -29,6 +29,9 @@ impl App {
             .sense(Sense::click())
             .auto_shrink([false, false])
             .cell_layout(egui::Layout::left_to_right(egui::Align::Center));
+        if let Some(pos) = self.scroll_to.take() {
+            tb = tb.scroll_to_row(pos, None);
+        }
         for (i, c) in cols.iter().enumerate() {
             let col = if i + 1 == cols.len() {
                 Column::remainder().at_least(60.0)
@@ -43,8 +46,9 @@ impl App {
         let sort = self.cfg.sort;
         let mut clicked_header: Option<ColumnId> = None;
         let mut open_columns_menu = false;
-        let mut clicked_row: Option<ConnKey> = None;
-        let mut copy: Option<String> = None;
+        // Row position and whether it was a right click (which keeps a selection containing it).
+        let mut clicked_row: Option<(usize, bool)> = None;
+        let mut copy = false;
 
         // Filter row under the headers: one field per visible column (edited in a copy, applied
         // after the table is drawn).
@@ -91,7 +95,7 @@ impl App {
             body.rows(row_h, self.view.len(), |mut row| {
                 let r = &self.view[row.index()];
                 let key = r.conn.key();
-                row.set_selected(self.selected == Some(key));
+                row.set_selected(self.sel.contains(&key));
                 let bg = mark_color(r.mark, dark);
                 for &c in &cols {
                     row.col(|ui| {
@@ -118,12 +122,20 @@ impl App {
                 }
                 let resp = row.response();
                 if resp.clicked() {
-                    clicked_row = Some(key);
+                    clicked_row = Some((row.index(), false));
+                }
+                if resp.secondary_clicked() {
+                    clicked_row = Some((row.index(), true));
                 }
                 resp.context_menu(|ui| {
-                    if ui.button(t!("table.copy_row")).clicked() {
-                        let line: Vec<String> = cols.iter().map(|&c| cell_text(r, c)).collect();
-                        copy = Some(line.join("\t"));
+                    if ui
+                        .add(
+                            egui::Button::new(t!("table.copy_rows"))
+                                .shortcut_text(help::kb("Ctrl+C")),
+                        )
+                        .clicked()
+                    {
+                        copy = true;
                         ui.close();
                     }
                 });
@@ -145,11 +157,20 @@ impl App {
             self.view_dirty = true;
             self.settings_changed();
         }
-        if let Some(k) = clicked_row {
-            self.selected = (self.selected != Some(k)).then_some(k);
+        if let Some((pos, secondary)) = clicked_row {
+            let keys = self.view_keys();
+            if secondary {
+                // A right click on a row outside the selection selects only that row (Explorer).
+                if !self.sel.contains(&keys[pos]) {
+                    self.sel.select_only(keys[pos]);
+                }
+            } else {
+                let m = ui.input(|i| i.modifiers);
+                self.sel.click(pos, &keys, m.command, m.shift);
+            }
         }
-        if let Some(text) = copy {
-            ui.ctx().copy_text(text);
+        if copy {
+            self.copy_selection(&ui.ctx().clone());
         }
         if open_columns_menu {
             // A small window rather than a context menu: it stays open while columns are

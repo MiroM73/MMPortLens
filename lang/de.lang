@@ -3,6 +3,9 @@
 
 language.name = Deutsch
 title.admin = Administrator
+key.ctrl = Strg
+key.shift = Umschalt
+key.space = Leertaste
 
 # --- Menü ---
 menu.file = Datei
@@ -23,11 +26,25 @@ menu.view.theme.system = Wie das System
 menu.view.theme.dark = Dunkel
 menu.view.theme.light = Hell
 menu.help = Hilfe
+menu.help.shortcuts = Tastenkombinationen
 menu.help.updates = Nach Updates suchen…
 menu.help.about = Über MM PortLens
 
 about.title = Über MM PortLens
 about.text = Ein Betrachter für Netzwerkverbindungen im Stil von TCPView (Sysinternals).\nErstellt von Claude (Anthropic) nach den Anforderungen des Projektinhabers.
+
+# --- Tastenkombinationen ---
+help.title = Tastenkombinationen
+help.refresh = Jetzt aktualisieren
+help.pause = Aktualisierung anhalten / fortsetzen
+help.filter = Zum Filterfeld wechseln
+help.escape = Filter leeren; wenn er leer ist, die Auswahl aufheben
+help.navigate = In der Tabelle bewegen
+help.extend = Auswahl erweitern
+help.select_click = Zeile hinzufügen / entfernen, Zeilenbereich auswählen
+help.select_all = Alle angezeigten Zeilen auswählen
+help.copy = Ausgewählte Zeilen kopieren (tabulatorgetrennt, bei mehreren Zeilen mit Kopfzeile)
+help.shortcuts = Diese Liste
 
 # --- Spalten ---
 column.process = Prozess
@@ -76,7 +93,7 @@ filter.clear.tip = Alle Spaltenfilter löschen
 
 # --- Tabelle ---
 table.header.tip = Klick: nach dieser Spalte sortieren. Rechtsklick: Spalten.
-table.copy_row = Zeile kopieren
+table.copy_rows = Ausgewählte Zeilen kopieren
 
 # --- Statusleiste ---
 status.endpoints = Endpunkte: {shown} von {total}
@@ -84,6 +101,7 @@ status.tcp_udp = TCP: {tcp}  UDP: {udp}
 status.states = Established: {established}  Listen: {listening}  TimeWait: {time_wait}
 status.changes = Letzte Aktualisierung: +{new} −{closed} ~{changed}
 status.changes.tip = Neu (grün), geschlossen (rot) und mit geändertem Status (gelb) bei der letzten Aktualisierung
+status.selected = Ausgewählt: {count}
 status.paused = Angehalten
 status.refreshed = Aktualisiert {time} ({ms} ms)
 status.not_admin = Nicht als Administrator

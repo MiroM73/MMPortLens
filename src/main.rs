@@ -16,6 +16,7 @@ mod model;
 mod net;
 mod poller;
 mod process;
+mod selection;
 mod timefmt;
 mod update;
 

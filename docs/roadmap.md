@@ -32,7 +32,7 @@ program, README / `docs/architecture.md` / `docs/history.md`, detailed commit wi
 ## Phase 3 – parity with TCPView
 | Issue | What | Status |
 |-------|------|--------|
-| #17 | Keyboard shortcuts and multi-selection (needed for bulk actions in #6 and copying) | |
+| #17 | Keyboard shortcuts and multi-selection (needed for bulk actions in #6 and copying) | done |
 | #5 | Reverse DNS (off the UI thread) | |
 | #6 | Close a connection, end a process | |
 | #7 | Process details (svchost services, user, command line, icon) | |

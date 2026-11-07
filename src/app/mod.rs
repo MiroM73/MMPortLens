@@ -12,6 +12,7 @@ use crate::i18n;
 use crate::model::{Changes, Mark, Row, Tracker, now_ms};
 use crate::net::{ConnKey, TcpState};
 use crate::poller::{self, PollControl, PollResult};
+use crate::selection::Selection;
 use crate::t;
 use crate::update::{self, Release, SessionState, Updates, WindowState};
 use eframe::egui::{self, Color32, RichText, Sense};
@@ -23,6 +24,8 @@ use std::time::{Duration, Instant};
 
 mod admin;
 mod colfilters;
+mod help;
+mod input;
 mod menu;
 mod statusbar;
 mod table;
@@ -98,7 +101,12 @@ pub struct App {
     col_filters: Vec<(ColumnId, ColumnFilter)>,
     /// Column filter texts that are invalid (shown in red, not applied).
     col_filter_errors: HashMap<ColumnId, FilterError>,
-    selected: Option<ConnKey>,
+    /// Selected rows and the cursor row, by key (#17).
+    sel: Selection,
+    /// Table position to scroll to in the next frame (keyboard navigation).
+    scroll_to: Option<usize>,
+    /// Help → Keyboard shortcuts.
+    show_shortcuts: bool,
     last_changes: Changes,
     last_took: Duration,
     last_poll: Option<u64>,
@@ -141,7 +149,9 @@ impl App {
             col_filter_text: HashMap::new(),
             col_filters: Vec::new(),
             col_filter_errors: HashMap::new(),
-            selected: None,
+            sel: Selection::default(),
+            scroll_to: None,
+            show_shortcuts: false,
             last_changes: Changes::default(),
             last_took: Duration::ZERO,
             last_poll: None,
@@ -206,6 +216,11 @@ impl App {
         }
         if self.tracker.expire(now_ms()) {
             self.view_dirty = true;
+        }
+        if self.view_dirty {
+            // Rows removed from the tracker cannot stay selected.
+            let tracker = &self.tracker;
+            self.sel.retain(|k| tracker.contains(k));
         }
     }
 
@@ -294,12 +309,17 @@ impl eframe::App for App {
         if self.view_dirty {
             self.rebuild_view();
         }
+        self.handle_input(&ctx);
+        if self.view_dirty {
+            self.rebuild_view();
+        }
 
         egui::Panel::top("menu").show(ui, |ui| self.menu_bar(ui));
         egui::Panel::top("toolbar").show(ui, |ui| self.toolbar(ui));
         egui::Panel::bottom("status").show(ui, |ui| self.status_bar(ui));
         egui::CentralPanel::default().show(ui, |ui| self.table(ui));
         self.about_window(&ctx);
+        self.shortcuts_window(&ctx);
         self.poll_update(&ctx);
         self.update_window(&ctx);
 

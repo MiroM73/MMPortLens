@@ -25,6 +25,10 @@ impl App {
                 changed = ch.changed
             ))
             .on_hover_text(t!("status.changes.tip"));
+            if self.sel.count() > 1 {
+                ui.separator();
+                ui.label(t!("status.selected", count = self.sel.count()));
+            }
             self.admin_status(ui);
             if let Some(err) = &self.error {
                 ui.separator();
