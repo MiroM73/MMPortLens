@@ -24,11 +24,12 @@ with the change.
 | `src/selection.rs` | `Selection` (cursor, anchor, selected `ConnKey`s) and `Nav` (arrow / page targets) – pure, tested (#17). |
 | `src/dns.rs` | Reverse DNS (#5): `DnsCache` (TTL, negative results, pending – pure), `Resolver` (cache + worker pool), `system_lookup` (`GetNameInfoW` / `getnameinfo`). |
 | `src/services.rs` | Built-in table of well-known port names (#5). |
+| `src/actions.rs` | Close connection (`SetTcpEntry` + DELETE_TCB) and End process (`TerminateProcess` / `kill`), with the pure checks `can_close` / `can_kill` and `tcp_row` (#6). |
 | `src/columns.rs` | `ColumnId`, cell texts, value-based sorting (`SortSpec`), `ColumnLayout` (visibility + order). |
 | `src/config.rs` | `Config` (JSON, every field has a default). |
 | `src/i18n.rs` | `t!()` and the language files – the same module as in RusTrace. |
 | `src/timefmt.rs` | Clock times for the table. |
-| `src/app/` | The UI, split by area like RusTrace: `mod.rs` (state, frame loop), `menu.rs`, `toolbar.rs`, `table.rs`, `statusbar.rs`, `colfilters.rs` (column filter state and field), `admin.rs` (restart as administrator), `update_window.rs` (Help → Check for updates), `input.rs` (keyboard shortcuts, copying the selection), `help.rs` (Help → Keyboard shortcuts). |
+| `src/app/` | The UI, split by area like RusTrace: `mod.rs` (state, frame loop), `menu.rs`, `toolbar.rs`, `table.rs`, `statusbar.rs`, `colfilters.rs` (column filter state and field), `admin.rs` (restart as administrator), `update_window.rs` (Help → Check for updates), `input.rs` (keyboard shortcuts, copying the selection), `help.rs` (Help → Keyboard shortcuts), `actions.rs` (context menu items, confirmation window and result of #6). |
 | `lang/*.lang` | Built-in translations (en, sk, cs, de), embedded with `include_str!`. |
 
 ## Reading the connections
@@ -132,6 +133,32 @@ service name as a tooltip.
   dirty when names arrive. Unresolved addresses show the IP, so the text filter, the column filters
   and sorting work on what is shown; sorting puts names before bare addresses.
 - The status bar shows "Resolving: n" while lookups are pending.
+
+## Close connection, End process (#6)
+
+The row context menu has **Close connection** (also Del) and **End process**; both work on all
+selected rows shown (`App::selected_rows`, table order).
+
+- `actions::can_close` allows only IPv4 TCP connections with a remote side that are not Listen /
+  TimeWait / Closed / DeleteTcb (an invalid state of #21 is allowed – Windows reports it for live
+  connections; a listener with an invalid state keeps `0.0.0.0:0` as its remote side and is
+  refused). Windows has no IPv6 counterpart of `SetTcpEntry`. The disabled menu item has the
+  reason as its tooltip; Del on rows that cannot be closed shows the reason in the status bar.
+- `actions::can_kill` refuses PID 0, 4 (Windows) and MM PortLens itself; End process acts on the
+  distinct PIDs of the selection.
+- `App::pending_action` holds the targets until the confirmation window (`confirm_window`, centered,
+  Enter = confirm, Esc = cancel; `handle_input` does nothing while it is open) is answered. It lists
+  up to 12 targets (connection: process, PID, local → remote; process: name, PID, path) and, when
+  not elevated, a hint that Windows usually refuses this without administrator rights.
+- `close_connection` sends `MIB_TCPROW` with state 12 (DELETE_TCB) built by the pure `tcp_row`
+  (copied into a `[u32; 5]` for alignment); `kill_process` uses
+  `OpenProcess(PROCESS_TERMINATE)` + `TerminateProcess` (Linux: `kill(pid, SIGTERM)`). Access
+  denied (`ERROR_ACCESS_DENIED`, and 317 `ERROR_MR_MID_NOT_FOUND`, which `SetTcpEntry` returns
+  without elevation) becomes `ActionError::AccessDenied`; other errors carry the system text
+  (`FormatMessageW`).
+- The calls return at once, so they run on the UI thread; the result ("Done: n" or "Done: n,
+  failed: m – reason") stays in the status bar until dismissed (✖) or replaced, and a refresh is
+  requested so the closed rows are marked right away.
 
 ## Column filters (#1)
 
@@ -245,7 +272,9 @@ names changed; the logic is the same.
 (new / changed / closed / expiry / reappearing), column layout and sorting, settings round trip,
 language files, reverse DNS (cache TTL / negative results / pending, `sockaddr` layout, a
 300-address run through the worker pool with a slow fake resolver – never more than `WORKERS` at
-once, the caller never blocks –, the system resolver on 127.0.0.1), port names, host / service
+once, the caller never blocks –, the system resolver on 127.0.0.1), port names, close / kill checks and the `MIB_TCPROW` layout, ending an own child process,
+closing an own loopback connection (elevated: it disappears; not elevated: exactly
+`AccessDenied`), host / service
 cells, selection (clicks, ranges, re-sorting, navigation targets), column filters (syntax, regex, numeric ranges, CIDR, address classes, errors,
 speed), the icon / `.ico` layout, update logic (versions, GitHub JSON, missed releases,
 release notes, SHA-256 files, ZIP reading, installation into a temporary folder, session state)

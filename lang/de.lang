@@ -6,6 +6,7 @@ title.admin = Administrator
 key.ctrl = Strg
 key.shift = Umschalt
 key.space = Leertaste
+key.del = Entf
 
 # --- Menü ---
 menu.file = Datei
@@ -46,6 +47,7 @@ help.extend = Auswahl erweitern
 help.select_click = Zeile hinzufügen / entfernen, Zeilenbereich auswählen
 help.select_all = Alle angezeigten Zeilen auswählen
 help.copy = Ausgewählte Zeilen kopieren (tabulatorgetrennt, bei mehreren Zeilen mit Kopfzeile)
+help.close = Ausgewählte Verbindungen schließen (mit Rückfrage)
 help.shortcuts = Diese Liste
 
 # --- Spalten ---
@@ -99,6 +101,27 @@ filter.clear.tip = Alle Spaltenfilter löschen
 # --- Tabelle ---
 table.header.tip = Klick: nach dieser Spalte sortieren. Rechtsklick: Spalten.
 table.copy_rows = Ausgewählte Zeilen kopieren
+
+# --- Verbindung schließen / Prozess beenden ---
+action.close = Verbindung schließen
+action.kill = Prozess beenden
+action.close.confirm = {count} Verbindung(en) schließen? Die Verbindung wird zurückgesetzt; das Programm, dem sie gehört, erhält einen Fehler.
+action.kill.confirm = {count} Prozess(e) beenden? Nicht gespeicherte Daten des Prozesses gehen verloren.
+action.close.button = Schließen
+action.kill.button = Prozess beenden
+action.cancel = Abbrechen
+action.more = … und {count} weitere
+action.admin_hint = Ohne Administratorrechte verweigert Windows dies meist bei Prozessen anderer Benutzer und des Systems (Datei → Als Administrator neu starten).
+action.done = Erledigt: {count}
+action.failed = Erledigt: {done}, fehlgeschlagen: {failed} – {error}
+action.access_denied = Zugriff verweigert (Administratorrechte nötig)
+action.close.udp = UDP-Endpunkte haben keine Verbindung, die geschlossen werden kann.
+action.close.ipv6 = Windows kann nur IPv4-Verbindungen schließen (SetTcpEntry hat kein IPv6-Gegenstück).
+action.close.listener = Ein lauschender Endpunkt hat keine Verbindung, die geschlossen werden kann.
+action.close.closed = Die Verbindung ist bereits geschlossen.
+action.unsupported = Auf diesem Betriebssystem nicht unterstützt.
+action.kill.system = Systemprozesse (PID 0 und 4) können nicht beendet werden.
+action.kill.own = MM PortLens beendet sich nicht selbst – Datei → Beenden verwenden.
 
 # --- Statusleiste ---
 status.endpoints = Endpunkte: {shown} von {total}

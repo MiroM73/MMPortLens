@@ -18,6 +18,7 @@ shortcuts** (F1).
 | Shift + click, Ctrl+Shift + click | Select / add the range from the anchor row |
 | Right click | Context menu (on a row outside the selection: selects only that row first) |
 | Ctrl+A | Select all rows shown |
+| Del | Close the selected connections (asks first; IPv4 TCP only) |
 | Ctrl+C | Copy the selected rows, tab-separated in the visible columns (a header line for several rows) |
 | F1 | Keyboard shortcuts window |
 
@@ -26,3 +27,5 @@ table is refreshed, re-sorted or filtered. A closed connection leaves the select
 disappears.
 
 Planned: Ctrl+E export (#9).
+
+In the confirmation window of Close connection / End process, Enter confirms and Esc cancels.

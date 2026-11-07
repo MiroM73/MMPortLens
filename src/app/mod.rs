@@ -23,6 +23,7 @@ use std::sync::atomic::Ordering;
 use std::sync::{Arc, mpsc};
 use std::time::{Duration, Instant};
 
+mod actions;
 mod admin;
 mod colfilters;
 mod help;
@@ -110,6 +111,10 @@ pub struct App {
     scroll_to: Option<usize>,
     /// Help → Keyboard shortcuts.
     show_shortcuts: bool,
+    /// Close connection / End process waiting for confirmation (#6).
+    pending_action: Option<actions::Pending>,
+    /// Result of the last action (status bar).
+    action_result: Option<actions::ActionResult>,
     last_changes: Changes,
     last_took: Duration,
     last_poll: Option<u64>,
@@ -162,6 +167,8 @@ impl App {
             },
             scroll_to: None,
             show_shortcuts: false,
+            pending_action: None,
+            action_result: None,
             last_changes: Changes::default(),
             last_took: Duration::ZERO,
             last_poll: None,
@@ -347,6 +354,7 @@ impl eframe::App for App {
         egui::CentralPanel::default().show(ui, |ui| self.table(ui));
         self.about_window(&ctx);
         self.shortcuts_window(&ctx);
+        self.confirm_window(&ctx);
         self.poll_update(&ctx);
         self.update_window(&ctx);
 

@@ -14,6 +14,10 @@ pub(in crate::app) const FILTER_ID: &str = "toolbar_filter";
 
 impl App {
     pub(in crate::app) fn handle_input(&mut self, ctx: &egui::Context) {
+        // The confirmation window of #6 takes Enter / Esc itself.
+        if self.pending_action.is_some() {
+            return;
+        }
         // A focused text field gets the keys (typing a space, arrows in the field …).
         let typing = ctx.egui_wants_keyboard_input();
         // Esc / arrows belong to an open menu or combo box.
@@ -67,6 +71,10 @@ impl App {
             let paused = self.paused();
             self.ctl.paused.store(!paused, Ordering::Relaxed);
         }
+        // Del: close the selected connections (asks first, #6).
+        if ctx.input_mut(|i| i.consume_key(Modifiers::NONE, Key::Delete)) {
+            self.request_close();
+        }
         // Copy: egui turns Ctrl+C into an `Event::Copy` (no key event).
         let copy = ctx.input(|i| i.events.iter().any(|e| matches!(e, egui::Event::Copy)));
         if copy && !self.sel.is_empty() {
@@ -116,13 +124,7 @@ impl App {
     /// Ctrl+C / context menu: the selected rows tab-separated in the visible columns, with a
     /// header line when there are several rows.
     pub(in crate::app) fn copy_selection(&mut self, ctx: &egui::Context) {
-        let keys = self.view_keys();
-        let rows: Vec<&Row> = self
-            .sel
-            .positions(&keys)
-            .into_iter()
-            .map(|i| &self.view[i])
-            .collect();
+        let rows = self.selected_rows();
         if rows.is_empty() {
             return;
         }

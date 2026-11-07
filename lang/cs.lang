@@ -6,6 +6,7 @@ title.admin = Správce
 key.ctrl = Ctrl
 key.shift = Shift
 key.space = Mezerník
+key.del = Del
 
 # --- Menu ---
 menu.file = Soubor
@@ -46,6 +47,7 @@ help.extend = Rozšířit výběr
 help.select_click = Přidat / odebrat řádek, vybrat rozsah řádků
 help.select_all = Vybrat všechny zobrazené řádky
 help.copy = Kopírovat vybrané řádky (oddělené tabulátorem, u více řádků s hlavičkou)
+help.close = Zavřít vybraná spojení (nejprve se zeptá)
 help.shortcuts = Tento seznam
 
 # --- Sloupce ---
@@ -99,6 +101,27 @@ filter.clear.tip = Zrušit všechny filtry sloupců
 # --- Tabulka ---
 table.header.tip = Klik: seřadit podle sloupce. Pravý klik: sloupce.
 table.copy_rows = Kopírovat vybrané řádky
+
+# --- Zavřít spojení / Ukončit proces ---
+action.close = Zavřít spojení
+action.kill = Ukončit proces
+action.close.confirm = Zavřít spojení ({count})? Spojení se resetuje; program, kterému patří, dostane chybu.
+action.kill.confirm = Ukončit procesy ({count})? Neuložená data procesu se ztratí.
+action.close.button = Zavřít
+action.kill.button = Ukončit proces
+action.cancel = Zrušit
+action.more = … a další ({count})
+action.admin_hint = Bez administrátorských práv to Windows u procesů jiných uživatelů a systému obvykle odmítne (Soubor → Restartovat jako správce).
+action.done = Hotovo: {count}
+action.failed = Hotovo: {done}, selhalo: {failed} – {error}
+action.access_denied = přístup odepřen (jsou potřeba práva správce)
+action.close.udp = Koncové body UDP nemají spojení, které by šlo zavřít.
+action.close.ipv6 = Windows umí zavřít jen spojení IPv4 (SetTcpEntry nemá obdobu pro IPv6).
+action.close.listener = Naslouchající koncový bod nemá spojení, které by šlo zavřít.
+action.close.closed = Spojení je už zavřené.
+action.unsupported = V tomto operačním systému to není podporováno.
+action.kill.system = Systémové procesy (PID 0 a 4) nelze ukončit.
+action.kill.own = MM PortLens neukončí sám sebe – použij Soubor → Konec.
 
 # --- Stavový řádek ---
 status.endpoints = Koncové body: {shown} z {total}

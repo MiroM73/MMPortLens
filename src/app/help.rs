@@ -13,6 +13,7 @@ const SHORTCUTS: &[(&str, &str)] = &[
     ("Ctrl / Shift + click", "help.select_click"),
     ("Ctrl+A", "help.select_all"),
     ("Ctrl+C", "help.copy"),
+    ("Del", "help.close"),
     ("F1", "help.shortcuts"),
 ];
 
@@ -22,6 +23,7 @@ pub(in crate::app) fn kb(shortcut: &str) -> String {
         .replace("Ctrl", &t!("key.ctrl"))
         .replace("Shift", &t!("key.shift"))
         .replace("Space", &t!("key.space"))
+        .replace("Del", &t!("key.del"))
 }
 
 impl App {

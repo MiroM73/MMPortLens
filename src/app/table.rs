@@ -49,6 +49,7 @@ impl App {
         // Row position and whether it was a right click (which keeps a selection containing it).
         let mut clicked_row: Option<(usize, bool)> = None;
         let mut copy = false;
+        let mut action: Option<actions::MenuAction> = None;
 
         // Filter row under the headers: one field per visible column (edited in a copy, applied
         // after the table is drawn).
@@ -149,6 +150,8 @@ impl App {
                         copy = true;
                         ui.close();
                     }
+                    ui.separator();
+                    action = action.or(self.action_menu_items(ui));
                 });
             });
         });
@@ -182,6 +185,9 @@ impl App {
         }
         if copy {
             self.copy_selection(&ui.ctx().clone());
+        }
+        if let Some(a) = action {
+            self.menu_action(a);
         }
         if open_columns_menu {
             // A small window rather than a context menu: it stays open while columns are

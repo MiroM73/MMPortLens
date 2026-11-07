@@ -35,6 +35,7 @@ impl App {
                 ui.label(t!("status.selected", count = self.sel.count()));
             }
             self.admin_status(ui);
+            self.action_status(ui);
             if let Some(err) = &self.error {
                 ui.separator();
                 ui.colored_label(ui.visuals().error_fg_color, err);

@@ -4,6 +4,7 @@
     windows_subsystem = "windows"
 )]
 
+mod actions;
 mod app;
 mod colfilter;
 mod columns;

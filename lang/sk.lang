@@ -6,6 +6,7 @@ title.admin = Administrátor
 key.ctrl = Ctrl
 key.shift = Shift
 key.space = Medzerník
+key.del = Del
 
 # --- Menu ---
 menu.file = Súbor
@@ -46,6 +47,7 @@ help.extend = Rozšíriť výber
 help.select_click = Pridať / odobrať riadok, vybrať rozsah riadkov
 help.select_all = Vybrať všetky zobrazené riadky
 help.copy = Kopírovať vybraté riadky (oddelené tabulátorom, pri viacerých riadkoch s hlavičkou)
+help.close = Zatvoriť vybraté spojenia (najprv sa opýta)
 help.shortcuts = Tento zoznam
 
 # --- Stĺpce ---
@@ -99,6 +101,27 @@ filter.clear.tip = Zrušiť všetky filtre stĺpcov
 # --- Tabuľka ---
 table.header.tip = Klik: zoradiť podľa stĺpca. Pravý klik: stĺpce.
 table.copy_rows = Kopírovať vybraté riadky
+
+# --- Zatvoriť spojenie / Ukončiť proces ---
+action.close = Zatvoriť spojenie
+action.kill = Ukončiť proces
+action.close.confirm = Zatvoriť spojenia ({count})? Spojenie sa resetuje; program, ktorému patrí, dostane chybu.
+action.kill.confirm = Ukončiť procesy ({count})? Neuložené údaje procesu sa stratia.
+action.close.button = Zatvoriť
+action.kill.button = Ukončiť proces
+action.cancel = Zrušiť
+action.more = … a ďalšie ({count})
+action.admin_hint = Bez administrátorských práv to Windows pri procesoch iných používateľov a systému zvyčajne odmietne (Súbor → Reštartovať ako administrátor).
+action.done = Hotovo: {count}
+action.failed = Hotovo: {done}, zlyhalo: {failed} – {error}
+action.access_denied = prístup zamietnutý (treba administrátorské práva)
+action.close.udp = Koncové body UDP nemajú spojenie, ktoré by sa dalo zatvoriť.
+action.close.ipv6 = Windows vie zatvoriť len spojenia IPv4 (SetTcpEntry nemá obdobu pre IPv6).
+action.close.listener = Načúvajúci koncový bod nemá spojenie, ktoré by sa dalo zatvoriť.
+action.close.closed = Spojenie je už zatvorené.
+action.unsupported = V tomto operačnom systéme to nie je podporované.
+action.kill.system = Systémové procesy (PID 0 a 4) sa nedajú ukončiť.
+action.kill.own = MM PortLens neukončí sám seba – použi Súbor → Koniec.
 
 # --- Stavový riadok ---
 status.endpoints = Koncové body: {shown} z {total}

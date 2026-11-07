@@ -34,7 +34,7 @@ program, README / `docs/architecture.md` / `docs/history.md`, detailed commit wi
 |-------|------|--------|
 | #17 | Keyboard shortcuts and multi-selection (needed for bulk actions in #6 and copying) | done |
 | #5 | Reverse DNS (off the UI thread) | done |
-| #6 | Close a connection, end a process | |
+| #6 | Close a connection, end a process | done |
 | #7 | Process details (svchost services, user, command line, icon) | |
 | #14 | Real creation time and owner module of TCP connections | |
 | #8 | Bytes sent / received per connection (ESTATS, needs admin – administrator mode of #15 exists) | |

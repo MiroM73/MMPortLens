@@ -64,3 +64,11 @@
   program: names of ~40 public addresses arrived in the background while the table kept
   refreshing (github.com, akamai, amazonaws, 1e100.net, 127.0.0.1 → the computer name), sorting by
   Remote host, the column filter `github` on the names, DNS off shows the addresses again.
+- #6: Close connection (`SetTcpEntry` + DELETE_TCB, IPv4 TCP only; Del) and End process
+  (`TerminateProcess`) in the row context menu for the whole selection, with a confirmation window
+  listing the targets (Enter / Esc) and the result in the status bar (`src/actions.rs`,
+  `src/app/actions.rs`). Verified in the running program with a helper Python process (listener +
+  loopback connection on port 5599): the listener was left out of Close connection, closing
+  without administrator rights reported "access denied" for both connections, End process ended
+  the helper and its rows disappeared. Not verified elevated (no UAC confirmation possible in the
+  session); the test `close_own_connection` checks that case when run as administrator.
