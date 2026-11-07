@@ -1,4 +1,4 @@
-# RusNet – slovenčina
+# MM PortLens – slovenčina
 # Formát a návod na pridanie jazyka nájdeš v súbore en.lang.
 
 language.name = Slovenčina
@@ -15,9 +15,9 @@ menu.view.theme.system = Podľa systému
 menu.view.theme.dark = Tmavý
 menu.view.theme.light = Svetlý
 menu.help = Pomocník
-menu.help.about = O programe RusNet
+menu.help.about = O programe MM PortLens
 
-about.title = O programe RusNet
+about.title = O programe MM PortLens
 about.text = Prehliadač sieťových spojení v štýle TCPView (Sysinternals).\nVytvoril Claude (Anthropic) podľa požiadaviek vlastníka projektu.
 
 # --- Stĺpce ---

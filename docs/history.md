@@ -1,4 +1,4 @@
-# RusNet – history
+# MM PortLens – history
 
 ## 0.1.0 (2026-11-07) – skeleton
 - Project created in the structure of RusTrace: Cargo, eframe/egui 0.37, CI (Windows + Linux),
@@ -9,3 +9,6 @@
 - Table with sorting, columns on / off and their order (View → Columns, right click on a header),
   protocol switches, text filter, copy row, status bar.
 - Planned features written as issue drafts in `docs/issues/`.
+- Renamed from the working name RusNet to **MM PortLens** (`MMPortLens`) before publishing:
+  RusNet collides with RustNet (a Rust network monitor) and the Russian IRC network, and all of the
+  owner's programs get the MM prefix.

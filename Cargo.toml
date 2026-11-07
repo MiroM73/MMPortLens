@@ -1,10 +1,10 @@
 [package]
-name = "rusnet"
+name = "mmportlens"
 version = "0.1.0"
 edition = "2024"
 license = "Unlicense"
 description = "A TCPView-style viewer of network connections"
-repository = "https://github.com/MiroM73/RusNet"
+repository = "https://github.com/MiroM73/MMPortLens"
 
 [dependencies]
 eframe = { version = "0.37", features = ["glow"] }

@@ -18,7 +18,7 @@
 //! added **without recompiling** by dropping a `<code>.lang` file into one of these folders:
 //!
 //! 1. `lang/` next to the executable,
-//! 2. `<config dir>/RusNet/lang/` (Windows: `%APPDATA%\RusNet\lang`).
+//! 2. `<config dir>/MMPortLens/lang/` (Windows: `%APPDATA%\MMPortLens\lang`).
 //!
 //! An external file with the same code as a built-in language overrides only the keys it
 //! contains, so a translation can also be fixed without recompiling. Missing keys fall back
@@ -135,9 +135,9 @@ pub fn lang_dirs() -> Vec<PathBuf> {
     dirs
 }
 
-/// Per-user language folder (`%APPDATA%\RusNet\lang` on Windows).
+/// Per-user language folder (`%APPDATA%\MMPortLens\lang` on Windows).
 pub fn user_lang_dir() -> Option<PathBuf> {
-    dirs::config_dir().map(|d| d.join("RusNet").join("lang"))
+    dirs::config_dir().map(|d| d.join("MMPortLens").join("lang"))
 }
 
 fn external_files(code: &str) -> Vec<PathBuf> {

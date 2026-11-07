@@ -27,7 +27,7 @@ pub const VERSION: &str = env!("CARGO_PKG_VERSION");
 const REPOSITORY: &str = env!("CARGO_PKG_REPOSITORY");
 
 pub fn base_title() -> String {
-    format!("RusNet {VERSION}")
+    format!("MM PortLens {VERSION}")
 }
 
 /// Counters for the status bar, computed when the view is rebuilt.

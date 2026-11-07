@@ -1,4 +1,4 @@
-# RusNet – a TCPView-style network connection viewer
+# MM PortLens – a TCPView-style network connection viewer
 
 > **This program was created entirely by AI.** Everything in this repository – the source code,
 > program logic, architecture, user interface design, translations, tests, build scripts and the
@@ -14,7 +14,7 @@ from Sysinternals, with the features TCPView is missing (column filters, column 
 recording, …). It is the sibling of [RusTrace](https://github.com/MiroM73/Rustrace) and follows
 its structure and conventions.
 
-[![CI](https://github.com/MiroM73/RusNet/actions/workflows/ci.yml/badge.svg?branch=master)](https://github.com/MiroM73/RusNet/actions/workflows/ci.yml)
+[![CI](https://github.com/MiroM73/MMPortLens/actions/workflows/ci.yml/badge.svg?branch=master)](https://github.com/MiroM73/MMPortLens/actions/workflows/ci.yml)
 
 ## Status
 
@@ -30,15 +30,15 @@ Early skeleton (0.1.0). What works now:
 - Switches TCP / UDP / IPv4 / IPv6 / Listening and a text filter over the visible columns.
 - Copy a row (right click), status bar with counts, user interface in English, Slovak, Czech and
   German (more languages without recompiling – see `lang/en.lang`), dark / light theme.
-- Settings in `%APPDATA%\RusNet\config.json`.
+- Settings in `%APPDATA%\MMPortLens\config.json`.
 
-Planned features are tracked as [GitHub issues](https://github.com/MiroM73/RusNet/issues)
+Planned features are tracked as [GitHub issues](https://github.com/MiroM73/MMPortLens/issues)
 (drafts in [`docs/issues/`](docs/issues/README.md)).
 
 ## Build
 
 ```
-cargo build --release      → target\release\rusnet.exe
+cargo build --release      → target\release\mmportlens.exe
 cargo test
 ```
 

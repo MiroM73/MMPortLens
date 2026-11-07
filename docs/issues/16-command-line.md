@@ -1,7 +1,7 @@
 # Command line: filters, headless snapshot export and recording
 
 ## Summary
-Make RusNet usable from scripts and scheduled tasks.
+Make MM PortLens usable from scripts and scheduled tasks.
 
 ## Details
 - Reuse the parser style of RusTrace `src/cli.rs` (help in the UI language, message box vs. console).
@@ -10,4 +10,4 @@ Make RusNet usable from scripts and scheduled tasks.
 - `--help`, `--version`.
 
 ## Acceptance
-- `rusnet --export x.csv` from PowerShell writes the file and returns 0 without opening a window.
+- `mmportlens --export x.csv` from PowerShell writes the file and returns 0 without opening a window.

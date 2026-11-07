@@ -1,4 +1,4 @@
-# RusNet – Deutsch
+# MM PortLens – Deutsch
 # Format und Anleitung zum Hinzufügen einer Sprache: siehe en.lang.
 
 language.name = Deutsch
@@ -15,9 +15,9 @@ menu.view.theme.system = Wie das System
 menu.view.theme.dark = Dunkel
 menu.view.theme.light = Hell
 menu.help = Hilfe
-menu.help.about = Über RusNet
+menu.help.about = Über MM PortLens
 
-about.title = Über RusNet
+about.title = Über MM PortLens
 about.text = Ein Betrachter für Netzwerkverbindungen im Stil von TCPView (Sysinternals).\nErstellt von Claude (Anthropic) nach den Anforderungen des Projektinhabers.
 
 # --- Spalten ---

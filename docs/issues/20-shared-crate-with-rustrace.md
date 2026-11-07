@@ -1,7 +1,7 @@
 # Shared code with RusTrace in a common crate
 
 ## Summary
-RusNet copies modules from RusTrace (i18n, column filters, table export, update, CLI helpers). Once two or three are copied, move them into a shared crate so fixes land in both programs.
+MM PortLens copies modules from RusTrace (i18n, column filters, table export, update, CLI helpers). Once two or three are copied, move them into a shared crate so fixes land in both programs.
 
 ## Details
 - Candidates: `i18n.rs` (identical except the folder name – make the app name a parameter), `colfilter.rs`, `tabexport/`, `update.rs` + `http.rs`, theme / palette helpers.

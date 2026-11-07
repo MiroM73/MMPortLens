@@ -1926,6 +1926,19 @@ dependencies = [
 ]
 
 [[package]]
+name = "mmportlens"
+version = "0.1.0"
+dependencies = [
+ "chrono",
+ "dirs",
+ "eframe",
+ "egui_extras",
+ "serde",
+ "serde_json",
+ "sys-locale",
+]
+
+[[package]]
 name = "moxcms"
 version = "0.8.1"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -2880,19 +2893,6 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "9da7f59328b09405b181fee1018925fad50f157afb43c0c0f5c522c256dd5907"
 dependencies = [
  "memchr",
-]
-
-[[package]]
-name = "rusnet"
-version = "0.1.0"
-dependencies = [
- "chrono",
- "dirs",
- "eframe",
- "egui_extras",
- "serde",
- "serde_json",
- "sys-locale",
 ]
 
 [[package]]

@@ -12,7 +12,7 @@
   scripts\create-issues.ps1
 #>
 param(
-    [string]$Repo = "MiroM73/RusNet",
+    [string]$Repo = "MiroM73/MMPortLens",
     [string]$Label = "enhancement",
     [switch]$DryRun
 )

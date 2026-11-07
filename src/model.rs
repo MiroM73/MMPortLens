@@ -35,7 +35,7 @@ pub enum Mark {
 pub struct Row {
     pub conn: Connection,
     pub process: Arc<ProcessInfo>,
-    /// When RusNet first saw the endpoint (not when the system created it).
+    /// When MM PortLens first saw the endpoint (not when the system created it).
     pub first_seen: u64,
     pub mark: Mark,
     /// When the mark ends (a closed row is removed then).

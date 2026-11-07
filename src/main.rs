@@ -25,7 +25,7 @@ fn main() -> eframe::Result {
         ..Default::default()
     };
     eframe::run_native(
-        "RusNet",
+        "MMPortLens",
         options,
         Box::new(|cc| Ok(Box::new(app::App::new(cc)))),
     )

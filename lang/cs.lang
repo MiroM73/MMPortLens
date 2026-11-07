@@ -1,4 +1,4 @@
-# RusNet – čeština
+# MM PortLens – čeština
 # Formát a návod na přidání jazyka najdeš v souboru en.lang.
 
 language.name = Čeština
@@ -15,9 +15,9 @@ menu.view.theme.system = Podle systému
 menu.view.theme.dark = Tmavý
 menu.view.theme.light = Světlý
 menu.help = Nápověda
-menu.help.about = O programu RusNet
+menu.help.about = O programu MM PortLens
 
-about.title = O programu RusNet
+about.title = O programu MM PortLens
 about.text = Prohlížeč síťových spojení ve stylu TCPView (Sysinternals).\nVytvořil Claude (Anthropic) podle požadavků vlastníka projektu.
 
 # --- Sloupce ---

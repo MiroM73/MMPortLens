@@ -1,7 +1,7 @@
 # Planned features – issue drafts
 
 Each file is one GitHub issue: the first line (`# …`) is the title, the rest is the body.
-`scripts/create-issues.ps1` creates them in `MiroM73/RusNet` with the `enhancement` label.
+`scripts/create-issues.ps1` creates them in `MiroM73/MMPortLens` with the `enhancement` label.
 Once created, the issues on GitHub are the source of truth; these drafts are not updated.
 
 - [Column filters under the column headers](01-column-filters.md)

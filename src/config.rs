@@ -1,5 +1,5 @@
 //! Application settings – stored as JSON in the user's configuration folder
-//! (Windows: %APPDATA%\RusNet\config.json). Every field has a default, so older files keep
+//! (Windows: %APPDATA%\MMPortLens\config.json). Every field has a default, so older files keep
 //! loading when new settings are added.
 
 use crate::columns::{ColumnLayout, SortSpec};
@@ -50,7 +50,7 @@ impl Default for Config {
 
 impl Config {
     pub fn path() -> Option<PathBuf> {
-        dirs::config_dir().map(|d| d.join("RusNet").join("config.json"))
+        dirs::config_dir().map(|d| d.join("MMPortLens").join("config.json"))
     }
 
     pub fn load() -> Self {

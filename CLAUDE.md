@@ -1,4 +1,4 @@
-# RusNet – project memory for Claude
+# MM PortLens – project memory for Claude
 
 ## Working with the owner
 - The owner (Miroslav, GitHub `MiroM73`) talks to Claude in **Slovak, informal "ty" form**. Answer in Slovak.
@@ -14,6 +14,11 @@
   `claude-opus-5-5`, Anthropic) and the owner only specified requirements. Keep it at the top.
 - License: **the Unlicense** (`LICENSE`, `license = "Unlicense"` in Cargo.toml).
 - Do not push or rewrite published history without asking.
+
+## Naming
+- All programs of the owner start with **MM**: display name with a space (**MM PortLens**), technical
+  name without (`MMPortLens` repository and settings folder, `mmportlens` crate / exe). The project
+  was called RusNet before the first publication (renamed because of RustNet and the "Rus" prefix).
 
 ## What the application is
 A native desktop viewer of TCP / UDP endpoints in Rust (eframe/egui 0.37) modelled on **TCPView**
@@ -47,7 +52,7 @@ updates, CLI), take its code and adapt it rather than writing it again.
   `// SAFETY:` comment; no binding crate so far.
 
 ## Commands
-- `cargo build --release` → `target\release\rusnet.exe`; `cargo test`.
+- `cargo build --release` → `target\release\mmportlens.exe`; `cargo test`.
 - `cargo fmt` + `cargo clippy --all-targets --locked -- -D warnings` – CI fails otherwise.
-- Do not leave test runs touching `%APPDATA%\RusNet\config.json`.
+- Do not leave test runs touching `%APPDATA%\MMPortLens\config.json`.
 - Line endings: `.gitattributes` forces LF (`* text=auto eol=lf`).

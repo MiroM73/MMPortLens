@@ -1,4 +1,4 @@
-# RusNet – architecture
+# MM PortLens – architecture
 
 How the program works inside. Read the section of a feature before changing it and update it
 with the change.

@@ -4,7 +4,7 @@
 Add a filter row under the table headers – one text field per visible column – like the column filters in RusTrace (#49 there). This is the main feature TCPView is missing.
 
 ## Details
-- Reuse `src/colfilter.rs` from RusTrace (syntax, parsing, tests) and adapt it to the RusNet columns.
+- Reuse `src/colfilter.rs` from RusTrace (syntax, parsing, tests) and adapt it to the MM PortLens columns.
 - Syntax per field:
   - plain text = contains (case-insensitive), `!text` = does not contain,
   - `/regex/` = regular expression,
