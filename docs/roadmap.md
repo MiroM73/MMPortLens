@@ -52,7 +52,7 @@ program, README / `docs/architecture.md` / `docs/history.md`, detailed commit wi
 ## Phase 4b – asked by the owner after v0.2.9 (done, not released yet)
 | Issue | What | Status |
 |-------|------|--------|
-| #30 | Live traffic (TCP packets, ESTATS of #8) and I/O operations graph in the process properties window of #28, `egui_plot` (reusable by #19) | done; the TCP plot as administrator not yet checked by hand |
+| #30 | Live traffic (TCP packets, ESTATS of #8) and I/O operations graph in the process properties window of #28, `egui_plot` (reusable by #19) | done (0243216); the TCP plot as administrator not yet checked by hand |
 
 ## Phase 5 – recording and automation
 | Issue | What | Status |
@@ -64,16 +64,16 @@ program, README / `docs/architecture.md` / `docs/history.md`, detailed commit wi
 | #19 | Statistics over time (data from the recording of #3) | |
 | #11 | Country and ASN (offline) – least critical, depends on an offline database | |
 
-## Any time (small fixes found on the way)
+## Any time (small fixes found on the way) – all done, not released yet
 | Issue | What | Status |
 |-------|------|--------|
-| #21 part 3 | Status bar hint when Windows reports invalid TCP states | done |
-| #22 | Sort arrow in the header drawn as an empty box | done |
-| #23 | Live snapshot test failed once (flaky) – better message, retry; reproduced: own connection reported as Listen (#21) | done |
-| #24 | Listener rows flicker between two keys when Windows alternates state 0 and Listen | done |
-| #25 | `release.ps1` loses the jq quotes under Windows PowerShell 5.1 while waiting for the workflow | done |
-| #26 | Update check: retry transient GitHub errors (HTTP 502/503/504, timeouts) and explain them; port the change back to RusTrace (copied `update`/`http` code, see #20) | done; RusTrace port is MiroM73/Rustrace#60 |
-| #29 | Status bar texts overlap in a narrow window (found in the #27 check) | done |
+| #21 part 3 | Status bar hint when Windows reports invalid TCP states | done (df3a539) |
+| #22 | Sort arrow in the header drawn as an empty box | done (4324a64) |
+| #23 | Live snapshot test failed once (flaky) – better message, retry; reproduced: own connection reported as Listen (#21) | done (91e856a) |
+| #24 | Listener rows flicker between two keys when Windows alternates state 0 and Listen | done (929cd05) |
+| #25 | `release.ps1` loses the jq quotes under Windows PowerShell 5.1 while waiting for the workflow | done (16d6136) |
+| #26 | Update check: retry transient GitHub errors (HTTP 502/503/504, timeouts) and explain them; port the change back to RusTrace (copied `update`/`http` code, see #20) | done (739a9c4); RusTrace port is MiroM73/Rustrace#60 |
+| #29 | Status bar texts overlap in a narrow window (found in the #27 check) | done (10e1140) |
 
 ## Deferred indefinitely (owner's decision)
 | Issue | What | Status |

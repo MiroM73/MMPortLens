@@ -194,7 +194,7 @@
   window of an older version was not opened by hand. Comments added to #16 (`--preset` of #13 is
   the first piece of the command line) and #23 (the live snapshot test failed once more).
 
-## Not released yet
+## 0.3.7 (2026-11-08) – live traffic graph (phase 4b) and small fixes (any time)
 - #30: live traffic and I/O graph in the process properties window (`src/rates.rs`,
   `src/app/properties_graph.rs`, new dependency `egui_plot` 0.38 built on egui 0.37): TCP segments
   per second of the process from the ESTATS counters of #8 (collected while the window is open;
