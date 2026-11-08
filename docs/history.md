@@ -493,3 +493,10 @@
   numpad `+` ×4 gave 140 % with both scroll bars while the main window stayed at 100 %; Esc closed
   it and `stats_window` was saved (60,60, 884 × 561, 1.4). Charts for an opened recording (the
   idea in the issue comment) are not part of it.
+- Released **v1.1.1** (`scripts/release.ps1 1.1.1 -Yes`; written release notes: new – Statistics
+  #19, Help → Command line in its own zoomable window #42; changed – View → *Open windows
+  separately* #42; fixed – Duration in replays #31, command-line messages through a PowerShell pipe
+  #40; known issues #44, #43, #32, #37, #21). The README status line names 1.1.1. The local tests
+  passed, the workflow succeeded and the draft was published with the notes as the latest release.
+  Check of the released ZIP: checksum OK, `mmportlens.exe` has product version 1.1.1, and
+  `cargo test fetch_latest_release -- --ignored` passes with v1.1.1 as GitHub's latest release.
