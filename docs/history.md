@@ -145,3 +145,14 @@
   draft published with the notes. Check of the released ZIP: checksum OK, `mmportlens.exe` has
   product version 0.2.5, and the update code (`cargo test fetch_latest_release -- --ignored`) sees
   v0.2.5 as the latest release. The update window of an older version was not opened by hand.
+
+## Unreleased – phase 4, comfort
+- #28: process properties window (`src/app/properties.rs`) from **Properties…** in the row context
+  menu or Alt+Enter: icon, name, description, path, company, user, start time, command line,
+  services, PID and the number of TCP / UDP endpoints, not tied to the selection; Copy, Open file
+  location, File properties (`ShellExecuteExW` "properties"), End process (confirmation of #6),
+  Close, Esc. When the process exits the last values stay with "(process has exited)". Verified
+  with a unit test of the exit decision and in the running program on a `python -m http.server`
+  listener: the window showed the same values as the details pane, End process from the window
+  ended it after the confirmation and the window switched to the exited state (0 TCP, End process
+  disabled), File properties opened the Windows dialog of python.exe, Esc closed the window.

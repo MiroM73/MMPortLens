@@ -106,6 +106,12 @@ impl ProcessCache {
 }
 
 /// File name part of a path (both `\` and `/` separators).
+/// When the process `pid` started (ms since the Unix epoch); `None` when it does not exist or
+/// cannot be opened. With the PID it identifies the process (properties window, #28).
+pub fn start_time(pid: u32) -> Option<u64> {
+    platform::start_time(pid)
+}
+
 pub fn file_name(path: &str) -> &str {
     path.rsplit(['\\', '/']).next().unwrap_or(path)
 }

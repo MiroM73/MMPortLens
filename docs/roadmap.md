@@ -44,7 +44,7 @@ program, README / `docs/architecture.md` / `docs/history.md`, detailed commit wi
 ## Phase 4 – comfort
 | Issue | What | Status |
 |-------|------|--------|
-| #28 | Process properties window from the row context menu (reuses the process details of #7 and the end-process action of #6) | |
+| #28 | Process properties window from the row context menu (reuses the process details of #7 and the end-process action of #6) | done |
 | #10 | Custom color rules for rows (highlight rules from RusTrace) | |
 | #13 | Saved filter presets (builds on #1) | |
 | #12 | Group rows by process | |

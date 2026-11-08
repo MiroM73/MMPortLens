@@ -45,6 +45,8 @@ Early version (0.2.5). What works now:
 - **Process details**: icon, description and company from the version resource, user, command
   line, start time and the **Windows services** running in the process (which service of
   `svchost.exe` it is) – in the details pane under the table, as columns and as a tooltip.
+- **Process properties** window (row context menu → Properties…, Alt+Enter) with Copy, Open file
+  location, File properties and End process; it stays on its process and shows when it exits.
 - **Close connection** (IPv4 TCP, like TCPView) and **End process** from the context menu or with
   Del, for all selected rows, after a confirmation that lists them.
 - **Multi-selection and keyboard shortcuts**: Ctrl / Shift + click, arrows, Ctrl+A, Ctrl+C copies

@@ -25,15 +25,19 @@ impl App {
         let filter_id = egui::Id::unique(FILTER_ID);
         let filter_focused = ctx.memory(|m| m.has_focus(filter_id));
 
-        let (f5, ctrl_f, ctrl_a, help, export) = ctx.input_mut(|i| {
+        let (f5, ctrl_f, ctrl_a, help, export, props) = ctx.input_mut(|i| {
             (
                 i.consume_key(Modifiers::NONE, Key::F5),
                 i.consume_key(Modifiers::COMMAND, Key::F),
                 !typing && i.consume_key(Modifiers::COMMAND, Key::A),
                 i.consume_key(Modifiers::NONE, Key::F1),
                 i.consume_key(Modifiers::COMMAND, Key::S),
+                !typing && i.consume_key(Modifiers::ALT, Key::Enter),
             )
         });
+        if props {
+            self.open_properties_of_cursor();
+        }
         if export {
             self.open_export();
         }
@@ -56,7 +60,9 @@ impl App {
             && (!typing || filter_focused)
             && ctx.input_mut(|i| i.consume_key(Modifiers::NONE, Key::Escape));
         if esc {
-            if !self.filter.is_empty() {
+            if !filter_focused && self.close_properties() {
+                // The properties window (#28) closes first.
+            } else if !self.filter.is_empty() {
                 self.filter.clear();
                 self.view_dirty = true;
             } else {

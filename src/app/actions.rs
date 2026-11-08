@@ -113,6 +113,24 @@ impl App {
         self.pending_action = Some(Pending::Kill(procs));
     }
 
+    /// End process of one process (the properties window, #28), with the same confirmation.
+    pub(in crate::app) fn request_kill_process(&mut self, pid: u32, info: Arc<ProcessInfo>) {
+        match actions::can_kill(pid) {
+            Ok(()) => self.pending_action = Some(Pending::Kill(vec![(pid, info)])),
+            Err(b) => {
+                self.action_result = Some(ActionResult {
+                    text: kill_block_text(b),
+                    error: true,
+                })
+            }
+        }
+    }
+
+    /// The reason why the process `pid` cannot be ended, if any.
+    pub(in crate::app) fn kill_blocked(pid: u32) -> Option<String> {
+        actions::can_kill(pid).err().map(kill_block_text)
+    }
+
     /// The items of the row context menu; the chosen one is run by [`Self::menu_action`].
     pub(in crate::app) fn action_menu_items(&self, ui: &mut egui::Ui) -> Option<MenuAction> {
         let mut chosen = None;

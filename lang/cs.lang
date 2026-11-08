@@ -7,6 +7,8 @@ key.ctrl = Ctrl
 key.shift = Shift
 key.space = Mezerník
 key.del = Del
+key.alt = Alt
+key.enter = Enter
 key.wheel = kolečko myši
 
 # --- Menu ---
@@ -53,6 +55,7 @@ help.select_all = Vybrat všechny zobrazené řádky
 help.copy = Kopírovat vybrané řádky (oddělené tabulátorem, u více řádků s hlavičkou)
 help.export = Exportovat tabulku (CSV, Excel, JSON Lines, HTML)
 help.close = Zavřít vybraná spojení (nejprve se zeptá)
+help.properties = Vlastnosti procesu vybraného řádku
 help.shortcuts = Tento seznam
 
 # --- Sloupce ---
@@ -122,6 +125,7 @@ filter.clear.tip = Zrušit všechny filtry sloupců
 # --- Tabulka ---
 table.header.tip = Klik: seřadit podle sloupce. Tažení: přesunout sloupec. Dvojklik na okraj: přizpůsobit šířku. Pravý klik: sloupce.
 table.copy_rows = Kopírovat vybrané řádky
+table.properties = Vlastnosti…
 
 # --- Zavřít spojení / Ukončit proces ---
 action.close = Zavřít spojení
@@ -148,6 +152,17 @@ action.kill.own = MM PortLens neukončí sám sebe – použij Soubor → Konec.
 details.started = Proces spuštěn
 details.services_line = Služby: {services}
 details.no_access = Windows bez administrátorských práv neposkytne podrobnosti o tomto procesu (Soubor → Restartovat jako správce).
+properties.title = Vlastnosti procesu
+properties.exited = (proces skončil)
+properties.exited.text = Proces skončil – hodnoty jsou poslední známé.
+properties.no_rows = Proces teď nemá v tabulce žádné koncové body.
+properties.endpoints.label = Koncové body
+properties.endpoints = {tcp} TCP, {udp} UDP
+properties.copy = Kopírovat
+properties.open_location = Otevřít umístění souboru
+properties.file_properties = Vlastnosti souboru
+properties.file_properties.failed = Windows nedokázal otevřít vlastnosti souboru.
+properties.close = Zavřít
 
 # --- Stavový řádek ---
 status.endpoints = Koncové body: {shown} z {total}

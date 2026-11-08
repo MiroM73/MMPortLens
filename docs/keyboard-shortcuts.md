@@ -10,7 +10,7 @@ shortcuts** (F1).
 | F5 | Refresh now (also while paused) |
 | Space | Pause / resume the automatic refresh |
 | Ctrl+F | Go to the filter field of the toolbar |
-| Esc | Clear the text filter; when it is empty, clear the selection |
+| Esc | Close the process properties window; else clear the text filter; when it is empty, clear the selection |
 | ↑ ↓ PgUp PgDn Home End | Move in the table |
 | Shift + ↑ ↓ PgUp PgDn Home End | Extend the selection from the anchor row |
 | Click | Select one row |
@@ -22,6 +22,7 @@ shortcuts** (F1).
 | Shift + mouse wheel | Scroll the table horizontally when the columns do not fit (also the horizontal touchpad gesture) |
 | Ctrl+A | Select all rows shown |
 | Del | Close the selected connections (asks first; IPv4 TCP only) |
+| Alt+Enter | Properties of the process of the cursor row (also **Properties…** in the row context menu) |
 | Ctrl+C | Copy the selected rows, tab-separated in the visible columns (a header line for several rows; values with a tab, quote or line break are quoted, so they paste into Excel) |
 | Ctrl+S | Export the table (CSV, Excel, JSON Lines, HTML) |
 | F1 | Keyboard shortcuts window |

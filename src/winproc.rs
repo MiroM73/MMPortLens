@@ -156,6 +156,56 @@ mod imp {
             small: *mut Handle,
             count: u32,
         ) -> u32;
+        fn ShellExecuteExW(info: *mut ShellExecuteInfo) -> i32;
+    }
+
+    /// `SHELLEXECUTEINFOW`.
+    #[repr(C)]
+    struct ShellExecuteInfo {
+        size: u32,
+        mask: u32,
+        wnd: Handle,
+        verb: *const u16,
+        file: *const u16,
+        parameters: *const u16,
+        directory: *const u16,
+        show: i32,
+        inst_app: Handle,
+        id_list: *mut c_void,
+        class: *const u16,
+        key_class: Handle,
+        hot_key: u32,
+        icon_or_monitor: Handle,
+        process: Handle,
+    }
+
+    /// Opens the Windows file properties dialog of `path` (#28). The dialog runs on its own
+    /// thread of the shell; returns false when Windows refused.
+    pub fn file_properties(path: &str) -> bool {
+        const SEE_MASK_INVALIDATELIST: u32 = 0x0000_000C;
+        const SW_SHOW: i32 = 5;
+        let verb = wide("properties");
+        let file = wide(path);
+        let mut info = ShellExecuteInfo {
+            size: std::mem::size_of::<ShellExecuteInfo>() as u32,
+            mask: SEE_MASK_INVALIDATELIST,
+            wnd: std::ptr::null_mut(),
+            verb: verb.as_ptr(),
+            file: file.as_ptr(),
+            parameters: std::ptr::null(),
+            directory: std::ptr::null(),
+            show: SW_SHOW,
+            inst_app: std::ptr::null_mut(),
+            id_list: std::ptr::null_mut(),
+            class: std::ptr::null(),
+            key_class: std::ptr::null_mut(),
+            hot_key: 0,
+            icon_or_monitor: std::ptr::null_mut(),
+            process: std::ptr::null_mut(),
+        };
+        // SAFETY: `info` is a fully initialized SHELLEXECUTEINFOW with its size set; the
+        // strings are NUL-terminated and outlive the call.
+        unsafe { ShellExecuteExW(&mut info) != 0 }
     }
 
     #[link(name = "user32")]

@@ -7,6 +7,8 @@ key.ctrl = Strg
 key.shift = Umschalt
 key.space = Leertaste
 key.del = Entf
+key.alt = Alt
+key.enter = Eingabe
 key.wheel = Mausrad
 
 # --- Menü ---
@@ -53,6 +55,7 @@ help.select_all = Alle angezeigten Zeilen auswählen
 help.copy = Ausgewählte Zeilen kopieren (tabulatorgetrennt, bei mehreren Zeilen mit Kopfzeile)
 help.export = Tabelle exportieren (CSV, Excel, JSON Lines, HTML)
 help.close = Ausgewählte Verbindungen schließen (mit Rückfrage)
+help.properties = Eigenschaften des Prozesses der ausgewählten Zeile
 help.shortcuts = Diese Liste
 
 # --- Spalten ---
@@ -122,6 +125,7 @@ filter.clear.tip = Alle Spaltenfilter löschen
 # --- Tabelle ---
 table.header.tip = Klick: nach dieser Spalte sortieren. Ziehen: Spalte verschieben. Doppelklick auf den Rand: Breite anpassen. Rechtsklick: Spalten.
 table.copy_rows = Ausgewählte Zeilen kopieren
+table.properties = Eigenschaften…
 
 # --- Verbindung schließen / Prozess beenden ---
 action.close = Verbindung schließen
@@ -148,6 +152,17 @@ action.kill.own = MM PortLens beendet sich nicht selbst – Datei → Beenden ve
 details.started = Prozess gestartet
 details.services_line = Dienste: {services}
 details.no_access = Ohne Administratorrechte liefert Windows keine Details zu diesem Prozess (Datei → Als Administrator neu starten).
+properties.title = Prozesseigenschaften
+properties.exited = (Prozess beendet)
+properties.exited.text = Der Prozess ist beendet – die Werte sind die zuletzt bekannten.
+properties.no_rows = Der Prozess hat jetzt keine Endpunkte in der Tabelle.
+properties.endpoints.label = Endpunkte
+properties.endpoints = {tcp} TCP, {udp} UDP
+properties.copy = Kopieren
+properties.open_location = Dateipfad öffnen
+properties.file_properties = Dateieigenschaften
+properties.file_properties.failed = Windows konnte die Dateieigenschaften nicht öffnen.
+properties.close = Schließen
 
 # --- Statusleiste ---
 status.endpoints = Endpunkte: {shown} von {total}

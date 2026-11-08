@@ -32,6 +32,7 @@ mod export;
 mod help;
 mod input;
 mod menu;
+mod properties;
 mod statusbar;
 mod table;
 mod toolbar;
@@ -128,6 +129,8 @@ pub struct App {
     show_shortcuts: bool,
     /// Close connection / End process waiting for confirmation (#6).
     pending_action: Option<actions::Pending>,
+    /// The process properties window (#28).
+    properties: Option<properties::Properties>,
     /// Result of the last action (status bar).
     action_result: Option<actions::ActionResult>,
     /// The traffic counters were refused by Windows (not elevated, #8).
@@ -200,6 +203,7 @@ impl App {
             show_shortcuts: false,
             pending_action: None,
             action_result: None,
+            properties: None,
             icons: HashMap::new(),
             stats_denied: false,
             last_changes: Changes::default(),
@@ -411,6 +415,7 @@ impl eframe::App for App {
         egui::CentralPanel::default().show(ui, |ui| self.table(ui));
         self.about_window(&ctx);
         self.shortcuts_window(&ctx);
+        self.properties_window(&ctx);
         self.confirm_window(&ctx);
         self.check_export();
         self.export_window(&ctx);

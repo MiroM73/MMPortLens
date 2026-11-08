@@ -462,7 +462,7 @@ fn computer_name() -> String {
 }
 
 /// Opens Explorer with the file selected (other systems: its folder) – from RusTrace.
-fn show_in_folder(path: &std::path::Path) -> std::io::Result<()> {
+pub(in crate::app) fn show_in_folder(path: &std::path::Path) -> std::io::Result<()> {
     #[cfg(windows)]
     {
         use std::os::windows::process::CommandExt;

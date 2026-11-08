@@ -16,6 +16,7 @@ const SHORTCUTS: &[(&str, &str)] = &[
     ("Ctrl+C", "help.copy"),
     ("Ctrl+S", "help.export"),
     ("Del", "help.close"),
+    ("Alt+Enter", "help.properties"),
     ("F1", "help.shortcuts"),
 ];
 
@@ -24,6 +25,8 @@ pub(in crate::app) fn kb(shortcut: &str) -> String {
     shortcut
         .replace("Ctrl", &t!("key.ctrl"))
         .replace("Shift", &t!("key.shift"))
+        .replace("Alt", &t!("key.alt"))
+        .replace("Enter", &t!("key.enter"))
         .replace("Space", &t!("key.space"))
         .replace("Del", &t!("key.del"))
         .replace("wheel", &t!("key.wheel"))

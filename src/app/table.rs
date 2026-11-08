@@ -84,6 +84,7 @@ impl App {
         let mut clicked_row: Option<(usize, bool)> = None;
         let mut copy = false;
         let mut action: Option<actions::MenuAction> = None;
+        let mut properties: Option<(u32, Arc<crate::process::ProcessInfo>)> = None;
 
         // Filter row under the headers: one field per visible column (edited in a copy, applied
         // after the table is drawn).
@@ -217,6 +218,18 @@ impl App {
                         copy = true;
                         ui.close();
                     }
+                    // The process of the right-clicked row, not of the selection (#28).
+                    if ui
+                        .add_enabled(
+                            r.conn.pid != 0,
+                            egui::Button::new(t!("table.properties"))
+                                .shortcut_text(help::kb("Alt+Enter")),
+                        )
+                        .clicked()
+                    {
+                        properties = Some((r.conn.pid, r.process.clone()));
+                        ui.close();
+                    }
                     ui.separator();
                     action = action.or(self.action_menu_items(ui));
                 });
@@ -277,6 +290,9 @@ impl App {
         }
         if copy {
             self.copy_selection(&ui.ctx().clone());
+        }
+        if let Some((pid, info)) = properties {
+            self.open_properties(pid, info);
         }
         if let Some(a) = action {
             self.menu_action(a);

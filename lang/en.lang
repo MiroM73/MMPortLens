@@ -18,6 +18,8 @@ key.ctrl = Ctrl
 key.shift = Shift
 key.space = Space
 key.del = Del
+key.alt = Alt
+key.enter = Enter
 key.wheel = Mouse wheel
 
 # --- Menu ---
@@ -64,6 +66,7 @@ help.select_all = Select all rows shown
 help.copy = Copy the selected rows (tab-separated, with a header line for several rows)
 help.export = Export the table (CSV, Excel, JSON Lines, HTML)
 help.close = Close the selected connections (asks first)
+help.properties = Properties of the process of the selected row
 help.shortcuts = This list
 
 # --- Columns ---
@@ -133,6 +136,7 @@ filter.clear.tip = Clear all column filters
 # --- Table ---
 table.header.tip = Click: sort by this column. Drag: move the column. Double click on the border: fit the width. Right click: columns.
 table.copy_rows = Copy selected rows
+table.properties = Properties…
 
 # --- Close connection / End process ---
 action.close = Close connection
@@ -159,6 +163,17 @@ action.kill.own = MM PortLens does not end itself – use File → Exit.
 details.started = Process started
 details.services_line = Services: {services}
 details.no_access = Windows does not give details of this process without administrator rights (File → Restart as administrator).
+properties.title = Process properties
+properties.exited = (process has exited)
+properties.exited.text = The process has exited – the values are the last ones known.
+properties.no_rows = The process has no endpoints in the table now.
+properties.endpoints.label = Endpoints
+properties.endpoints = {tcp} TCP, {udp} UDP
+properties.copy = Copy
+properties.open_location = Open file location
+properties.file_properties = File properties
+properties.file_properties.failed = Windows could not open the file properties.
+properties.close = Close
 
 # --- Status bar ---
 status.endpoints = Endpoints: {shown} of {total}

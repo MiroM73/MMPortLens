@@ -32,7 +32,7 @@ with the change.
 | `src/config.rs` | `Config` (JSON, every field has a default). |
 | `src/i18n.rs` | `t!()` and the language files – the same module as in RusTrace. |
 | `src/timefmt.rs` | Clock times for the table. |
-| `src/app/` | The UI, split by area like RusTrace: `mod.rs` (state, frame loop), `menu.rs`, `toolbar.rs`, `table.rs`, `statusbar.rs`, `colfilters.rs` (column filter state and field), `admin.rs` (restart as administrator), `update_window.rs` (Help → Check for updates), `input.rs` (keyboard shortcuts, copying the selection), `help.rs` (Help → Keyboard shortcuts), `actions.rs` (context menu items, confirmation window and result of #6), `details.rs` (details pane, process icons and tooltip of #7), `columnlayout.rs` (header drag and drop, remembered widths, fit on a border double click – #2), `export.rs` (File → Export… window, export thread, status – #9). |
+| `src/app/` | The UI, split by area like RusTrace: `mod.rs` (state, frame loop), `menu.rs`, `toolbar.rs`, `table.rs`, `statusbar.rs`, `colfilters.rs` (column filter state and field), `admin.rs` (restart as administrator), `update_window.rs` (Help → Check for updates), `input.rs` (keyboard shortcuts, copying the selection), `help.rs` (Help → Keyboard shortcuts), `actions.rs` (context menu items, confirmation window and result of #6), `details.rs` (details pane, process icons and tooltip of #7), `properties.rs` (process properties window of #28), `columnlayout.rs` (header drag and drop, remembered widths, fit on a border double click – #2), `export.rs` (File → Export… window, export thread, status – #9). |
 | `lang/*.lang` | Built-in translations (en, sk, cs, de), embedded with `include_str!`. |
 
 ## Reading the connections
@@ -255,6 +255,25 @@ users' and protected processes when not elevated) the start time is `None` and t
   cursor row (or the first selected row): the connection fields on the left, the process with its
   icon on the right; values are selectable. Without a path and without elevation it explains that
   Windows needs administrator rights.
+
+### Process properties window (#28)
+
+**Properties…** in the row context menu (for the right-clicked row, disabled for PID 0) and
+Alt+Enter (cursor row) open one window (`src/app/properties.rs`, `App::properties`) for a PID; it
+is not tied to the selection and is reused for the next process. Its content is the same
+`process_grid` as the details pane (`details.rs`, the grid id is a parameter so both can be on
+screen; `process_values` gives the name / value lines for the grid and the Copy text) plus the PID
+and the number of TCP / UDP endpoints of the PID in the tracker (closed rows and rows of a reused
+PID with another start time are not counted). Every frame the window takes the newest
+`Arc<ProcessInfo>` from those rows; when none is left it calls `process::start_time` at most once a
+second and the pure `liveness` decides: same start time → "no endpoints in the table", PID gone or
+another start time → "(process has exited)" with the last known values (no known start time –
+access denied – cannot be decided and counts as running). Buttons: Copy, Open file location (the
+`show_in_folder` of the export, `explorer /select,"path"`), File properties
+(`winproc::file_properties`: `ShellExecuteExW` with the `properties` verb and
+`SEE_MASK_INVALIDATELIST`; the shell shows the dialog on its own thread), End process
+(`request_kill_process` → the confirmation window of #6), Close. Esc closes the window before it
+clears the text filter or the selection.
 
 ## Close connection, End process (#6)
 
