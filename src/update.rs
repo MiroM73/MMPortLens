@@ -581,6 +581,8 @@ pub struct SessionState {
     /// Column filters (#1).
     pub col_filters: Vec<(crate::columns::ColumnId, String)>,
     pub window: Option<WindowState>,
+    /// Filter syntax of `col_filters` (#35); 0 = written by a version before #35.
+    pub filter_syntax: u32,
 }
 
 /// Command line switch of the restarted program.
@@ -600,7 +602,19 @@ impl SessionState {
     pub fn take(path: &Path) -> Option<Self> {
         let text = std::fs::read_to_string(path).ok();
         let _ = std::fs::remove_file(path);
-        serde_json::from_str(&text?).ok()
+        let mut state: Self = serde_json::from_str(&text?).ok()?;
+        state.migrate_filters();
+        Some(state)
+    }
+
+    /// The column filters of an older version in the current filter syntax (#35).
+    fn migrate_filters(&mut self) {
+        if self.filter_syntax < crate::colfilter::SYNTAX_VERSION {
+            for (_, t) in &mut self.col_filters {
+                *t = crate::colfilter::migrate_v1(t);
+            }
+            self.filter_syntax = crate::colfilter::SYNTAX_VERSION;
+        }
     }
 }
 
@@ -938,10 +952,20 @@ mod tests {
                 size: Some([800.0, 600.0]),
                 maximized: false,
             }),
+            filter_syntax: crate::colfilter::SYNTAX_VERSION,
         };
         let file = state.save_temp().unwrap();
         assert_eq!(SessionState::take(&file), Some(state));
         assert!(!file.exists());
+        // The state of a version before #35: its filters in the new syntax.
+        let old = SessionState {
+            col_filters: vec![(crate::columns::ColumnId::Process, "!a|b".into())],
+            filter_syntax: 0,
+            ..Default::default()
+        };
+        let file = old.save_temp().unwrap();
+        let back = SessionState::take(&file).unwrap();
+        assert_eq!(back.col_filters[0].1, "!a&!b");
         // An older / partial state still loads.
         assert_eq!(
             serde_json::from_str::<SessionState>("{}").unwrap(),

@@ -577,15 +577,36 @@ A filter row under the column headers has one text field per visible column (**V
 filters**). The syntax is implemented in `colfilter.rs`, whose core (alternatives, `=` exact,
 `!` negation, numeric ranges) comes from RusTrace:
 
-- every column: `text` (contains), `=text`, `/regex/`, `a|b`, `!…`; case-insensitive. A `|` inside
-  `/…/` belongs to the regex (`split_alternatives` tracks an open regex: it starts with `/` at the
-  beginning of an alternative and ends with a `/` followed by `|` or the end);
+- every column: terms `text` (contains), `=text`, `/regex/`, each optionally negated with `!`,
+  combined with `&` (AND) and `|` (OR), precedence `!` > `&` > `|` (#35), no parentheses;
+  case-insensitive. A `|` or `&` inside `/…/` belongs to the regex (`split_outside_regex` tracks an
+  open regex: it starts with `/` at the beginning of a term, after spaces and `!`, and ends with a
+  `/` followed by `|`, `&` or the end; an unclosed `/…` is text). Empty terms and groups are
+  ignored; `!!a` = `a`;
 - `FilterKind::Number` (PID, ports – `ColumnId::filter_kind`): `>n`, `>=n`, `<n`, `<=n`, `a-b`,
   `a..b`; a value that is not a number never matches them;
 - `FilterKind::Address` (local / remote address): CIDR (`10.0.0.0/8`, `fe80::/10`, prefix compared
   as bits; IPv4-mapped IPv6 is treated as IPv4) and `loopback`, `private` (RFC 1918, CGNAT
   100.64/10, link-local, ULA fc00::/7, fe80::/10), `public` (none of these, nor unspecified,
   multicast or broadcast). An empty address (listener, UDP) never matches them.
+
+**Internals (#35).** `ColumnFilter` is a list of OR groups, each a list of AND terms
+`(negate, Term)`; `Term` = `Text(Regex)` (contains / exact / regex compiled case-insensitive, one
+regex per term), `Range(NumRange)` or `Net(Net)`. `matches` = any group whose terms all match
+(`hit != negate`). The single combined regex of before #35 was dropped: with one regex per term
+the 5 000-row test still runs far below its 50 ms limit in a debug build.
+
+**Migration (#35).** Before #35 a leading `!` negated the whole filter (`!a|b` = neither a nor b);
+now it negates one term. `colfilter::migrate_v1` rewrites a leading `!` with several alternatives
+to `!a&!b` (one term, no leading `!`, and `|` inside a regex unchanged). It is applied once to
+`Config::column_filters`, the column filters of `Config::filter_presets` and the patterns of
+`Config::color_rules` when the settings have no `filter_syntax` (field default 0, `Config::default`
+= `SYNTAX_VERSION` 1; `Config::migrate_filters` in `parse`), to `SessionState::col_filters` of an
+update restart from an older version (`SessionState::filter_syntax`), and to the patterns of an
+imported color rules file in the old form (a plain JSON array; exports are now
+`{"filter_syntax": 1, "rules": [...]}`, `rules::export_rules` / `parse_rules`). A literal `&` in
+an old filter now means AND (rare; a regex `/a&b/` matches it literally). The same change is to be
+ported to RusTrace (MiroM73/Rustrace#61), whose `colfilter.rs` this module was copied from.
 
 `ColumnFilter::parse` returns `Err(FilterError)` for an invalid regex or prefix length; the field
 turns red with the error as a tooltip and the filter is not applied. Valid filters get a colored

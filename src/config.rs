@@ -70,6 +70,11 @@ pub struct Config {
     pub properties_window: Option<crate::update::WindowState>,
     /// Zoom and size of the `--help` window (#39).
     pub help_window: crate::helpwindow::HelpWindowState,
+    /// Version of the filter syntax of the saved filters (#35). A file without it (0) is from
+    /// before #35: its filters are rewritten once by `colfilter::migrate_v1`. The field default
+    /// is 0 (an old file), `Config::default()` has the current version.
+    #[serde(default)]
+    pub filter_syntax: u32,
 }
 
 /// When MM PortLens looks for a new version at start-up.
@@ -139,6 +144,7 @@ impl Default for Config {
             help_window: Default::default(),
             properties_separate: true,
             properties_window: None,
+            filter_syntax: crate::colfilter::SYNTAX_VERSION,
         }
     }
 }
@@ -167,7 +173,29 @@ impl Config {
         cfg.color_rules
             .iter_mut()
             .for_each(crate::rules::ColorRule::fill_missing_dark);
+        cfg.migrate_filters();
         Some(cfg)
+    }
+
+    /// Rewrites the column filters, filter presets and color rule patterns of a file written
+    /// before #35 (`!a|b` = neither a nor b → `!a&!b`); once, then the version is current.
+    fn migrate_filters(&mut self) {
+        use crate::colfilter::{SYNTAX_VERSION, migrate_v1};
+        if self.filter_syntax >= SYNTAX_VERSION {
+            return;
+        }
+        let texts = self.column_filters.iter_mut().map(|(_, t)| t).chain(
+            self.filter_presets
+                .iter_mut()
+                .flat_map(|p| p.column_filters.iter_mut().map(|(_, t)| t)),
+        );
+        for t in texts {
+            *t = migrate_v1(t);
+        }
+        for r in &mut self.color_rules {
+            r.pattern = migrate_v1(&r.pattern);
+        }
+        self.filter_syntax = SYNTAX_VERSION;
     }
 
     /// Writes the settings through a temporary file, so a crash never leaves half a file.
@@ -230,6 +258,34 @@ mod tests {
         assert!(none.color_rules.is_empty());
         let daily = Config::parse(r#"{"update_when": "daily"}"#).unwrap();
         assert_eq!(daily.update_when, UpdateCheck::Daily);
+    }
+
+    #[test]
+    fn old_filters_are_migrated_once() {
+        let old = r#"{
+            "column_filters": [["process", "!svchost|system"], ["pid", ">4"]],
+            "filter_presets": [{"name": "p", "column_filters": [["state", "!listen|=closed"]]}],
+            "color_rules": [{"name": "r", "pattern": "!a|b"}]
+        }"#;
+        let cfg = Config::parse(old).unwrap();
+        assert_eq!(cfg.filter_syntax, crate::colfilter::SYNTAX_VERSION);
+        assert_eq!(cfg.column_filters[0].1, "!svchost&!system");
+        assert_eq!(cfg.column_filters[1].1, ">4");
+        assert_eq!(
+            cfg.filter_presets[0].column_filters[0].1,
+            "!listen&!=closed"
+        );
+        assert_eq!(cfg.color_rules[0].pattern, "!a&!b");
+        // Saved again with the version: a new-syntax "!a|b" stays as it is.
+        let mut cfg = cfg;
+        cfg.column_filters[0].1 = "!a|b".into();
+        let back = Config::parse(&serde_json::to_string(&cfg).unwrap()).unwrap();
+        assert_eq!(back.column_filters[0].1, "!a|b");
+        // A new configuration has the current version.
+        assert_eq!(
+            Config::default().filter_syntax,
+            crate::colfilter::SYNTAX_VERSION
+        );
     }
 
     #[test]

@@ -2,13 +2,16 @@
 //! (alternatives, exact match, negation, numeric ranges) is taken from RusTrace's `colfilter.rs`;
 //! regular expressions, `a-b` ranges and the address alternatives are added here.
 //!
-//! Syntax of a filter text (always case-insensitive):
+//! Syntax of a filter text (always case-insensitive), a list of terms:
 //! * `text` – the value contains `text`,
 //! * `=text` – the value is exactly `text`,
 //! * `/regex/` – the value matches the regular expression,
-//! * `a|b|c` – any of the alternatives (each one may be of any kind; a `|` inside `/…/` belongs
-//!   to the regex),
-//! * `!…` at the start – negation: the value matches none of the alternatives.
+//! * `!term` – NOT: the value does not match the term (#35),
+//! * `a&b` – AND: both terms match (#35),
+//! * `a|b` – OR: any of the alternatives.
+//!
+//! Precedence `!` > `&` > `|`: `a&b|c` = (a AND b) OR c; no parentheses (a regex covers the rest).
+//! A `|` or `&` inside `/…/` belongs to the regex.
 //!
 //! Number columns (PID, ports) also understand `>n`, `>=n`, `<n`, `<=n`, `a-b` and `a..b`
 //! (inclusive, a `..` bound may be left out); a value that is not a number never matches them.
@@ -16,8 +19,12 @@
 //! Address columns also understand a network in CIDR notation (`10.0.0.0/8`, `fe80::/10`) and the
 //! keywords `loopback`, `private` and `public`; an empty address never matches them.
 //!
-//! Spaces around alternatives are ignored; an empty filter (or only `!`) filters nothing. An
-//! invalid regular expression or network is an error: the caller shows it and does not filter.
+//! Spaces around `|`, `&` and after `!` are ignored; empty terms are ignored (`a&` = `a`), an empty
+//! filter (or only `!`) filters nothing. An invalid regular expression or network is an error: the
+//! caller shows it and does not filter.
+//!
+//! Before #35 a leading `!` negated the whole filter (`!a|b` = neither a nor b); [`migrate_v1`]
+//! rewrites such saved texts to the new form (`!a&!b`).
 
 use regex::{Regex, RegexBuilder};
 use std::net::{IpAddr, Ipv4Addr, Ipv6Addr};
@@ -63,82 +70,127 @@ enum Net {
     Public,
 }
 
+/// The version of the filter syntax written by this program: 1 = AND / per-term NOT (#35).
+pub const SYNTAX_VERSION: u32 = 1;
+
+/// One term of a filter.
+#[derive(Clone, Debug)]
+enum Term {
+    /// Contains / exact / regex, compiled case-insensitive.
+    Text(Regex),
+    Range(NumRange),
+    Net(Net),
+}
+
+impl Term {
+    fn matches(&self, value: &str) -> bool {
+        match self {
+            Term::Text(re) => re.is_match(value),
+            Term::Range(r) => number(value).is_some_and(|v| r.contains(&v)),
+            Term::Net(n) => value
+                .trim()
+                .parse::<IpAddr>()
+                .is_ok_and(|ip| n.contains(ip)),
+        }
+    }
+}
+
+/// A compiled filter: OR of groups, each group an AND of (negated?) terms.
 #[derive(Clone, Debug)]
 pub struct ColumnFilter {
-    /// The text alternatives (contains / exact / regex); `None` when there are none.
-    re: Option<Regex>,
-    ranges: Vec<NumRange>,
-    nets: Vec<Net>,
-    negate: bool,
+    groups: Vec<Vec<(bool, Term)>>,
 }
 
-/// One alternative of a filter text: the text and whether it must match exactly (`=`).
-struct Alternative<'a> {
-    text: &'a str,
-    exact: bool,
-}
-
-/// The parts of a filter text between `|`, except that a `|` inside a `/regex/` alternative
-/// belongs to the regex (`/^(a|b)/` is one alternative).
-fn split_alternatives(body: &str) -> Vec<&str> {
+/// The parts of a filter text between the separator `sep` (`|` or `&`), except that a separator
+/// inside a `/regex/` term belongs to the regex (`/^(a|b)/` is one term). A regex starts with a
+/// `/` at the start of a term (after spaces and `!`) and ends with a `/` followed by spaces and a
+/// `|`, a `&` or the end.
+fn split_outside_regex(body: &str, sep: char) -> Vec<&str> {
     let mut parts = Vec::new();
     let mut start = 0;
     let mut in_regex = false;
-    let mut alt_start = true;
+    let mut term_start = true;
     for (i, c) in body.char_indices() {
-        match c {
-            '|' if !in_regex => {
+        if !in_regex && (c == '|' || c == '&') {
+            if c == sep {
                 parts.push(&body[start..i]);
                 start = i + 1;
-                alt_start = true;
-                continue;
             }
-            '/' if alt_start => in_regex = true,
-            // A "/" followed by spaces and a "|" (or the end) closes the regex.
+            term_start = true;
+            continue;
+        }
+        match c {
+            '/' if term_start => in_regex = true,
             '/' if in_regex => {
                 let rest = body[i + 1..].trim_start();
-                if rest.is_empty() || rest.starts_with('|') {
+                if rest.is_empty() || rest.starts_with(['|', '&']) {
                     in_regex = false;
                 }
             }
             _ => {}
         }
-        if !c.is_whitespace() {
-            alt_start = false;
+        if !c.is_whitespace() && c != '!' {
+            term_start = false;
         }
     }
     parts.push(&body[start..]);
-    // An unclosed "/…" is no regex: split it at every "|" like text.
+    // An unclosed "/…" is no regex: split it at every separator like text.
     if in_regex {
         let last = parts.pop().unwrap_or_default();
-        parts.extend(last.split('|'));
+        parts.extend(last.split(sep));
     }
     parts
 }
 
-/// Splits a filter text into the negation flag and its alternatives (none = filters nothing).
-fn split(input: &str) -> (bool, Vec<Alternative<'_>>) {
-    let input = input.trim();
-    let (negate, body) = match input.strip_prefix('!') {
-        Some(rest) => (true, rest),
-        None => (false, input),
+/// The alternatives (`|`) of a filter text, each a list of AND terms: (negated, text, exact).
+/// Empty terms and groups are left out.
+fn split(input: &str) -> Vec<Vec<(bool, &str, bool)>> {
+    split_outside_regex(input, '|')
+        .into_iter()
+        .map(|alt| {
+            split_outside_regex(alt, '&')
+                .into_iter()
+                .filter_map(|t| {
+                    let mut t = t.trim();
+                    let mut negate = false;
+                    while let Some(rest) = t.strip_prefix('!') {
+                        negate = !negate;
+                        t = rest.trim_start();
+                    }
+                    let (text, exact) = match t.strip_prefix('=') {
+                        Some(e) => (e.trim(), true),
+                        None => (t, false),
+                    };
+                    (!text.is_empty()).then_some((negate, text, exact))
+                })
+                .collect::<Vec<_>>()
+        })
+        .filter(|g| !g.is_empty())
+        .collect()
+}
+
+/// Rewrites a filter text saved before #35 (syntax 0) to the current syntax: a leading `!`
+/// negated all alternatives, so `!a|b` (neither a nor b) becomes `!a&!b`. A leading `!` with one
+/// term, and every text without a leading `!`, stay as they are; a `|` inside `/regex/` is not
+/// split.
+pub fn migrate_v1(text: &str) -> String {
+    let trimmed = text.trim();
+    let Some(body) = trimmed.strip_prefix('!') else {
+        return text.to_owned();
     };
-    let alternatives = split_alternatives(body)
+    let parts: Vec<&str> = split_outside_regex(body, '|')
         .into_iter()
         .map(str::trim)
-        .filter(|a| !a.is_empty() && *a != "=")
-        .map(|a| match a.strip_prefix('=') {
-            Some(exact) => Alternative {
-                text: exact.trim(),
-                exact: true,
-            },
-            None => Alternative {
-                text: a,
-                exact: false,
-            },
-        })
+        .filter(|p| !p.is_empty() && *p != "=")
         .collect();
-    (negate, alternatives)
+    if parts.len() < 2 {
+        return text.to_owned();
+    }
+    parts
+        .iter()
+        .map(|p| format!("!{p}"))
+        .collect::<Vec<_>>()
+        .join("&")
 }
 
 /// A number of a filter or a cell: optional sign, digits, optional decimal point (`-1.5`).
@@ -260,66 +312,46 @@ impl Net {
 impl ColumnFilter {
     /// Compiles a filter text for a column of the given kind; `Ok(None)` when it filters nothing.
     pub fn parse(input: &str, kind: FilterKind) -> Result<Option<ColumnFilter>, FilterError> {
-        let (negate, alternatives) = split(input);
-        if alternatives.is_empty() {
-            return Ok(None);
+        let mut groups = Vec::new();
+        for alt in split(input) {
+            let mut terms = Vec::with_capacity(alt.len());
+            for (negate, text, exact) in alt {
+                terms.push((negate, term(text, exact, kind)?));
+            }
+            groups.push(terms);
         }
-        let (mut ranges, mut nets, mut texts) = (Vec::new(), Vec::new(), Vec::new());
-        for a in &alternatives {
-            if a.exact {
-                texts.push(format!("^{}$", regex::escape(a.text)));
-                continue;
-            }
-            if let Some(re) = a.text.strip_prefix('/').and_then(|r| r.strip_suffix('/')) {
-                // Checked on its own, so the error points at this alternative.
-                RegexBuilder::new(re)
-                    .build()
-                    .map_err(|e| FilterError::Regex(e.to_string()))?;
-                texts.push(format!("(?:{re})"));
-                continue;
-            }
-            if kind == FilterKind::Number
-                && let Some(range) = number_range(a.text)
-            {
-                ranges.push(range);
-                continue;
-            }
-            if kind == FilterKind::Address
-                && let Some(n) = net(a.text)?
-            {
-                nets.push(n);
-                continue;
-            }
-            texts.push(regex::escape(a.text));
-        }
-        let re = match texts.is_empty() {
-            true => None,
-            false => Some(
-                RegexBuilder::new(&texts.join("|"))
-                    .case_insensitive(true)
-                    .build()
-                    .map_err(|e| FilterError::Regex(e.to_string()))?,
-            ),
-        };
-        Ok(Some(ColumnFilter {
-            re,
-            ranges,
-            nets,
-            negate,
-        }))
+        Ok((!groups.is_empty()).then_some(ColumnFilter { groups }))
     }
 
     pub fn matches(&self, value: &str) -> bool {
-        let hit = self.re.as_ref().is_some_and(|re| re.is_match(value))
-            || (!self.ranges.is_empty()
-                && number(value).is_some_and(|v| self.ranges.iter().any(|r| r.contains(&v))))
-            || (!self.nets.is_empty()
-                && value
-                    .trim()
-                    .parse::<IpAddr>()
-                    .is_ok_and(|ip| self.nets.iter().any(|n| n.contains(ip))));
-        hit != self.negate
+        self.groups
+            .iter()
+            .any(|g| g.iter().all(|(negate, t)| t.matches(value) != *negate))
     }
+}
+
+/// Compiles one term.
+fn term(text: &str, exact: bool, kind: FilterKind) -> Result<Term, FilterError> {
+    let pattern = if exact {
+        format!("^{}$", regex::escape(text))
+    } else if let Some(re) = text.strip_prefix('/').and_then(|r| r.strip_suffix('/')) {
+        re.to_owned()
+    } else if kind == FilterKind::Number
+        && let Some(range) = number_range(text)
+    {
+        return Ok(Term::Range(range));
+    } else if kind == FilterKind::Address
+        && let Some(n) = net(text)?
+    {
+        return Ok(Term::Net(n));
+    } else {
+        regex::escape(text)
+    };
+    RegexBuilder::new(&pattern)
+        .case_insensitive(true)
+        .build()
+        .map(Term::Text)
+        .map_err(|e| FilterError::Regex(e.to_string()))
 }
 
 #[cfg(test)]
@@ -363,10 +395,14 @@ mod tests {
         // exact match
         assert!(m("=listen", "Listen"));
         assert!(!m("=listen", "Listening"));
-        // negation applies to all alternatives
+        // negation of one term (#35): "!a|b" = (not a) or b
         assert!(m("!svchost", "System"));
-        assert!(!m("!svchost|system", "System"));
+        assert!(m("!svchost|system", "System"));
+        assert!(!m("!svchost|system", "svchost.exe"));
+        assert!(!m("!svchost&!system", "System"));
         assert!(m("!=listen", "Established"));
+        assert!(m("! = listen", "Established"));
+        assert!(m("!!listen", "Listen"), "double negation");
         // special characters are literal
         assert!(m("a.b(", "xa.b(y"));
         assert!(!m("a.b", "axb"));
@@ -400,9 +436,17 @@ mod tests {
         assert!(m("/abc|def", "def"));
         assert!(m("/abc|def", "x/abc"));
         assert_eq!(
-            split_alternatives("a| /x|y/ |b|/z"),
+            split_outside_regex("a| /x|y/ |b|/z", '|'),
             ["a", " /x|y/ ", "b", "/z"]
         );
+        // "&" inside a regex belongs to it too, also after "!"
+        assert_eq!(
+            split_outside_regex("!/a&b/ & c|d", '&'),
+            ["!/a&b/ ", " c|d"]
+        );
+        assert!(m("/^at&t/", "AT&T"));
+        assert!(m("!/^(a|b)/&x", "x"));
+        assert!(!m("!/^(a|b)/&x", "ax"));
     }
 
     #[test]
@@ -437,7 +481,7 @@ mod tests {
         // a cell that is not a number never matches a numeric alternative
         for cell in ["", "-", "abc", "1.2.3"] {
             assert!(!num(">=0|<0", cell), "{cell:?}");
-            assert!(num("!>=0|<0", cell), "{cell:?}");
+            assert!(num("!>=0&!<0", cell), "{cell:?}");
         }
         // in a text column the same input is text
         assert!(m("1000-2000", "x1000-2000"));
@@ -492,8 +536,9 @@ mod tests {
         assert!(!addr("public|private|loopback|0.0.0.0/0", ""));
         assert!(addr("!public", ""));
         // combined with text and negation
-        assert!(addr("!loopback|private", "8.8.8.8"));
-        assert!(!addr("!loopback|private", "192.168.1.1"));
+        assert!(addr("!loopback&!private", "8.8.8.8"));
+        assert!(!addr("!loopback&!private", "192.168.1.1"));
+        assert!(addr("!loopback|private", "192.168.1.1"));
         assert!(addr("public|=::", "::"));
         assert!(addr("192.168", "192.168.1.1"));
         // invalid networks: an error
@@ -513,8 +558,71 @@ mod tests {
     }
 
     #[test]
+    fn and_not_and_precedence() {
+        // The examples of #35 (also in the filter tooltips of #36).
+        // Ports 1-99: AND of two ranges (OR would match every port).
+        for (port, hit) in [("0", false), ("1", true), ("99", true), ("100", false)] {
+            assert_eq!(num(">0&<100", port), hit, "{port}");
+            assert!(num(">0|<100", port), "{port}");
+        }
+        // Every port except 443 (`!=443`; `!443` excludes every port containing 443).
+        assert!(num(">0&!=443", "4430") && !num(">0&!=443", "443"));
+        assert!(!num(">0&!443", "443") && !num(">0&!443", "4430"));
+        assert!(num(">=49152&!50000-50100", "49152"));
+        assert!(!num(">=49152&!50000-50100", "50050"));
+        assert!(num(">=49152&!50000-50100", "50101"));
+        // State: everything except Listen and Established.
+        assert!(m("!Listen&!Established", "TimeWait"));
+        assert!(!m("!Listen&!Established", "Listen"));
+        assert!(!m("!Listen&!Established", "Established"));
+        // Process: contains svc but is not svchost.
+        assert!(m("svc&!svchost", "MsMpEngSvc.exe"));
+        assert!(!m("svc&!svchost", "svchost.exe"));
+        // Remote address: public, but not in 13.64.0.0/11.
+        assert!(addr("public&!13.64.0.0/11", "8.8.8.8"));
+        assert!(!addr("public&!13.64.0.0/11", "13.70.1.1"));
+        assert!(!addr("public&!13.64.0.0/11", "10.0.0.1"));
+        // Precedence: "a&b|c" = (a and b) or c.
+        assert!(m("443&public|=80", "443 public"));
+        assert!(!m("443&public|=80", "443"));
+        assert!(m("443&public|=80", "80"));
+        // Spaces and empty terms are ignored.
+        assert!(m(" a & ! b ", "a"));
+        assert!(m("a&", "xa") && m("&a&&", "xa"));
+        assert!(
+            ColumnFilter::parse(" & | ! & ", FilterKind::Text)
+                .unwrap()
+                .is_none()
+        );
+        // An error names its term.
+        assert!(matches!(
+            ColumnFilter::parse("x&10.0.0.0/40", FilterKind::Address),
+            Err(FilterError::Network(v)) if v == "10.0.0.0/40"
+        ));
+    }
+
+    #[test]
+    fn migration_of_old_negations() {
+        assert_eq!(migrate_v1("!a|b"), "!a&!b");
+        assert_eq!(migrate_v1(" ! svchost | =System |"), "!svchost&!=System");
+        assert_eq!(
+            migrate_v1("!/^(code|claude)/|edge"),
+            "!/^(code|claude)/&!edge"
+        );
+        // One term, no leading "!", empty: unchanged.
+        for same in ["!a", "! /x|y/", "a|b", "a|!b", "", "!", "!|"] {
+            assert_eq!(migrate_v1(same), same, "{same}");
+        }
+        // The rewritten filter selects the same values as the old one did.
+        for v in ["svchost.exe", "System", "chrome.exe"] {
+            let old_hit = !(v.to_lowercase().contains("svchost") || v == "System");
+            assert_eq!(m(&migrate_v1("!svchost|=system"), v), old_hit, "{v}");
+        }
+    }
+
+    #[test]
     fn five_thousand_rows_are_fast() {
-        let f = ColumnFilter::parse("!loopback|10.0.0.0/8|/^19/", FilterKind::Address)
+        let f = ColumnFilter::parse("!loopback&!10.0.0.0/8|/^19/", FilterKind::Address)
             .unwrap()
             .unwrap();
         let values: Vec<String> = (0..5000u32)

@@ -402,3 +402,21 @@
 ` escapes, and the new test `builtin_values_are_on_one_line` fails for any
   line of a built-in language file that is not `key = value` (checked: it failed on the old files,
   passes on the fixed ones; 179 tests with the work in progress).
+- #35: column filters with AND (`&`) and per-term NOT (`!`), precedence `!` > `&` > `|`, for the
+  filter row, color rules, presets and `--column`. `ColumnFilter` is now OR groups of AND terms
+  (one regex per term; the 5 000-row test stays far below its limit), `split_outside_regex`
+  keeps `|` and `&` inside `/regex/`. Old texts with a leading `!` (`!a|b` = neither a nor b) are
+  rewritten once by `colfilter::migrate_v1` to `!a&!b`: remembered column filters, presets and
+  color rules (guarded by the new `Config::filter_syntax`), the column filters handed over by an
+  update restart (`SessionState::filter_syntax`) and imported old rules files (exports now carry
+  `filter_syntax`). Tooltips of the filter fields and the rule pattern updated in all four
+  languages. Verified: fmt, clippy, 179 tests (the examples of the issue, precedence, empty terms,
+  `&` / `|` inside a regex, migration rules, migration of an old config / session state / rules
+  file, a new-syntax `!a|b` left alone once the version is saved); release build with an old
+  scratch config holding `!<15232>|<1` in the Process filter: the field showed `!<15232>&!<1`, the
+  table had no `<1…` processes, the file was saved with `filter_syntax: 1`; `!Listen&!Established`
+  in State hid both states; `>0&<1024` pasted into Local port left only ports 53–445. The tooltip
+  shows the whole syntax list. Found on the way: stale language files from an early package in
+  `target\release\lang` overrode the built-in texts in the local release build (moved aside; the
+  update replaces `lang\` next to the exe, so users are not affected). The port to RusTrace
+  (MiroM73/Rustrace#61) is not part of this commit.

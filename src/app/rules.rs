@@ -399,7 +399,7 @@ impl App {
                 .filter(|(_, p)| **p)
                 .map(|(r, _)| r.clone())
                 .collect();
-            let json = serde_json::to_string_pretty(&picked).unwrap_or_default();
+            let json = rules::export_rules(&picked);
             self.rules_msg = Some(match std::fs::write(&path, json) {
                 Ok(()) => {
                     close = true;

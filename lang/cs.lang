@@ -121,7 +121,7 @@ toolbar.filter.tip = Zobrazí řádky, ve kterých některý viditelný sloupec 
 
 # --- Filtry sloupců ---
 filter.hint = Filtr…
-filter.tip.text = Filtr tohoto sloupce (bez ohledu na velikost písmen):\n  text – obsahuje text\n  =text – je přesně text\n  /regex/ – odpovídá regulárnímu výrazu\n  a|b – kterákoli z možností\n  !… – žádná z možností
+filter.tip.text = Filtr tohoto sloupce (bez ohledu na velikost písmen):\n  text – obsahuje text\n  =text – je přesně text\n  /regex/ – odpovídá regulárnímu výrazu\n  !výraz – neodpovídá výrazu\n  a&b – oba výrazy (A)\n  a|b – kterákoli z možností (NEBO)\n  ! váže před &, & před |: a&b|c = (a a b) nebo c
 filter.tip.number = Čísla: >1024, >=1024, <1024, <=1024, 1000-2000, 1000..2000, =443
 filter.tip.address = Adresy: 10.0.0.0/8, fe80::/10 (síť), loopback, private (soukromé), public (veřejné)
 filter.error.regex = Neplatný regulární výraz – tento filtr se nepoužije:\n{error}
@@ -203,7 +203,7 @@ rules.col.background = Pozadí
 rules.col.preview = Náhled
 rules.preview_text = Ukázka
 rules.any_column = Libovolný zobrazený sloupec
-rules.pattern.tip = Stejná syntaxe jako filtry sloupců: text, =přesně, /regex/, a|b, !ne; čísla >1024, 1000-2000; adresy 10.0.0.0/8, loopback, private, public
+rules.pattern.tip = Stejná syntaxe jako filtry sloupců: text, =přesně, /regex/, !ne, a&b (a), a|b (nebo); čísla >1024, 1000-2000; adresy 10.0.0.0/8, loopback, private, public
 rules.up = Posunout výš (dřívější pravidla mají přednost)
 rules.down = Posunout níž
 rules.delete = Odstranit pravidlo

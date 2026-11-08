@@ -253,10 +253,38 @@ pub fn import_rules(rules: &mut Vec<ColorRule>, imported: Vec<ColorRule>) -> Rul
     res
 }
 
-/// Parses an exported rules file (a JSON array of rules).
+/// An exported rules file since #35: the rules with the version of their filter syntax.
+#[derive(Serialize, Deserialize)]
+struct RulesFile {
+    filter_syntax: u32,
+    rules: Vec<ColorRule>,
+}
+
+/// The text of an exported rules file.
+pub fn export_rules(rules: &[ColorRule]) -> String {
+    let file = RulesFile {
+        filter_syntax: crate::colfilter::SYNTAX_VERSION,
+        rules: rules.to_vec(),
+    };
+    serde_json::to_string_pretty(&file).unwrap_or_default()
+}
+
+/// Parses an exported rules file: `{"filter_syntax": n, "rules": [...]}`, or a plain JSON array
+/// of rules written before #35, whose patterns are rewritten by `colfilter::migrate_v1`.
 pub fn parse_rules(text: &str) -> Result<Vec<ColorRule>, String> {
-    let mut rules: Vec<ColorRule> = serde_json::from_str(text).map_err(|e| e.to_string())?;
-    rules.iter_mut().for_each(ColorRule::fill_missing_dark);
+    let (mut rules, syntax) = match serde_json::from_str::<RulesFile>(text) {
+        Ok(f) => (f.rules, f.filter_syntax),
+        Err(_) => (
+            serde_json::from_str::<Vec<ColorRule>>(text).map_err(|e| e.to_string())?,
+            0,
+        ),
+    };
+    for r in &mut rules {
+        r.fill_missing_dark();
+        if syntax < crate::colfilter::SYNTAX_VERSION {
+            r.pattern = crate::colfilter::migrate_v1(&r.pattern);
+        }
+    }
     Ok(rules)
 }
 
@@ -402,9 +430,15 @@ mod tests {
         let back = parse_rules(r#"[{"name":"a","pattern":"1","bg":[5,6,7,255]}]"#).unwrap();
         assert_eq!(back[0].bg_dark, [5, 6, 7, 255]);
         assert!(back[0].column.is_none());
-        let json = serde_json::to_string(&rules).unwrap();
-        assert_eq!(parse_rules(&json).unwrap(), rules);
+        assert_eq!(parse_rules(&export_rules(&rules)).unwrap(), rules);
         assert!(parse_rules("{").is_err());
+        // An old file (plain array) is migrated, a new one is not (#35).
+        let old = parse_rules(r#"[{"name":"a","pattern":"!x|y"}]"#).unwrap();
+        assert_eq!(old[0].pattern, "!x&!y");
+        let mut new_rule = rule(None, "!x|y");
+        new_rule.name = "n".into();
+        let new = parse_rules(&export_rules(&[new_rule])).unwrap();
+        assert_eq!(new[0].pattern, "!x|y");
     }
 
     #[test]

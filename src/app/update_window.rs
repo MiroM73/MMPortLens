@@ -158,6 +158,7 @@ impl App {
             paused: self.paused(),
             col_filters: self.column_filter_list(),
             window: Some(window),
+            filter_syntax: crate::colfilter::SYNTAX_VERSION,
         }
     }
 

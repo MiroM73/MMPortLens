@@ -39,9 +39,10 @@ Version 1.0.0. What works now:
   and the **service** of well-known ports (443 → https; built-in table plus the system `services`
   file): in the *Service* column, as `443 (https)` in the details pane and as a tooltip over the
   port cells, with the Windows service that owns the endpoint.
-- **Column filters** under the headers: text, `=exact`, `/regex/`, `a|b`, `!not`; ports and PID
-  `>1024`, `1000-2000`; addresses `10.0.0.0/8`, `fe80::/10`, `loopback`, `private`, `public`
-  (hover a field for the syntax).
+- **Column filters** under the headers: text, `=exact`, `/regex/`, `!not`, `a&b` (and), `a|b`
+  (or; `!` binds before `&`, `&` before `|`); ports and PID `>1024`, `1000-2000`, `>0&<100`;
+  addresses `10.0.0.0/8`, `fe80::/10`, `loopback`, `private`, `public&!13.64.0.0/11` (hover a
+  field for the syntax). Filters saved by version 1.0.0 or older with a leading `!` (`!a|b`) are converted.
 - **Traffic per TCP connection** (as administrator): bytes and packets sent / received and the
   current rates, collected only while one of these columns is shown.
 - **Process details**: icon, description and company from the version resource, user, command
