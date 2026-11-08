@@ -2,19 +2,20 @@
 
 The order in which the GitHub issues are solved, agreed with the owner. The owner refers to the
 phases by number ("fáza 1" = phase 1). Keep the status column up to date: mark an issue done
-when its commit lands, add new issues to the phase where they fit.
+when its commit lands, add new issues to the phase where they fit. When every issue of a phase is
+done, add "(done)" to the phase heading.
 
 Every issue follows the procedure of `CLAUDE.md`: take the code from RusTrace where it exists,
 `t!` strings in all four languages, `Config` defaults, fmt + clippy + tests, check in the running
 program, README / `docs/architecture.md` / `docs/history.md`, detailed commit with `Closes #N`
 (or `Part of #N`). Nothing is pushed or released without asking.
 
-## Phase 0 – quick fix before #15
+## Phase 0 – quick fix before #15 (done)
 | Issue | What | Status |
 |-------|------|--------|
 | #21 parts 1, 2, 4 | Invalid TCP states: live test finds own sockets by address and PID and skips the state check for state 0 / > 12; UI shows "Invalid (0)" | done (67eb388) |
 
-## Phase 1 – chosen by the owner
+## Phase 1 – chosen by the owner (done)
 | Issue | What | Status |
 |-------|------|--------|
 | #15 | Icon (`src/icon.rs`), `build.rs` + `winresource`, update check / in-place update (`update.rs`, `http.rs` from RusTrace) | done (734d765) |
@@ -30,7 +31,7 @@ program, README / `docs/architecture.md` / `docs/history.md`, detailed commit wi
 | #9 | Export CSV / Excel / JSON (`tabexport/` from RusTrace; exports the filtered view of #1) | |
 | #20 | Shared crate with RusTrace – decide after the filters and the export are ported (i18n, colfilter, update/http, tabexport are then copied) | |
 
-## Phase 3 – parity with TCPView (released in v0.2.0)
+## Phase 3 – parity with TCPView (done, released in v0.2.0)
 | Issue | What | Status |
 |-------|------|--------|
 | #17 | Keyboard shortcuts and multi-selection (needed for bulk actions in #6 and copying) | done (a85607f) |
