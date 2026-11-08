@@ -23,13 +23,12 @@ program, README / `docs/architecture.md` / `docs/history.md`, detailed commit wi
 | #15 | Acceptance: a release built by the workflow (v0.1.5) shows its notes in the update window (v0.1.0 has no update check: checked with the released v0.1.5 and `MMPORTLENS_UPDATE_AS_VERSION=0.1.0`) | done (v0.1.5) |
 | #1 | Column filters under the headers (`colfilter.rs` from RusTrace + regex, ranges, CIDR, address classes) | done (d7cf3fe) |
 
-## Phase 2 – the table and shared code
+## Phase 2 – the table and shared code (done)
 | Issue | What | Status |
 |-------|------|--------|
 | #27 | Horizontal scroll bar when the columns are wider than the window (port from RusTrace `7904f90`); before #2, which makes wide tables more common | done (b96c34c) |
 | #2 | Column order by drag and drop, remembered column widths (same table code as #1) | done (50c362f) |
 | #9 | Export CSV / Excel / JSON (`tabexport/` from RusTrace; exports the filtered view of #1) | done (9f9de77) |
-| #20 | Shared crate with RusTrace – decide after the filters and the export are ported (i18n, colfilter, update/http, tabexport are then copied) | waiting for the owner's decision: separate repository or keep copying; the diff of the copied modules is in `docs/history.md` |
 
 ## Phase 3 – parity with TCPView (done, released in v0.2.0)
 | Issue | What | Status |
@@ -69,3 +68,8 @@ program, README / `docs/architecture.md` / `docs/history.md`, detailed commit wi
 | #25 | `release.ps1` loses the jq quotes under Windows PowerShell 5.1 while waiting for the workflow | |
 | #26 | Update check: retry transient GitHub errors (HTTP 502/503/504, timeouts) and explain them; port the change back to RusTrace (copied `update`/`http` code, see #20) | |
 | #29 | Status bar texts overlap in a narrow window (found in the #27 check) | |
+
+## Deferred indefinitely (owner's decision)
+| Issue | What | Status |
+|-------|------|--------|
+| #20 | Shared crate with RusTrace – the modules stay copied; fixes in copied code (i18n, colfilter, update/http, tabexport) are ported to the other program by hand. The diff of the copies at the time of the decision is in `docs/history.md` | deferred 2026-11-08 |

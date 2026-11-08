@@ -136,3 +136,5 @@
 - Found on the way: the status bar overlaps in a narrow window (new #29); the ⏴ ⏵ buttons of the
   column window are empty boxes like the sort arrow (comment on #22); the live snapshot test failed
   again with the own client connection reported as FinWait1 (comment on #23).
+- #20 deferred indefinitely by the owner (2026-11-08): the modules shared with RusTrace stay
+  copied; phase 2 is done.
