@@ -140,3 +140,8 @@
   again with the own client connection reported as FinWait1 (comment on #23).
 - #20 deferred indefinitely by the owner (2026-11-08): the modules shared with RusTrace stay
   copied; phase 2 is done.
+- Released **v0.2.5** (`scripts/release.ps1 0.2.5 -NoWatch` run under PowerShell 7, written release
+  notes). The local tests passed (103); the workflow was watched with `gh run watch` (OK) and the
+  draft published with the notes. Check of the released ZIP: checksum OK, `mmportlens.exe` has
+  product version 0.2.5, and the update code (`cargo test fetch_latest_release -- --ignored`) sees
+  v0.2.5 as the latest release. The update window of an older version was not opened by hand.
