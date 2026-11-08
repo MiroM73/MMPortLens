@@ -1,9 +1,10 @@
 //! Several process properties windows (#33): one per PID, each in its own native window (egui
 //! immediate viewport) that can be moved outside the main window and onto another monitor. When
 //! the backend cannot open native windows (`Context::embed_viewports`) or the setting
-//! `Config::properties_separate` is off, they are `egui::Window`s inside the main window as
-//! before (#28). The content of a window is drawn by `properties.rs`.
+//! general setting `Config::separate_windows` (#42) is off, they are `egui::Window`s inside the
+//! main window as before (#28). The content of a window is drawn by `properties.rs`.
 
+use crate::app::native_window::window_geometry;
 use crate::app::properties::{ContentAction, Properties};
 use crate::app::*;
 use crate::process::ProcessInfo;
@@ -119,7 +120,7 @@ impl App {
         if self.properties.is_empty() {
             return;
         }
-        let native = self.cfg.properties_separate && !ctx.embed_viewports();
+        let native = self.cfg.separate_windows && !ctx.embed_viewports();
         let mut windows = std::mem::take(&mut self.properties);
         let mut actions: Vec<ContentAction> = Vec::with_capacity(windows.len());
         for (i, p) in windows.iter_mut().enumerate() {
@@ -250,21 +251,6 @@ impl App {
     }
 }
 
-/// The position and size of a native window in logical pixels (egui points include the zoom);
-/// `None` while minimized or before the size is known. A maximized window keeps the last normal
-/// geometry (not stored).
-fn window_geometry(vp: &egui::ViewportInfo, zoom: f32) -> Option<update::WindowState> {
-    if vp.minimized == Some(true) || vp.maximized == Some(true) {
-        return None;
-    }
-    let inner = vp.inner_rect?;
-    Some(update::WindowState {
-        pos: vp.outer_rect.map(|r| [r.min.x * zoom, r.min.y * zoom]),
-        size: Some([inner.width() * zoom, inner.height() * zoom]),
-        maximized: false,
-    })
-}
-
 #[cfg(test)]
 mod tests {
     use super::*;
@@ -284,28 +270,5 @@ mod tests {
         let (list, cut) = distinct_pids(rows, &[9], 0);
         assert_eq!(list, vec![(9, 'd')]);
         assert!(cut);
-    }
-
-    #[test]
-    fn geometry_in_logical_pixels() {
-        let vp = egui::ViewportInfo {
-            outer_rect: Some(egui::Rect::from_min_size(
-                egui::pos2(100.0, 50.0),
-                egui::vec2(410.0, 330.0),
-            )),
-            inner_rect: Some(egui::Rect::from_min_size(
-                egui::pos2(105.0, 80.0),
-                egui::vec2(400.0, 300.0),
-            )),
-            ..Default::default()
-        };
-        let g = window_geometry(&vp, 1.5).unwrap();
-        assert_eq!(g.pos, Some([150.0, 75.0]));
-        assert_eq!(g.size, Some([600.0, 450.0]));
-        let min = egui::ViewportInfo {
-            minimized: Some(true),
-            ..vp
-        };
-        assert_eq!(window_geometry(&min, 1.0), None);
     }
 }

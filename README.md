@@ -51,7 +51,7 @@ Version 1.0.7. What works now:
 - **Process properties** windows (row context menu → Properties…, Alt+Enter) with Copy, Open file
   location, File properties and End process; each stays on its process and shows when it exits.
   One window per process, several at a time, each in its own OS window that can be moved onto
-  another monitor (View → *Process properties in separate windows*).
+  another monitor (View → *Open windows separately*, which covers Help → Command line too).
   A live graph of the last two minutes shows the TCP packets per second of the process
   (administrator) and its I/O operations per second.
 - **Color rules** (View → Color rules…, Ctrl+H): color rows whose column matches a pattern in the
@@ -64,7 +64,8 @@ Version 1.0.7. What works now:
   `--interval`, `--paused`, `--lang`; without a window `--export connections.xlsx` writes one
   snapshot and `--record capture.plrec --duration 10m` records (Ctrl+C stops) – for scripts and
   scheduled tasks, with exit codes. `mmportlens --help` (a resizable window with zoomable text)
-  and **Help → Command line** list the options, column names and ready-to-copy examples.
+  and **Help → Command line** list the options, column names and ready-to-copy examples; both
+  zoom their text with Ctrl + wheel or Ctrl + `+` / `-` / `0`.
 - **Group by process** (toolbar *Group*): one collapsible line per process with its number of
   endpoints and traffic, its endpoints under it; collapsed groups are remembered.
 - **Close connection** (IPv4 TCP, like TCPView) and **End process** from the context menu or with

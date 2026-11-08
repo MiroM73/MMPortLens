@@ -49,10 +49,10 @@ impl App {
                 }
                 if ui
                     .checkbox(
-                        &mut self.cfg.properties_separate,
-                        t!("menu.view.properties_separate"),
+                        &mut self.cfg.separate_windows,
+                        t!("menu.view.separate_windows"),
                     )
-                    .on_hover_text(t!("menu.view.properties_separate.tip"))
+                    .on_hover_text(t!("menu.view.separate_windows.tip"))
                     .changed()
                 {
                     self.settings_changed();
@@ -122,7 +122,7 @@ impl App {
                 }
                 if ui.button(t!("menu.help.cli")).clicked() {
                     ui.close();
-                    self.show_cli_help = true;
+                    self.cli_help.open();
                 }
                 if ui
                     .button(format!("⬆ {}", t!("menu.help.updates")))

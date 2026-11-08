@@ -1,7 +1,9 @@
 //! Help → Command line (#38): the options, column names, exit codes and examples of the command
 //! line (#16), drawn from the structured help of `clihelp`. [`cli_help_ui`] is also the content of
-//! the `--help` window (#39).
+//! the `--help` window (#39). The window itself is a zoomable tool window of `native_window.rs`
+//! (#42).
 
+use crate::app::native_window::ToolSpec;
 use crate::app::*;
 use crate::clihelp::CliHelp;
 
@@ -96,20 +98,27 @@ pub fn cli_help_ui(ui: &mut egui::Ui, help: &CliHelp) {
 }
 
 impl App {
-    /// The Help → Command line window.
+    /// The Help → Command line window: its own OS window (or inside the main window, #42) with
+    /// its own text zoom. The help is built every frame, so a language switch translates it at
+    /// once.
     pub(in crate::app) fn cli_help_window(&mut self, ctx: &egui::Context) {
-        if !self.show_cli_help {
+        if !self.cli_help.is_open() {
             return;
         }
         let languages: Vec<String> = i18n::available().into_iter().map(|l| l.code).collect();
         let help = crate::clihelp::build(&languages.join(", "));
-        egui::Window::new(t!("cli.window.title"))
-            .id(egui::Id::unique("cli_help_window"))
-            .open(&mut self.show_cli_help)
-            .collapsible(false)
-            .resizable(true)
-            .default_size([760.0, 560.0])
-            .min_size([420.0, 240.0])
-            .show(ctx, |ui| cli_help_ui(ui, &help));
+        let spec = ToolSpec {
+            title: t!("cli.window.title"),
+            default_size: [760.0, 560.0],
+            min_size: [520.0, 320.0],
+        };
+        let native = self.cfg.separate_windows && !ctx.embed_viewports();
+        let mut state = self.cfg.cli_help_window.clone();
+        self.cli_help
+            .show(ctx, native, &spec, &mut state, |ui| cli_help_ui(ui, &help));
+        if state != self.cfg.cli_help_window {
+            self.cfg.cli_help_window = state;
+            self.settings_changed();
+        }
     }
 }

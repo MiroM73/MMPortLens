@@ -61,7 +61,7 @@ program, README / `docs/architecture.md` / `docs/history.md`, detailed commit wi
 | #34 | Service name of well-known ports: tooltip over the whole port cell (with the owning Windows service of #14), `port (name)` in the details pane, optional system services file | done ("Port service names: whole-cell tooltip, details, system services file"), released in v1.0.7 |
 | #35 | Column filters: AND (`&`) and NOT (`!`) per term, precedence `!` > `&` > `\|`, migration of saved `!a\|b` texts (filters, presets, highlight rules); before #16, which reuses the filters. RusTrace port: MiroM73/Rustrace#61 | done ("Column filters: AND and per-term NOT"), released in v1.0.7; the RusTrace port is still open |
 | #36 | Filter field tooltip: examples for the column and its possible values (State, Protocol); after #35 so the examples can use `&` | done ("Column filter tooltip: examples and values per column"), released in v1.0.7 |
-| #42 | Help → Command line window (#38) in its own OS window like the process properties of #33 (focus when open, Esc / ×, remembered position and size, embedded fallback), zoom as in the `--help` window of #39, the #33 setting becomes a general View → *Open windows separately* (old value kept) | |
+| #42 | Help → Command line window (#38) in its own OS window like the process properties of #33 (focus when open, Esc / ×, remembered position and size, embedded fallback), zoom as in the `--help` window of #39, the #33 setting becomes a general View → *Open windows separately* (old value kept) | done ("Help → Command line in its own zoomable window") |
 
 ## Phase 5 – recording and automation (#3, #16, #4 released in v1.0.0; #38, #39 in v1.0.7)
 | Issue | What | Status |

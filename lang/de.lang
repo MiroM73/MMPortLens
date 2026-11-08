@@ -31,8 +31,8 @@ menu.view.expand_all = Alle Gruppen aufklappen
 menu.view.collapse_all = Alle Gruppen zuklappen
 menu.view.resolve_addresses = Adressen auflösen
 menu.view.resolve_addresses.tip = Hostnamen der Adressen nachschlagen (Reverse-DNS) für die Spalten Remote-Host und Lokaler Host. Aus: die Spalten zeigen die Adressen.
-menu.view.properties_separate = Prozesseigenschaften in eigenen Fenstern
-menu.view.properties_separate.tip = Jedes Fenster mit Prozesseigenschaften ist ein eigenes Fenster, das sich aus dem Hauptfenster heraus und auf einen anderen Monitor verschieben lässt; aus = im Hauptfenster.
+menu.view.separate_windows = Fenster separat öffnen
+menu.view.separate_windows.tip = Prozesseigenschaften und Hilfe → Befehlszeile öffnen sich in eigenen Fenstern, die sich aus dem Hauptfenster heraus und auf einen anderen Monitor verschieben lassen; aus = im Hauptfenster.
 menu.view.etw = Kurze Verbindungen erfassen (ETW, Admin)
 menu.view.etw.tip = Event Tracing for Windows sieht jede Verbindung, auch die, die zwischen zwei Aktualisierungen geöffnet und geschlossen werden (Beacons, fehlschlagende Health-Checks, DNS über TCP). Sie erscheinen als geschlossene, mit ⚡ markierte Zeilen und werden aufgezeichnet. Benötigt Administratorrechte; ohne sie füllt nur die Aktualisierung die Tabelle.
 menu.view.language = Sprache

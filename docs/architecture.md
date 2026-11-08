@@ -11,7 +11,7 @@ with the change.
 | `src/cli.rs` | Command-line parser (#16): `Options` / `ViewOptions`, `CliError` with translated messages, `filters` (preset + text + column filters checked against the settings), `PUBLIC_OPTIONS` (the documented options, shared with the help), message box – the style of RusTrace `src/cli.rs`. |
 | `src/console.rs` | Console messages of the runs without a window (#40): `attach_console`, `out` / `err` (instead of `println!` / `eprintln!`) with the encoding chosen per handle (`target`: console → WriteConsoleW, pipe read by PowerShell → the console's code page, else UTF-8). |
 | `src/clihelp.rs` | The command-line help as data (#38): `CliHelp` (usage, options, column names, exit codes, examples) built from `cli::PUBLIC_OPTIONS` and the `cli.*` keys; `text()` for the console / message box. |
-| `src/helpwindow.rs` | The `--help` window (#39): a small eframe app around `app::cli_help::cli_help_ui`, zoom (Ctrl + wheel / `+` / `-` / `0`, bottom bar), resize grip, `HelpWindowState` (zoom and size in `Config::help_window`). |
+| `src/helpwindow.rs` | The `--help` window (#39): a small eframe app around `app::cli_help::cli_help_ui`, zoom (Ctrl + wheel / `+` / `-` / `0`, bottom bar), resize grip, `HelpWindowState` (zoom and size in `Config::help_window`); the shared zoom bar (`zoom_bar`), zoom input (`zoom_input`) and per-window text scaling (`scale_text`) of the zoomable windows (#42). |
 | `src/headless.rs` | `--export` (one snapshot) and `--record` (until `--duration` or Ctrl+C) without a window (#16). |
 | `src/rowfilter.rs` | `RowFilter` (switches, text filter, column filters of the visible columns), `compile` – used by the table, a recording and the command line. |
 | `build.rs` | Windows: icon (from `src/icon.rs`) and version information as a resource of the exe (`winresource`). |
@@ -43,7 +43,7 @@ with the change.
 | `src/config.rs` | `Config` (JSON, every field has a default). |
 | `src/i18n.rs` | `t!()` and the language files – the same module as in RusTrace. |
 | `src/timefmt.rs` | Clock times for the table. |
-| `src/app/` | The UI, split by area like RusTrace: `mod.rs` (state, frame loop), `menu.rs`, `toolbar.rs`, `table.rs`, `statusbar.rs`, `colfilters.rs` (column filter state and field), `admin.rs` (restart as administrator), `update_window.rs` (Help → Check for updates), `input.rs` (keyboard shortcuts, copying the selection), `help.rs` (Help → Keyboard shortcuts), `cli_help.rs` (Help → Command line and the shared help renderer `cli_help_ui`, #38), `actions.rs` (context menu items, confirmation window and result of #6), `details.rs` (details pane, process icons and tooltip of #7), `properties.rs` (process properties window of #28), `properties_windows.rs` (several of them in native windows, #33), `properties_graph.rs` (its live traffic / I/O graph, #30), `rules.rs` (color rules window and row colors of #10), `presets.rs` (filter preset combo box and windows of #13), `groups.rs` (group lines of #12), `columnlayout.rs` (header drag and drop, remembered widths, fit on a border double click – #2), `export.rs` (File → Export… window, export thread, status – #9), `record.rs` (start window, events to the writer, ● REC – #3), `replay.rs` (opened recording, replay bar with the time slider – #3), `replay_events.rs` (event list of a recording – #3), `etw.rs` (View menu switch and status bar item of the ETW capture – #4). |
+| `src/app/` | The UI, split by area like RusTrace: `mod.rs` (state, frame loop), `menu.rs`, `toolbar.rs`, `table.rs`, `statusbar.rs`, `colfilters.rs` (column filter state and field), `admin.rs` (restart as administrator), `update_window.rs` (Help → Check for updates), `input.rs` (keyboard shortcuts, copying the selection), `help.rs` (Help → Keyboard shortcuts), `cli_help.rs` (Help → Command line and the shared help renderer `cli_help_ui`, #38), `actions.rs` (context menu items, confirmation window and result of #6), `details.rs` (details pane, process icons and tooltip of #7), `properties.rs` (process properties window of #28), `properties_windows.rs` (several of them in native windows, #33), `native_window.rs` (zoomable tool window: native or embedded, own zoom, remembered geometry – #42), `properties_graph.rs` (its live traffic / I/O graph, #30), `rules.rs` (color rules window and row colors of #10), `presets.rs` (filter preset combo box and windows of #13), `groups.rs` (group lines of #12), `columnlayout.rs` (header drag and drop, remembered widths, fit on a border double click – #2), `export.rs` (File → Export… window, export thread, status – #9), `record.rs` (start window, events to the writer, ● REC – #3), `replay.rs` (opened recording, replay bar with the time slider – #3), `replay_events.rs` (event list of a recording – #3), `etw.rs` (View menu switch and status bar item of the ETW capture – #4). |
 | `lang/*.lang` | Built-in translations (en, sk, cs, de), embedded with `include_str!`. |
 
 ## Reading the connections
@@ -401,15 +401,15 @@ is in it (else of the clicked row), Alt+Enter those of the selected rows (the cu
 nothing is selected); `distinct_pids` drops PID 0 and duplicates and cuts the new windows at the
 limit (status bar message `properties.limit`), a PID that already has a window gets `focus`.
 `properties_windows` draws each one and then applies the `ContentAction`s (close, End process,
-error text) after the vector is put back. With `Config::properties_separate` (default on, View
-menu) and a backend that can open native windows (`!Context::embed_viewports()`), a window is an
+error text) after the vector is put back. With `Config::separate_windows` (default on, View →
+*Open windows separately*, #42; `properties_separate` of #33 is read through a serde alias) and a backend that can open native windows (`!Context::embed_viewports()`), a window is an
 immediate viewport (`show_viewport_immediate`, `ViewportId::from_hash_of(("properties", pid))`,
 the program icon, title = the window title): `CentralPanel` + a vertical `ScrollArea` around the
 whole content; its own × (`close_requested`) or Esc in it closes only it; `focus` sends
 `ViewportCommand::Focus`. The position / size it opens with are fixed in `opened_at` at its first
 frame – the remembered `Config::properties_window` (logical pixels) with a 28 px cascade per index,
 default 540 × 680 – because a builder that changes between frames would move the open window. Each
-frame records the geometry (`window_geometry`: points × zoom, not while minimized / maximized; the
+frame records the geometry (`native_window::window_geometry`: points × zoom, not while minimized / maximized; the
 zoom is read before `ctx.input`, whose closure holds the context lock – calling `zoom_factor()`
 inside it deadlocked the UI), which is stored when the window closes. Otherwise (setting off, or
 no multi-viewport support) each PID is an `egui::Window` (id `properties_window` + PID, cascaded,
@@ -726,9 +726,28 @@ note how a console waits for the GUI-subsystem exe, and the examples (`command`,
 console, tabs for the message box); `app::cli_help::cli_help_ui` draws the same data in a
 `ScrollArea` – headings, a striped monospace options grid, the column grid, examples with a 📋
 button (`Context::copy_text`; the button of the command copied last shows ✔ for 4 s, kept in the
-egui temp data). Help → Command line… (`App::cli_help_window`, resizable `egui::Window`) builds the
-help every frame, so a language switch translates it at once. Test `examples_parse`: every
+egui temp data). Help → Command line… (`App::cli_help_window`) builds the help every frame, so a
+language switch translates it at once, and shows it in a zoomable tool window (#42, below). Test `examples_parse`: every
 `mmportlens` example (quotes and `| Out-Null` removed as the shell does) is a valid command line.
+
+**Zoomable tool windows (#42)**: `app/native_window.rs` – `ToolWindow` (key, open, focus, the
+geometry it opened with) and `ToolSpec` (title, default and minimum size). `show` draws it when open:
+with `Config::separate_windows` and native window support an immediate viewport
+(`ViewportId::from_hash_of(key)`, program icon), else an `egui::Window` (`Id::unique(key)`). The
+content is a bottom panel with `helpwindow::zoom_bar` (A− / % = reset / A+, hint, Close) and a
+`CentralPanel` with the caller's content. Opening an open window only focuses it
+(`ViewportCommand::Focus` / `move_to_top`). Native: the opening position / size come from the
+`config::ToolWindowState` and are fixed at the first frame (as #33); every frame stores the
+geometry (`window_geometry`, zoom read before `ctx.input`), so it is remembered also when the main
+window closes with the tool window open; Esc, × or Close close only it. Embedded: × or Close; Esc in
+the main window keeps its order. **Own zoom**: `Context::set_zoom_factor` belongs to the context all
+viewports share, so the window scales the text styles of its own `Ui` (`helpwindow::scale_text`)
+by `ToolWindowState::zoom` (50–300 %); `helpwindow::zoom_input` reads Ctrl + wheel
+(`zoom_delta`) and the zoom keys (`zoom_keys`) and removes the key events, so egui's keyboard zoom
+of the whole program (run in `end_pass`) does not see them – in the embedded window only while the
+pointer is over it (`rect_contains_pointer(max_rect)`; `ui_contains_pointer` tests the still empty
+`min_rect`). Help → Command line keeps its state in `Config::cli_help_window`, independent of the
+`--help` window's `Config::help_window` (which keeps `set_zoom_factor`, being its own program).
 
 **Order in `main`**: parse → `--lang` (so help and errors are already translated) → help / version
 → `--restore` → headless runs → always-start-as-administrator → read the restore file → window.

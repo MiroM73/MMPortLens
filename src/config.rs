@@ -7,6 +7,26 @@ use crate::t;
 use serde::{Deserialize, Serialize};
 use std::path::PathBuf;
 
+/// What a zoomable tool window remembers (#42): the position and inner size of the last one
+/// (logical pixels) and its own text zoom (1.0 = 100 %).
+#[derive(Clone, Debug, PartialEq, Serialize, Deserialize)]
+#[serde(default)]
+pub struct ToolWindowState {
+    pub pos: Option<[f32; 2]>,
+    pub size: Option<[f32; 2]>,
+    pub zoom: f32,
+}
+
+impl Default for ToolWindowState {
+    fn default() -> Self {
+        Self {
+            pos: None,
+            size: None,
+            zoom: 1.0,
+        }
+    }
+}
+
 /// Refresh intervals offered in the toolbar (ms).
 pub const INTERVALS: [u64; 6] = [500, 1000, 2000, 5000, 10_000, 30_000];
 
@@ -64,12 +84,17 @@ pub struct Config {
     pub filter_presets: Vec<crate::presets::FilterPreset>,
     /// File → Start recording… settings (#3).
     pub record: crate::recording::Settings,
-    /// Process properties in their own native windows (#33); off = inside the main window.
-    pub properties_separate: bool,
+    /// The windows that have a native variant (process properties #33, Help → Command line #42)
+    /// open in their own OS windows; off = inside the main window. Was `properties_separate` of
+    /// #33 – an old file keeps its choice through the alias.
+    #[serde(alias = "properties_separate")]
+    pub separate_windows: bool,
     /// Position and size of the last closed properties window (#33).
     pub properties_window: Option<crate::update::WindowState>,
     /// Zoom and size of the `--help` window (#39).
     pub help_window: crate::helpwindow::HelpWindowState,
+    /// Position, size and zoom of the Help → Command line window (#42).
+    pub cli_help_window: ToolWindowState,
     /// Version of the filter syntax of the saved filters (#35). A file without it (0) is from
     /// before #35: its filters are rewritten once by `colfilter::migrate_v1`. The field default
     /// is 0 (an old file), `Config::default()` has the current version.
@@ -142,7 +167,8 @@ impl Default for Config {
             filter_presets: crate::presets::default_presets(),
             record: Default::default(),
             help_window: Default::default(),
-            properties_separate: true,
+            separate_windows: true,
+            cli_help_window: Default::default(),
             properties_window: None,
             filter_syntax: crate::colfilter::SYNTAX_VERSION,
         }
@@ -250,7 +276,18 @@ mod tests {
         // Older settings get the example color rules; an emptied list stays empty (#10).
         assert_eq!(partial.color_rules, crate::rules::default_rules());
         assert!(partial.marks_over_rules);
-        assert!(partial.properties_separate && partial.properties_window.is_none());
+        assert!(partial.separate_windows && partial.properties_window.is_none());
+        assert_eq!(partial.cli_help_window, ToolWindowState::default());
+        // The switch of #33 is taken over by the general setting (#42).
+        let off = Config::parse(r#"{"properties_separate": false}"#).unwrap();
+        assert!(!off.separate_windows);
+        let saved = serde_json::to_string(&off).unwrap();
+        assert!(
+            saved.contains("\"separate_windows\":false") && !saved.contains("properties_separate")
+        );
+        let zoomed = Config::parse(r#"{"cli_help_window": {"zoom": 1.3}}"#).unwrap();
+        assert_eq!(zoomed.cli_help_window.zoom, 1.3);
+        assert_eq!(zoomed.cli_help_window.size, None);
         assert_eq!(partial.filter_presets, crate::presets::default_presets());
         assert!(!partial.group_by_process && partial.collapsed_processes.is_empty());
         assert_eq!(partial.record, crate::recording::Settings::default());

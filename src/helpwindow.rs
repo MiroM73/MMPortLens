@@ -1,7 +1,9 @@
 //! The `--help` window (#39): the command-line help of #38 (`app::cli_help::cli_help_ui`) in a
 //! small resizable eframe window in the look of the application instead of a message box, with
 //! zoomable text (Ctrl + wheel, Ctrl + `+` / `-` / `0`, the buttons of the bottom bar). The zoom
-//! and the window size are kept in `Config::help_window`.
+//! and the window size are kept in `Config::help_window`. The bottom bar ([`zoom_bar`]) and the
+//! zoom input ([`zoom_input`]) are shared with the zoomable windows of the main program
+//! (`app::native_window`, #42).
 
 use eframe::egui::{self, Key, RichText};
 use serde::{Deserialize, Serialize};
@@ -13,7 +15,7 @@ use crate::t;
 /// Smallest and largest zoom, step of a button / key press.
 pub const MIN_ZOOM: f32 = 0.5;
 pub const MAX_ZOOM: f32 = 3.0;
-const ZOOM_STEP: f32 = 0.1;
+pub const ZOOM_STEP: f32 = 0.1;
 const DEFAULT_SIZE: [f32; 2] = [800.0, 600.0];
 const MIN_SIZE: [f32; 2] = [520.0, 320.0];
 
@@ -88,24 +90,6 @@ impl HelpWindow {
         ctx.set_zoom_factor(self.state.zoom);
     }
 
-    /// Ctrl + wheel and Ctrl + `+` / `-` / `0`.
-    fn zoom_input(&mut self, ctx: &egui::Context) {
-        let (wheel, keys) = ctx.input(|i| (i.zoom_delta(), zoom_keys(&i.events)));
-        let (plus, minus, reset) = keys;
-        if wheel != 1.0 {
-            self.set_zoom(ctx, self.state.zoom * wheel);
-        }
-        if plus {
-            self.set_zoom(ctx, self.state.zoom + ZOOM_STEP);
-        }
-        if minus {
-            self.set_zoom(ctx, self.state.zoom - ZOOM_STEP);
-        }
-        if reset {
-            self.set_zoom(ctx, 1.0);
-        }
-    }
-
     /// Keeps the zoom and the window size for the next `--help` (a fresh copy of the settings,
     /// so nothing else is overwritten).
     fn save(&mut self, ctx: &egui::Context) {
@@ -125,51 +109,19 @@ impl HelpWindow {
 impl eframe::App for HelpWindow {
     fn ui(&mut self, ui: &mut egui::Ui, _frame: &mut eframe::Frame) {
         let ctx = ui.ctx().clone();
-        self.zoom_input(&ctx);
+        let mut zoom = self.state.zoom;
+        zoom_input(&ctx, &mut zoom, true);
         let mut close = ctx.input(|i| i.key_pressed(Key::Escape));
         egui::Panel::bottom("help_bottom").show(ui, |ui| {
-            ui.add_space(4.0);
-            ui.horizontal(|ui| {
-                if ui
-                    .button("A−")
-                    .on_hover_text(t!("helpwin.zoom_out"))
-                    .clicked()
-                {
-                    self.set_zoom(&ctx, self.state.zoom - ZOOM_STEP);
-                }
-                let pct = format!("{:.0} %", self.state.zoom * 100.0);
-                if ui
-                    .button(RichText::new(pct).monospace())
-                    .on_hover_text(t!("helpwin.zoom_reset"))
-                    .clicked()
-                {
-                    self.set_zoom(&ctx, 1.0);
-                }
-                if ui
-                    .button("A+")
-                    .on_hover_text(t!("helpwin.zoom_in"))
-                    .clicked()
-                {
-                    self.set_zoom(&ctx, self.state.zoom + ZOOM_STEP);
-                }
-                ui.with_layout(egui::Layout::right_to_left(egui::Align::Center), |ui| {
-                    // Room for the resize grip in the corner.
-                    ui.add_space(14.0);
-                    if ui.button(t!("helpwin.close")).clicked() {
-                        close = true;
-                    }
-                    // The hint gives way (shortened) when the zoomed buttons need the room.
-                    ui.add(
-                        egui::Label::new(RichText::new(t!("helpwin.zoom_hint")).weak()).truncate(),
-                    );
-                });
-            });
-            ui.add_space(4.0);
+            close |= zoom_bar(ui, &mut zoom, true);
             // A resize grip in the bottom-right corner (the OS window is resized by its edges).
             let rect = ui.max_rect();
             let grip = egui::Rect::from_min_max(rect.max - egui::vec2(12.0, 12.0), rect.max);
             paint_grip(ui, grip);
         });
+        if zoom != self.state.zoom {
+            self.set_zoom(&ctx, zoom);
+        }
         egui::CentralPanel::default().show(ui, |ui| {
             crate::app::cli_help::cli_help_ui(ui, &self.help);
         });
@@ -178,6 +130,95 @@ impl eframe::App for HelpWindow {
         } else if close {
             self.save(&ctx);
             ctx.send_viewport_cmd(egui::ViewportCommand::Close);
+        }
+    }
+}
+
+/// Ctrl + wheel and Ctrl + `+` / `-` / `0` of this frame applied to `zoom` (when `active`); the
+/// zoom keys are consumed, so egui's own keyboard zoom of the whole program does not see them.
+/// Returns true when the zoom changed.
+pub fn zoom_input(ctx: &egui::Context, zoom: &mut f32, active: bool) -> bool {
+    if !active {
+        return false;
+    }
+    let old = *zoom;
+    let (wheel, (plus, minus, reset)) = ctx.input_mut(|i| {
+        let keys = zoom_keys(&i.events);
+        if keys != (false, false, false) {
+            i.events
+                .retain(|e| zoom_keys(std::slice::from_ref(e)) == (false, false, false));
+        }
+        (i.zoom_delta(), keys)
+    });
+    let mut z = *zoom;
+    if wheel != 1.0 {
+        z *= wheel;
+    }
+    if plus {
+        z += ZOOM_STEP;
+    }
+    if minus {
+        z -= ZOOM_STEP;
+    }
+    if reset {
+        z = 1.0;
+    }
+    *zoom = clamp_zoom(z);
+    *zoom != old
+}
+
+/// The bottom bar of a zoomable window: A− / zoom % (click = 100 %) / A+, the hint and Close
+/// (`grip_room` leaves space for a resize grip in the corner). Changes `zoom`; returns true when
+/// Close was clicked.
+pub fn zoom_bar(ui: &mut egui::Ui, zoom: &mut f32, grip_room: bool) -> bool {
+    let mut close = false;
+    let mut z = *zoom;
+    ui.add_space(4.0);
+    ui.horizontal(|ui| {
+        if ui
+            .button("A−")
+            .on_hover_text(t!("helpwin.zoom_out"))
+            .clicked()
+        {
+            z -= ZOOM_STEP;
+        }
+        let pct = format!("{:.0} %", z * 100.0);
+        if ui
+            .button(RichText::new(pct).monospace())
+            .on_hover_text(t!("helpwin.zoom_reset"))
+            .clicked()
+        {
+            z = 1.0;
+        }
+        if ui
+            .button("A+")
+            .on_hover_text(t!("helpwin.zoom_in"))
+            .clicked()
+        {
+            z += ZOOM_STEP;
+        }
+        ui.with_layout(egui::Layout::right_to_left(egui::Align::Center), |ui| {
+            if grip_room {
+                ui.add_space(14.0);
+            }
+            if ui.button(t!("helpwin.close")).clicked() {
+                close = true;
+            }
+            // The hint gives way (shortened) when the zoomed buttons need the room.
+            ui.add(egui::Label::new(RichText::new(t!("helpwin.zoom_hint")).weak()).truncate());
+        });
+    });
+    ui.add_space(4.0);
+    *zoom = clamp_zoom(z);
+    close
+}
+
+/// Scales the text styles of `style` by `zoom` – the zoom of one window drawn by a context that
+/// other windows share (`Context::set_zoom_factor` would zoom them all).
+pub fn scale_text(style: &mut egui::Style, zoom: f32) {
+    if zoom != 1.0 {
+        for font in style.text_styles.values_mut() {
+            font.size *= zoom;
         }
     }
 }
@@ -286,6 +327,17 @@ mod tests {
             zoom_keys(&[key(Key::Minus, None, egui::Modifiers::NONE)]),
             (false, false, false)
         );
+    }
+
+    #[test]
+    fn scaled_text_styles() {
+        let mut style = egui::Style::default();
+        let body = style.text_styles[&egui::TextStyle::Body].size;
+        scale_text(&mut style, 1.5);
+        assert_eq!(style.text_styles[&egui::TextStyle::Body].size, body * 1.5);
+        let mut same = egui::Style::default();
+        scale_text(&mut same, 1.0);
+        assert_eq!(same.text_styles[&egui::TextStyle::Body].size, body);
     }
 
     #[test]

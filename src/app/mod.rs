@@ -36,6 +36,7 @@ mod groups;
 mod help;
 mod input;
 mod menu;
+mod native_window;
 mod presets;
 mod properties;
 mod properties_graph;
@@ -176,7 +177,8 @@ pub struct App {
     /// Help → Keyboard shortcuts.
     show_shortcuts: bool,
     /// Help → Command line (#38).
-    show_cli_help: bool,
+    /// Help → Command line (#38), its own window since #42.
+    cli_help: native_window::ToolWindow,
     /// Close connection / End process waiting for confirmation (#6).
     pending_action: Option<actions::Pending>,
     /// The name of the filter preset chosen last (#13; runtime only, empty = none).
@@ -326,7 +328,7 @@ impl App {
             header_drag: None,
             columns_drag: None,
             show_shortcuts: false,
-            show_cli_help: false,
+            cli_help: native_window::ToolWindow::new("cli_help"),
             pending_action: None,
             action_result: None,
             properties: Vec::new(),

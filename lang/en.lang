@@ -42,8 +42,8 @@ menu.view.expand_all = Expand all groups
 menu.view.collapse_all = Collapse all groups
 menu.view.resolve_addresses = Resolve addresses
 menu.view.resolve_addresses.tip = Look up the host names of the addresses (reverse DNS) for the Remote host and Local host columns. Off: the columns show the addresses.
-menu.view.properties_separate = Process properties in separate windows
-menu.view.properties_separate.tip = Each process properties window is its own window that can be moved outside the main window and onto another monitor; off = inside the main window.
+menu.view.separate_windows = Open windows separately
+menu.view.separate_windows.tip = The process properties and Help → Command line open in their own windows that can be moved outside the main window and onto another monitor; off = inside the main window.
 menu.view.etw = Capture short connections (ETW, admin)
 menu.view.etw.tip = Event Tracing for Windows sees every connection, also the ones that open and close between two refreshes (beacons, failing health checks, DNS over TCP). They appear as closed rows marked ⚡ and are recorded. Needs administrator rights; without them the table is filled by the refresh alone.
 menu.view.language = Language

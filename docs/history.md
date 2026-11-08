@@ -463,3 +463,19 @@
   Found on the way: #44 (cmd `>` and PowerShell `$x = …` lose the output of the GUI exe, the
   shells do not wait), #43 (wgpu panic with a window higher than 8192 px), RusTrace port
   MiroM73/Rustrace#62.
+- #42: Help → Command line opens in its own OS window with its own text zoom. New
+  `src/app/native_window.rs` (`ToolWindow`: native immediate viewport or embedded `egui::Window`,
+  focus on a second opening, Esc / × / Close, geometry fixed at the first frame and remembered,
+  `window_geometry` moved here from `properties_windows.rs`); the bottom bar, the zoom input and the
+  new `scale_text` are shared with the `--help` window in `helpwindow.rs`. The zoom of a tool window
+  scales the text styles of its `Ui` and consumes the zoom keys, so the main window keeps its zoom.
+  `Config::properties_separate` became `separate_windows` (serde alias keeps an old "off"), View →
+  *Open windows separately* (`menu.view.separate_windows*` in four languages, the old keys removed);
+  new `Config::cli_help_window` (`ToolWindowState`: pos, size, zoom). Verified: fmt, clippy, tests
+  (config migration and saving, text scaling, open / focus / close); release build: the window
+  opened as its own OS window, Ctrl + wheel + Ctrl + numpad `+` made it 133 % while the main window
+  stayed at 100 %; moved to 500,260 and 820 × 620, closed with Esc, reopened there with 133 %; the
+  menu item with the window open focused it (still one window); with the setting off the window was
+  embedded with 133 %, Ctrl + wheel over it gave 92 %; `--help` zoomed to 120 % kept its own value
+  (`help_window` 1.2, `cli_help_window` 0.92). Found: `Ui::ui_contains_pointer` is false at the
+  start of a window's content (empty `min_rect`) – the embedded zoom first ignored the wheel.
