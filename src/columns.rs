@@ -112,7 +112,7 @@ impl ColumnId {
         )
     }
 
-    fn key(self) -> &'static str {
+    pub fn key(self) -> &'static str {
         match self {
             ColumnId::Process => "column.process",
             ColumnId::Pid => "column.pid",

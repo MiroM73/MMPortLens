@@ -6,6 +6,16 @@ impl App {
     pub(in crate::app) fn menu_bar(&mut self, ui: &mut egui::Ui) {
         egui::MenuBar::new().ui(ui, |ui| {
             ui.menu_button(t!("menu.file"), |ui| {
+                if ui
+                    .add(
+                        egui::Button::new(t!("menu.file.export")).shortcut_text(help::kb("Ctrl+S")),
+                    )
+                    .clicked()
+                {
+                    ui.close();
+                    self.open_export();
+                }
+                ui.separator();
                 if cfg!(windows) {
                     self.admin_menu(ui);
                     ui.separator();

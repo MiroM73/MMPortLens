@@ -22,13 +22,14 @@ shortcuts** (F1).
 | Shift + mouse wheel | Scroll the table horizontally when the columns do not fit (also the horizontal touchpad gesture) |
 | Ctrl+A | Select all rows shown |
 | Del | Close the selected connections (asks first; IPv4 TCP only) |
-| Ctrl+C | Copy the selected rows, tab-separated in the visible columns (a header line for several rows) |
+| Ctrl+C | Copy the selected rows, tab-separated in the visible columns (a header line for several rows; values with a tab, quote or line break are quoted, so they paste into Excel) |
+| Ctrl+S | Export the table (CSV, Excel, JSON Lines, HTML) |
 | F1 | Keyboard shortcuts window |
 
 The selection belongs to the connections, not to the positions in the table: it stays when the
 table is refreshed, re-sorted or filtered. A closed connection leaves the selection when its row
 disappears.
 
-Planned: Ctrl+E export (#9).
+Ctrl+S opens the Export window (File → Export…, #9).
 
 In the confirmation window of Close connection / End process, Enter confirms and Esc cancels.

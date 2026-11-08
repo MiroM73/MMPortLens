@@ -48,6 +48,8 @@ pub struct Config {
     pub update_last_check: i64,
     /// Version the user chose to skip ("Skip this version"): no window at start-up for it.
     pub update_skipped: String,
+    /// File → Export… settings (#9).
+    pub export: crate::tabexport::Settings,
 }
 
 /// When MM PortLens looks for a new version at start-up.
@@ -106,6 +108,7 @@ impl Default for Config {
             update_when: UpdateCheck::default(),
             update_last_check: 0,
             update_skipped: String::new(),
+            export: Default::default(),
         }
     }
 }

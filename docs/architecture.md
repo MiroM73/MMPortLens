@@ -28,10 +28,11 @@ with the change.
 | `src/services.rs` | Built-in table of well-known port names (#5). |
 | `src/actions.rs` | Close connection (`SetTcpEntry` + DELETE_TCB) and End process (`TerminateProcess` / `kill`), with the pure checks `can_close` / `can_kill` and `tcp_row` (#6). |
 | `src/columns.rs` | `ColumnId`, cell texts, value-based sorting (`SortSpec`), `ColumnLayout` (visibility, order, widths), `drop_slot`. |
+| `src/tabexport/` | Table export (#9): `mod.rs` (scope, column set, typed `Cell` of a row, `write_table`, `run`), writers `csv.rs`, `xlsx.rs` + `zip.rs`, `jsonl.rs`, `html.rs` – the writers from RusTrace. |
 | `src/config.rs` | `Config` (JSON, every field has a default). |
 | `src/i18n.rs` | `t!()` and the language files – the same module as in RusTrace. |
 | `src/timefmt.rs` | Clock times for the table. |
-| `src/app/` | The UI, split by area like RusTrace: `mod.rs` (state, frame loop), `menu.rs`, `toolbar.rs`, `table.rs`, `statusbar.rs`, `colfilters.rs` (column filter state and field), `admin.rs` (restart as administrator), `update_window.rs` (Help → Check for updates), `input.rs` (keyboard shortcuts, copying the selection), `help.rs` (Help → Keyboard shortcuts), `actions.rs` (context menu items, confirmation window and result of #6), `details.rs` (details pane, process icons and tooltip of #7), `columnlayout.rs` (header drag and drop, remembered widths, fit on a border double click – #2). |
+| `src/app/` | The UI, split by area like RusTrace: `mod.rs` (state, frame loop), `menu.rs`, `toolbar.rs`, `table.rs`, `statusbar.rs`, `colfilters.rs` (column filter state and field), `admin.rs` (restart as administrator), `update_window.rs` (Help → Check for updates), `input.rs` (keyboard shortcuts, copying the selection), `help.rs` (Help → Keyboard shortcuts), `actions.rs` (context menu items, confirmation window and result of #6), `details.rs` (details pane, process icons and tooltip of #7), `columnlayout.rs` (header drag and drop, remembered widths, fit on a border double click – #2), `export.rs` (File → Export… window, export thread, status – #9). |
 | `lang/*.lang` | Built-in translations (en, sk, cs, de), embedded with `include_str!`. |
 
 ## Reading the connections
@@ -281,6 +282,38 @@ selected rows shown (`App::selected_rows`, table order).
   failed: m – reason") stays in the status bar until dismissed (✖) or replaced, and a refresh is
   requested so the closed rows are marked right away.
 
+## Export (#9)
+
+File → Export… (Ctrl+S) opens a window (`src/app/export.rs`): rows (shown / selected / all
+endpoints, with counts), columns (visible in table order / all: the visible ones first, then the
+hidden ones), format (CSV, Excel, JSON Lines, HTML) with its options, "open the file after the
+export", and the last exported file (open / show in folder / copy path). The settings are
+`Config::export` (`tabexport::Settings`, every field with a default).
+
+The rows are **copied** out of the view (`Vec<Row>`; "all" = the tracker rows with host names and
+the table's sort order), so the export thread never touches the live table and a refresh during
+the export changes nothing. The file is chosen with the native save dialog (`rfd`); a known
+extension typed there wins over the chosen format. `tabexport::run` writes in a thread
+(`mmportlens-export`) and reports progress / cancel through `Control`; a failed or cancelled export
+removes its file. The result stays in the status bar for 10 s.
+
+`tabexport::cell` gives every cell a type: PID, ports, bytes, packets and rates (rounded B/s) are
+integers, Duration is seconds (`0.000` in Excel), Created / First seen are dates (`Cell::Date`
+with the local wall-clock ms for Excel and the ISO text `2026-11-08 12:43:55.123` for CSV / JSON
+Lines / HTML); the other columns are the table text (`cell_text`). Column titles with a value that
+differs from the table text get the unit (`Sent (B)`, `Duration (s)`); JSON keys are the column
+key without `column.` (`local_address`).
+
+The writers come from RusTrace (its #32) with the log-specific parts removed: CSV (RFC 4180
+quoting, separator incl. the Windows list separator, UTF-8 BOM / UTF-8 / UTF-16 LE, formula
+guard), XLSX (streamed into a deflate ZIP – no zip crate –, typed cells, frozen header,
+AutoFilter, widths from the table defaults, split at 1 048 576 rows, cells cut at 32 767
+characters, row colors = the light mark colors), JSON Lines (empty cells left out) and HTML (one
+file, no scripts). Ctrl+C uses the CSV quoting with a tab separator.
+
+`cargo test xlsx_sample -- --ignored` with `MMPORTLENS_XLSX_OUT=<file>` writes 5 000 rows with
+every column for a check in Excel.
+
 ## Column filters (#1)
 
 A filter row under the column headers has one text field per visible column (**View → Show column
@@ -406,7 +439,7 @@ description, icon; services by PID; start time identifies a reused PID; icon alp
 conversion, FILETIME, version keys), close / kill checks and the `MIB_TCPROW` layout, ending an own child process,
 closing an own loopback connection (elevated: it disappears; not elevated: exactly
 `AccessDenied`), host / service
-cells, selection (clicks, ranges, re-sorting, navigation targets), column filters (syntax, regex, numeric ranges, CIDR, address classes, errors,
+cells, selection (clicks, ranges, re-sorting, navigation targets), the table export (typed cells, every writer, cancel), column filters (syntax, regex, numeric ranges, CIDR, address classes, errors,
 speed), the icon / `.ico` layout, update logic (versions, GitHub JSON, missed releases,
 release notes, SHA-256 files, ZIP reading, installation into a temporary folder, session state)
 and the live snapshot test.

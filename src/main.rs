@@ -20,6 +20,7 @@ mod poller;
 mod process;
 mod selection;
 mod services;
+mod tabexport;
 mod timefmt;
 mod update;
 mod winproc;

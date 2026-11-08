@@ -117,3 +117,12 @@
   file: PID dragged behind State, Protocol resized to 149 px and Local address fitted to 180 px,
   both kept after a restart; Local port dragged in the column window to the place the line showed;
   Default columns restored the order and widths (no width left in the file).
+- #9: export of the table (File → Export…, Ctrl+S) as CSV, Excel, JSON Lines or HTML
+  (`src/tabexport/` with the writers from RusTrace, `src/app/export.rs`): rows shown / selected /
+  all, visible / all columns, typed cells, export thread with progress and cancel, last file with
+  open / show in folder / copy path; Ctrl+C quotes values like CSV. New dependencies `rfd` (save
+  dialog) and `open`, as in RusTrace. Verified: 14 new unit tests (typed cells, column sets, every
+  writer, cancel removes the file); 5 000 rows with all 27 columns opened in Excel through COM
+  (numbers as numbers, dates with the date format, duration `0.000`, formula-like text stays text,
+  frozen header + AutoFilter, row colors); in the running program File → Export… → Excel → Save
+  dialog wrote 197 rows × 11 columns, read back in Excel, and the window showed the last export.

@@ -25,14 +25,18 @@ impl App {
         let filter_id = egui::Id::unique(FILTER_ID);
         let filter_focused = ctx.memory(|m| m.has_focus(filter_id));
 
-        let (f5, ctrl_f, ctrl_a, help) = ctx.input_mut(|i| {
+        let (f5, ctrl_f, ctrl_a, help, export) = ctx.input_mut(|i| {
             (
                 i.consume_key(Modifiers::NONE, Key::F5),
                 i.consume_key(Modifiers::COMMAND, Key::F),
                 !typing && i.consume_key(Modifiers::COMMAND, Key::A),
                 i.consume_key(Modifiers::NONE, Key::F1),
+                i.consume_key(Modifiers::COMMAND, Key::S),
             )
         });
+        if export {
+            self.open_export();
+        }
         if f5 {
             self.ctl.refresh_now.store(true, Ordering::Relaxed);
         }
@@ -129,14 +133,24 @@ impl App {
             return;
         }
         let cols = self.cfg.columns.visible();
+        // A value with a tab, a quote or a line break is quoted like in a CSV file (#9), so the
+        // rows paste into Excel as they are.
+        let line = |values: Vec<String>| {
+            let mut s = String::new();
+            for (i, v) in values.iter().enumerate() {
+                if i > 0 {
+                    s.push('\t');
+                }
+                crate::tabexport::csv::push_field(&mut s, v, '\t', false);
+            }
+            s
+        };
         let mut lines = Vec::with_capacity(rows.len() + 1);
         if rows.len() > 1 {
-            let head: Vec<String> = cols.iter().map(|c| c.title()).collect();
-            lines.push(head.join("\t"));
+            lines.push(line(cols.iter().map(|c| c.title()).collect()));
         }
         for r in &rows {
-            let line: Vec<String> = cols.iter().map(|&c| cell_text(r, c)).collect();
-            lines.push(line.join("\t"));
+            lines.push(line(cols.iter().map(|&c| cell_text(r, c)).collect()));
         }
         ctx.copy_text(lines.join("\r\n"));
     }

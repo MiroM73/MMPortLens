@@ -50,6 +50,9 @@ Early version (0.2.0). What works now:
 - **Multi-selection and keyboard shortcuts**: Ctrl / Shift + click, arrows, Ctrl+A, Ctrl+C copies
   the selected rows, F5, Space pauses, Ctrl+F, Esc – see
   [`docs/keyboard-shortcuts.md`](docs/keyboard-shortcuts.md) or **Help → Keyboard shortcuts** (F1).
+- **Export** (File → Export…, Ctrl+S) of the rows shown, the selected rows or all endpoints, in
+  the visible or all columns, as **CSV**, **Excel** (.xlsx – numbers and times as values, frozen
+  header with AutoFilter, row colors), **JSON Lines** or a self-contained **HTML** report.
 - Status bar with counts, user interface in English, Slovak, Czech and
   German (more languages without recompiling – see `lang/en.lang`), dark / light theme.
 - Settings in `%APPDATA%\MMPortLens\config.json`.

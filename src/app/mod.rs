@@ -28,6 +28,7 @@ mod admin;
 mod colfilters;
 mod columnlayout;
 mod details;
+mod export;
 mod help;
 mod input;
 mod menu;
@@ -140,6 +141,12 @@ pub struct App {
     show_about: bool,
     /// The column window opened by a right click on a header.
     show_columns_popup: bool,
+    /// File → Export… (#9): the window, the running export, its result (text, error, until),
+    /// the last exported file.
+    show_export: bool,
+    export_job: Option<export::ExportJob>,
+    export_result: Option<(String, bool, Instant)>,
+    export_last: Option<PathBuf>,
     ctx: egui::Context,
     update: UpdateState,
     show_update: bool,
@@ -201,6 +208,10 @@ impl App {
             error: None,
             show_about: false,
             show_columns_popup: false,
+            show_export: false,
+            export_job: None,
+            export_result: None,
+            export_last: None,
             ctx: cc.egui_ctx.clone(),
             update: UpdateState::Idle,
             show_update: false,
@@ -291,6 +302,20 @@ impl App {
         text_ok && self.column_filters_match(r, cols)
     }
 
+    /// Host names of a row from the reverse DNS cache (the local one only while its column is
+    /// shown); asks for the missing ones.
+    fn fill_host_names(&mut self, r: &mut Row, cols: &[ColumnId], now: u64) {
+        if !self.cfg.resolve_addresses {
+            return;
+        }
+        if cols.contains(&ColumnId::RemoteHost) || cols.contains(&ColumnId::LocalHost) {
+            r.remote_host = r.conn.remote.and_then(|a| self.resolver.name(a.ip(), now));
+        }
+        if cols.contains(&ColumnId::LocalHost) {
+            r.local_host = self.resolver.name(r.conn.local.ip(), now);
+        }
+    }
+
     fn rebuild_view(&mut self) {
         use crate::net::TcpState;
         let cols = self.cfg.columns.visible();
@@ -306,7 +331,6 @@ impl App {
             && cols
                 .iter()
                 .any(|c| matches!(c, ColumnId::RemoteHost | ColumnId::LocalHost));
-        let local_names = resolve && cols.contains(&ColumnId::LocalHost);
         let now = now_ms();
         let rows: Vec<Row> = self.tracker.rows().cloned().collect();
         for mut r in rows {
@@ -323,10 +347,7 @@ impl App {
                 _ => {}
             }
             if resolve {
-                r.remote_host = r.conn.remote.and_then(|a| self.resolver.name(a.ip(), now));
-                if local_names {
-                    r.local_host = self.resolver.name(r.conn.local.ip(), now);
-                }
+                self.fill_host_names(&mut r, &cols, now);
             }
             if self.row_shown(&r, &cols, &needle) {
                 view.push(r);
@@ -391,6 +412,8 @@ impl eframe::App for App {
         self.about_window(&ctx);
         self.shortcuts_window(&ctx);
         self.confirm_window(&ctx);
+        self.check_export();
+        self.export_window(&ctx);
         self.poll_update(&ctx);
         self.update_window(&ctx);
 
