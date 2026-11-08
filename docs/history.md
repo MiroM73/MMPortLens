@@ -193,3 +193,16 @@
   fetch_latest_release -- --ignored`) passes with v0.2.9 as GitHub's latest release. The update
   window of an older version was not opened by hand. Comments added to #16 (`--preset` of #13 is
   the first piece of the command line) and #23 (the live snapshot test failed once more).
+
+## Not released yet
+- #30: live traffic and I/O graph in the process properties window (`src/rates.rs`,
+  `src/app/properties_graph.rs`, new dependency `egui_plot` 0.38 built on egui 0.37): TCP segments
+  per second of the process from the ESTATS counters of #8 (collected while the window is open;
+  administrator only) and I/O operations per second from `GetProcessIoCounters` / `/proc/<pid>/io`,
+  last two minutes, sampled once per snapshot with per-connection positive deltas. Verified: 8
+  sampler unit tests, `/proc/<pid>/io` parsing, own I/O counters readable; in the release build
+  (not elevated) on a PowerShell downloading in a loop: the I/O plot moved (~40–60 "other"
+  operations/s), the TCP part showed the administrator note, a system process without access showed
+  both notes, ending the PowerShell froze the graph with "(process has exited)". The TCP plot as
+  administrator was not checked by hand (no elevated session). Also fixed a misplaced doc comment
+  of `process::start_time`.

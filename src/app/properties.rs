@@ -4,7 +4,8 @@
 //! values stay with the note "(process has exited)".
 //!
 //! The values come from the poller's `ProcessCache` through the rows of the tracker; the window
-//! only checks the start time of its PID (at most once a second) when no row is left.
+//! only checks the start time of its PID (at most once a second) when no row is left. The live
+//! traffic / I/O graph below the values is in `properties_graph.rs` (#30).
 
 use crate::app::*;
 use crate::process::ProcessInfo;
@@ -14,14 +15,16 @@ const EXIT_CHECK: Duration = Duration::from_secs(1);
 
 /// The state of the properties window.
 pub(in crate::app) struct Properties {
-    pid: u32,
+    pub(in crate::app) pid: u32,
     /// The last known values (kept after the process exits).
-    info: Arc<ProcessInfo>,
+    pub(in crate::app) info: Arc<ProcessInfo>,
     /// TCP / UDP endpoints of the process in the table (closed rows not counted).
     tcp: usize,
     udp: usize,
-    exited: bool,
+    pub(in crate::app) exited: bool,
     checked: Option<Instant>,
+    /// Live TCP / I/O rates for the graph (#30).
+    pub(in crate::app) sampler: crate::rates::Sampler,
 }
 
 /// What the window says about its process when it has no endpoint in the table.
@@ -62,6 +65,7 @@ impl App {
             udp: 0,
             exited: false,
             checked: None,
+            sampler: Default::default(),
         });
     }
 
@@ -117,7 +121,7 @@ impl App {
     }
 
     /// The values of the window as text (Copy button).
-    fn properties_text(p: &Properties) -> String {
+    fn properties_text(p: &Properties, stats_denied: bool) -> String {
         let info = &p.info;
         let mut lines = vec![info.name.clone()];
         if !info.description.is_empty() {
@@ -130,6 +134,7 @@ impl App {
             }
         }
         lines.push(t!("properties.endpoints", tcp = p.tcp, udp = p.udp));
+        lines.extend(properties_graph::traffic_text(&p.sampler, stats_denied));
         lines.join("\r\n")
     }
 
@@ -183,9 +188,11 @@ impl App {
                     ui.label(RichText::new(t!("properties.no_rows")).weak());
                 }
                 ui.separator();
+                properties_graph::traffic_graph(ui, &p.sampler, self.stats_denied);
+                ui.separator();
                 ui.horizontal_wrapped(|ui| {
                     if ui.button(format!("📋 {}", t!("properties.copy"))).clicked() {
-                        ctx.copy_text(Self::properties_text(p));
+                        ctx.copy_text(Self::properties_text(p, self.stats_denied));
                     }
                     let has_path = !path.is_empty();
                     if ui

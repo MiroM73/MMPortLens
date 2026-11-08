@@ -47,6 +47,20 @@ pub fn icon_rgba(color_bgra: &[u8], mask_bgra: Option<&[u8]>) -> Vec<u8> {
     out
 }
 
+/// I/O operations and bytes of a process since it started (`IO_COUNTERS` on Windows,
+/// `/proc/<pid>/io` on Linux): reads, writes and other operations – disk, network and device
+/// I/O together (#30).
+#[repr(C)]
+#[derive(Clone, Copy, Debug, Default, PartialEq, Eq)]
+pub struct IoCounters {
+    pub read_ops: u64,
+    pub write_ops: u64,
+    pub other_ops: u64,
+    pub read_bytes: u64,
+    pub write_bytes: u64,
+    pub other_bytes: u64,
+}
+
 /// What [`details`] finds about a process.
 #[derive(Default, Debug)]
 pub struct Details {
@@ -61,7 +75,7 @@ pub use imp::*;
 
 #[cfg(windows)]
 mod imp {
-    use super::{Details, Icon, filetime_to_unix_ms, icon_rgba, version_key};
+    use super::{Details, Icon, IoCounters, filetime_to_unix_ms, icon_rgba, version_key};
     use std::collections::HashMap;
     use std::ffi::c_void;
 
@@ -86,6 +100,7 @@ mod imp {
         fn QueryFullProcessImageNameW(p: Handle, flags: u32, name: *mut u16, size: *mut u32)
         -> i32;
         fn GetProcessTimes(p: Handle, c: *mut u64, e: *mut u64, k: *mut u64, u: *mut u64) -> i32;
+        fn GetProcessIoCounters(p: Handle, counters: *mut IoCounters) -> i32;
         fn GetLastError() -> u32;
     }
 
@@ -315,6 +330,16 @@ mod imp {
             return None;
         }
         filetime_to_unix_ms(c)
+    }
+
+    /// The I/O counters of the process (#30); `None` when it cannot be opened.
+    pub fn io_counters(pid: u32) -> Option<IoCounters> {
+        let p = Process::open(pid)?;
+        let mut io = IoCounters::default();
+        // SAFETY: `IoCounters` is `#[repr(C)]` with the six ULONGLONG fields of IO_COUNTERS in
+        // their order; the handle is open.
+        let ok = unsafe { GetProcessIoCounters(p.0, &mut io) };
+        (ok != 0).then_some(io)
     }
 
     /// User, command line and the version strings of `path`.

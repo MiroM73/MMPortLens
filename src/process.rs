@@ -10,7 +10,7 @@ use std::collections::{HashMap, HashSet};
 use std::sync::Arc;
 use std::time::{Duration, Instant};
 
-pub use crate::winproc::Icon;
+pub use crate::winproc::{Icon, IoCounters};
 
 /// How often the list of services per PID is read again.
 pub const SERVICES_EVERY: Duration = Duration::from_secs(10);
@@ -105,13 +105,36 @@ impl ProcessCache {
     }
 }
 
-/// File name part of a path (both `\` and `/` separators).
 /// When the process `pid` started (ms since the Unix epoch); `None` when it does not exist or
 /// cannot be opened. With the PID it identifies the process (properties window, #28).
 pub fn start_time(pid: u32) -> Option<u64> {
     platform::start_time(pid)
 }
 
+/// The I/O counters of the process `pid` (graph of the properties window, #30); `None` when it
+/// does not exist or cannot be opened.
+pub fn io_counters(pid: u32) -> Option<IoCounters> {
+    platform::io_counters(pid)
+}
+
+/// `/proc/<pid>/io` → counters: `syscr` / `syscw` are the read / write operations, `rchar` /
+/// `wchar` their bytes (Linux has no "other" operations).
+#[cfg_attr(windows, allow(dead_code))]
+pub fn parse_proc_io(text: &str) -> Option<IoCounters> {
+    let field = |name: &str| {
+        text.lines()
+            .find_map(|l| l.strip_prefix(name)?.strip_prefix(':')?.trim().parse().ok())
+    };
+    Some(IoCounters {
+        read_ops: field("syscr")?,
+        write_ops: field("syscw")?,
+        read_bytes: field("rchar")?,
+        write_bytes: field("wchar")?,
+        ..Default::default()
+    })
+}
+
+/// File name part of a path (both `\` and `/` separators).
 pub fn file_name(path: &str) -> &str {
     path.rsplit(['\\', '/']).next().unwrap_or(path)
 }
@@ -153,7 +176,7 @@ fn lookup(pid: u32) -> ProcessInfo {
 
 #[cfg(windows)]
 mod platform {
-    pub use crate::winproc::{details, icon, image_path, services, start_time};
+    pub use crate::winproc::{details, icon, image_path, io_counters, services, start_time};
 
     /// Without a path (access denied) Windows gives us no name either.
     pub fn short_name(_pid: u32) -> Option<String> {
@@ -163,8 +186,12 @@ mod platform {
 
 #[cfg(not(windows))]
 mod platform {
-    use crate::winproc::{Details, Icon};
+    use crate::winproc::{Details, Icon, IoCounters};
     use std::collections::HashMap;
+
+    pub fn io_counters(pid: u32) -> Option<IoCounters> {
+        super::parse_proc_io(&std::fs::read_to_string(format!("/proc/{pid}/io")).ok()?)
+    }
 
     pub fn image_path(pid: u32) -> Option<String> {
         std::fs::read_link(format!("/proc/{pid}/exe"))
@@ -276,6 +303,31 @@ mod tests {
         c.map.insert(own, Arc::new(old));
         let b = c.get(own);
         assert_eq!(b.started, a.started);
+    }
+
+    #[test]
+    fn proc_io_parsing() {
+        let text = "rchar: 3000
+wchar: 400
+syscr: 12
+syscw: 5
+read_bytes: 0
+";
+        let io = parse_proc_io(text).unwrap();
+        assert_eq!((io.read_ops, io.write_ops, io.other_ops), (12, 5, 0));
+        assert_eq!((io.read_bytes, io.write_bytes), (3000, 400));
+        assert_eq!(
+            parse_proc_io(
+                "rchar: 1
+"
+            ),
+            None
+        );
+    }
+
+    #[test]
+    fn own_io_counters_are_readable() {
+        assert!(io_counters(std::process::id()).is_some());
     }
 
     #[test]

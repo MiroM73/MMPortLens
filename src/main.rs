@@ -20,6 +20,7 @@ mod net;
 mod poller;
 mod presets;
 mod process;
+mod rates;
 mod rules;
 mod selection;
 mod services;

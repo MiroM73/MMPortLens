@@ -19,7 +19,8 @@ with the change.
 | `src/net/estats.rs` | Traffic counters per TCP connection (ESTATS, #8): `Collector`, the pure `tcp_row` / `tcp6_row` / `decode_data`. |
 | `src/net/procfs.rs` | Linux backend: `/proc/net/{tcp,tcp6,udp,udp6}` + socket inode → PID from `/proc/<pid>/fd`. |
 | `src/process.rs` | `ProcessInfo` (name, path, start time, user, command line, company, description, services, icon) and `ProcessCache` keyed by PID + start time (#7). |
-| `src/winproc.rs` | Windows process details: image path, start time, user (token), command line (`NtQueryInformationProcess`), version strings, icon (`ExtractIconExW` → RGBA), services per PID (`EnumServicesStatusExW`) (#7). |
+| `src/winproc.rs` | Windows process details: image path, start time, user (token), command line (`NtQueryInformationProcess`), version strings, icon (`ExtractIconExW` → RGBA), services per PID (`EnumServicesStatusExW`) (#7), I/O counters (`GetProcessIoCounters`, #30). |
+| `src/rates.rs` | `Sampler`: per-second TCP and I/O rates of one process from cumulative counters, ring buffer of the last two minutes – pure, tested (#30). |
 | `src/poller.rs` | Background thread: snapshot + process names every interval, sent over a channel. |
 | `src/model.rs` | `Tracker`: merges snapshots into rows, marks new / changed / closed rows and expires the marks. |
 | `src/colfilter.rs` | Column filter syntax: parsing and matching (`ColumnFilter`, `FilterKind`, `FilterError`) – core from RusTrace. |
@@ -32,7 +33,7 @@ with the change.
 | `src/config.rs` | `Config` (JSON, every field has a default). |
 | `src/i18n.rs` | `t!()` and the language files – the same module as in RusTrace. |
 | `src/timefmt.rs` | Clock times for the table. |
-| `src/app/` | The UI, split by area like RusTrace: `mod.rs` (state, frame loop), `menu.rs`, `toolbar.rs`, `table.rs`, `statusbar.rs`, `colfilters.rs` (column filter state and field), `admin.rs` (restart as administrator), `update_window.rs` (Help → Check for updates), `input.rs` (keyboard shortcuts, copying the selection), `help.rs` (Help → Keyboard shortcuts), `actions.rs` (context menu items, confirmation window and result of #6), `details.rs` (details pane, process icons and tooltip of #7), `properties.rs` (process properties window of #28), `rules.rs` (color rules window and row colors of #10), `presets.rs` (filter preset combo box and windows of #13), `groups.rs` (group lines of #12), `columnlayout.rs` (header drag and drop, remembered widths, fit on a border double click – #2), `export.rs` (File → Export… window, export thread, status – #9). |
+| `src/app/` | The UI, split by area like RusTrace: `mod.rs` (state, frame loop), `menu.rs`, `toolbar.rs`, `table.rs`, `statusbar.rs`, `colfilters.rs` (column filter state and field), `admin.rs` (restart as administrator), `update_window.rs` (Help → Check for updates), `input.rs` (keyboard shortcuts, copying the selection), `help.rs` (Help → Keyboard shortcuts), `actions.rs` (context menu items, confirmation window and result of #6), `details.rs` (details pane, process icons and tooltip of #7), `properties.rs` (process properties window of #28), `properties_graph.rs` (its live traffic / I/O graph, #30), `rules.rs` (color rules window and row colors of #10), `presets.rs` (filter preset combo box and windows of #13), `groups.rs` (group lines of #12), `columnlayout.rs` (header drag and drop, remembered widths, fit on a border double click – #2), `export.rs` (File → Export… window, export thread, status – #9). |
 | `lang/*.lang` | Built-in translations (en, sk, cs, de), embedded with `include_str!`. |
 
 ## Reading the connections
@@ -104,6 +105,7 @@ explanation; the cells stay empty.
 `Tracker::update` computes the rates from the difference to the previous snapshot of the same row
 (`model::rate`: bytes × 1000 / ms between the snapshots, 0 when a counter went back); the texts are
 `columns::bytes` (1 KB = 1024 B) and `columns::rate`. UDP has no per-endpoint counters (ETW, #4).
+The properties window also switches the collection on for its graph (#30).
 
 ## Rows, marks and refresh
 
@@ -274,6 +276,33 @@ access denied – cannot be decided and counts as running). Buttons: Copy, Open 
 `SEE_MASK_INVALIDATELIST`; the shell shows the dialog on its own thread), End process
 (`request_kill_process` → the confirmation window of #6), Close. Esc closes the window before it
 clears the text filter or the selection.
+
+#### Live traffic and I/O graph (#30)
+
+Below the values a collapsible section draws two `egui_plot` plots of the last
+`rates::WINDOW_MS` (2 minutes; x = seconds before the newest sample, fixed bounds, no drag / zoom,
+legend in the left top corner because the newest values are on the right):
+
+- **TCP packets per second** – received / sent segments, with the current segments and bytes per
+  second as text. The counters are the ESTATS counters of #8: `rebuild_view` keeps
+  `PollControl::collect_stats` on while the window is open, not only while a traffic column is
+  shown. Without administrator rights (`stats_denied`) a note replaces the plot (on Linux: "only on
+  Windows"). UDP has no per-endpoint counters (ETW, #4).
+- **I/O operations per second** – read / write / other from `process::io_counters`
+  (`GetProcessIoCounters` with `PROCESS_QUERY_LIMITED_INFORMATION`, works without administrator
+  rights for the own user's processes; `/proc/<pid>/io` `syscr` / `syscw` on Linux). Disk, network
+  and device I/O together – socket I/O of e.g. .NET's WebClient is counted as "other". A note
+  replaces the plot when the counters were never readable (access denied).
+
+`App::receive` calls `App::sample_properties(snap.taken)` once per poller snapshot (not every
+frame): the TCP counters of the window's rows (same PID / start time / not closed filter as the
+endpoint count) keyed by `(ConnKey, created)` and the I/O counters go into `rates::Sampler::push`.
+The sampler stores rates between two polls: TCP deltas are taken **per connection and only when
+positive** – a closed connection drops out of the sum and a connection seen for the first time (or
+whose collection has just been switched on) is only a baseline, so neither makes a negative value
+or a spike; I/O needs two readable polls; an equal or older snapshot time adds nothing. Samples
+older than the window (or beyond 2 000) are dropped. After the process exits the sampling stops and
+the last curves stay. The Copy text adds the latest rates.
 
 ## Close connection, End process (#6)
 
@@ -526,7 +555,7 @@ settings say so).
 `cargo test` – decoding of the Windows owner module tables (incl. creation times, row offsets),
 the live creation time and owner module of an own connection, `/proc/net` lines, ESTATS rows and
 counters (elevated: 200 KB over an own connection are counted; not elevated: exactly
-AccessDenied), traffic rates between snapshots, byte / rate texts, state codes, the tracker
+AccessDenied), traffic rates between snapshots, the rate sampler of the properties graph (per-connection deltas, closed / new connections, resets, window), `/proc/<pid>/io` parsing and the own I/O counters, byte / rate texts, state codes, the tracker
 (new / changed / closed / expiry / reappearing), column layout and sorting, settings round trip,
 language files, reverse DNS (cache TTL / negative results / pending, `sockaddr` layout, a
 300-address run through the worker pool with a slow fake resolver – never more than `WORKERS` at

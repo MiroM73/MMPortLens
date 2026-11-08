@@ -49,6 +49,11 @@ program, README / `docs/architecture.md` / `docs/history.md`, detailed commit wi
 | #13 | Saved filter presets (builds on #1) | done (0cd38de) |
 | #12 | Group rows by process | done (7e6f2af) |
 
+## Phase 4b – asked by the owner after v0.2.9 (done, not released yet)
+| Issue | What | Status |
+|-------|------|--------|
+| #30 | Live traffic (TCP packets, ESTATS of #8) and I/O operations graph in the process properties window of #28, `egui_plot` (reusable by #19) | done; the TCP plot as administrator not yet checked by hand |
+
 ## Phase 5 – recording and automation
 | Issue | What | Status |
 |-------|------|--------|

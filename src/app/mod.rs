@@ -35,6 +35,7 @@ mod input;
 mod menu;
 mod presets;
 mod properties;
+mod properties_graph;
 mod rules;
 mod statusbar;
 mod table;
@@ -308,6 +309,7 @@ impl App {
                     self.last_poll = Some(snap.taken);
                     self.stats_denied = snap.stats_denied;
                     self.error = None;
+                    self.sample_properties(snap.taken);
                 }
                 Err(e) => self.error = Some(t!("error.poll", error = e)),
             }
@@ -363,10 +365,12 @@ impl App {
     fn rebuild_view(&mut self) {
         use crate::net::TcpState;
         let cols = self.cfg.columns.visible();
-        // Traffic counters only while a traffic column is shown (they cost CPU, #8).
-        self.ctl
-            .collect_stats
-            .store(cols.iter().any(|c| c.traffic()), Ordering::Relaxed);
+        // Traffic counters only while a traffic column is shown (they cost CPU, #8) or the
+        // properties window draws its graph (#30).
+        self.ctl.collect_stats.store(
+            cols.iter().any(|c| c.traffic()) || self.properties.is_some(),
+            Ordering::Relaxed,
+        );
         let needle = self.filter.trim().to_lowercase();
         let mut counts = Counts::default();
         let mut view = Vec::with_capacity(self.tracker.len());
