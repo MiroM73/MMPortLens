@@ -58,3 +58,8 @@ updates, CLI), take its code and adapt it rather than writing it again.
 - `cargo fmt` + `cargo clippy --all-targets --locked -- -D warnings` – CI fails otherwise.
 - Do not leave test runs touching `%APPDATA%\MMPortLens\config.json`.
 - Line endings: `.gitattributes` forces LF (`* text=auto eol=lf`).
+- **Heredocs in the Bash tool break often**: a longer `python - <<'EOF' … EOF` (or `cat <<'EOF'`)
+  with many quotes / triple quotes / backticks fails with `unexpected EOF while looking for
+  matching '`. Do not retry the heredoc – write the script (or commit message) to a file in the
+  scratchpad with the Write tool and run it (`python "<scratchpad>/x.py"`, `git commit -F
+  "<scratchpad>/msg.txt"`). Short heredocs without quotes are fine.
