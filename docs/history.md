@@ -146,7 +146,7 @@
   product version 0.2.5, and the update code (`cargo test fetch_latest_release -- --ignored`) sees
   v0.2.5 as the latest release. The update window of an older version was not opened by hand.
 
-## Unreleased – phase 4, comfort
+## 0.2.9 (2026-11-08) – phase 4, comfort
 - #28: process properties window (`src/app/properties.rs`) from **Properties…** in the row context
   menu or Alt+Enter: icon, name, description, path, company, user, start time, command line,
   services, PID and the number of TCP / UDP endpoints, not tied to the selection; Copy, Open file

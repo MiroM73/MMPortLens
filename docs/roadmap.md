@@ -41,13 +41,13 @@ program, README / `docs/architecture.md` / `docs/history.md`, detailed commit wi
 | #14 | Real creation time and owner module of TCP connections | done (1f660a1) |
 | #8 | Bytes sent / received per connection (ESTATS, needs admin – administrator mode of #15 exists) | done (50055c3); the counters as administrator not yet checked by hand |
 
-## Phase 4 – comfort
+## Phase 4 – comfort (done, not released yet)
 | Issue | What | Status |
 |-------|------|--------|
 | #28 | Process properties window from the row context menu (reuses the process details of #7 and the end-process action of #6) | done (af117ca) |
 | #10 | Custom color rules for rows (highlight rules from RusTrace) | done (83df645) |
 | #13 | Saved filter presets (builds on #1) | done (0cd38de) |
-| #12 | Group rows by process | done |
+| #12 | Group rows by process | done (7e6f2af) |
 
 ## Phase 5 – recording and automation
 | Issue | What | Status |
