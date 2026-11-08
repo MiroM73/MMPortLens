@@ -239,3 +239,15 @@
   without the quotes. Verified: the new filter returns the run of v0.2.9 and nothing for a missing
   tag under both `powershell.exe` 5.1 and `pwsh` 7.6; the release of v0.3.7 runs the watch step
   under 5.1. The same bug in RusTrace is MiroM73/Rustrace#59.
+- #26: the update check retries transient GitHub failures (HTTP 502 / 503 / 504, WinHTTP timeouts
+  and broken connections; 2, 5, 10 s, `Retry-After` up to 30 s) and explains failures in the
+  user's language with the raw code kept ("GitHub is temporarily unavailable (HTTP 503). Try again
+  later.", rate limit with the reset time, network); a 5xx links to githubstatus.com, and a
+  transient failure is not counted as the daily check. `http::HttpError` with pure `kind` /
+  `retry_delay` / `retry`, `update::CheckError`, test override `MMPORTLENS_UPDATE_URL`. Verified:
+  6 new unit tests; the ignored network tests (`real_http_errors` against httpbin.org and GitHub:
+  404 / 503 kinds, three retries, rate-limit headers read from a GitHub 404, unresolvable name =
+  network; `fetch_latest_release`) pass; in the release build with the URL set to httpbin's 503
+  the Updates window kept the spinner during the retries and then showed the message with the
+  status page link; a 503 at start left `update_last_check` unchanged, a 404 updated it. 135
+  tests. Port to RusTrace: MiroM73/Rustrace#60.

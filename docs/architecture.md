@@ -550,6 +550,19 @@ names changed; the logic is the same.
   check at start-up is *silent*: it opens the window only for a newer version that the user did
   not skip (`update_skipped`) and reports no errors (offline). A newer version also shows a
   green "⬆ <version>" button in the status bar.
+- **Failures (#26):** `http::get` returns an `HttpError` – `Status` (code plus the `Retry-After` /
+  `X-RateLimit-Remaining` / `X-RateLimit-Reset` headers read with `WINHTTP_QUERY_CUSTOM`),
+  `Network` (WinHTTP error number and text) or `Other`. Pure functions decide its `kind()`
+  (5xx → server unavailable; 429, or 403 with no requests left → rate limited; 404; network) and
+  `retry_delay(attempt)`: only 502 / 503 / 504 and WinHTTP 12002 / 12029 / 12030 are retried, after
+  2, 5 and 10 s (a `Retry-After` up to 30 s is honoured); never 4xx. `http::retry` runs the loop
+  (the sleep is passed in, so tests do not wait). `update::CheckError::from_http` turns the error
+  into a translated text that keeps the raw code ("GitHub is temporarily unavailable (HTTP 503).
+  Try again later.", the rate limit with the local reset time), marks it `transient` (server,
+  rate limit, network) and `server` (5xx: the window links to githubstatus.com). A transient
+  failure does not update `update_last_check`, so the daily check is tried again at the next
+  start. The download of an installation uses the same `get` without retries (its errors are
+  shown as text).
 - **Window:** release notes of every missed version (Markdown shown as plain lines by
   `plain_notes`: headings, bullets, link text without the URL, no bold / italic / code marks),
   *Download and install*, *Release page*, *Skip this version*, *Later*, *Check again* and the
@@ -568,7 +581,10 @@ names changed; the logic is the same.
 - **Testing:** `MMPORTLENS_UPDATE_AS_VERSION=0.0.9` makes the program pretend an older version, so
   the window and the installation can be tried with the published release;
   `cargo test fetch_latest_release -- --ignored` downloads and installs the latest release into a
-  temporary folder.
+  temporary folder. `MMPORTLENS_UPDATE_URL` replaces the GitHub URL of the check (e.g.
+  `https://httpbin.org/status/503` shows the failure handling); `cargo test real_http_errors --
+  --ignored` checks the error kinds, the retries and the header reading against httpbin.org and
+  GitHub.
 
 ## Tests
 

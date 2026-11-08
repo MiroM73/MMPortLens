@@ -22,7 +22,7 @@ impl App {
             });
         self.update = match spawned {
             Ok(_) => UpdateState::Checking { rx, silent },
-            Err(e) => UpdateState::Failed(e.to_string()),
+            Err(e) => UpdateState::Failed(e.to_string().into()),
         };
     }
 
@@ -34,10 +34,14 @@ impl App {
                 let res = match rx.try_recv() {
                     Ok(res) => res,
                     Err(mpsc::TryRecvError::Empty) => return,
-                    Err(mpsc::TryRecvError::Disconnected) => Err(t!("error.internal")),
+                    Err(mpsc::TryRecvError::Disconnected) => Err(t!("error.internal").into()),
                 };
-                self.cfg.update_last_check = chrono::Local::now().timestamp();
-                self.settings_changed();
+                // A check that failed because GitHub or the network had a passing problem does
+                // not count, so "once a day" tries again at the next start (#26).
+                if !matches!(&res, Err(e) if e.transient) {
+                    self.cfg.update_last_check = chrono::Local::now().timestamp();
+                    self.settings_changed();
+                }
                 self.update = match res {
                     Ok(u) => {
                         let newer = u.is_newer();
@@ -198,6 +202,9 @@ impl App {
                     }
                     UpdateState::Failed(e) => {
                         ui.colored_label(red, t!("update.check_failed", error = e));
+                        if e.server {
+                            ui.hyperlink_to(t!("update.github_status"), update::GITHUB_STATUS_URL);
+                        }
                     }
                     UpdateState::Checked(u) if u.is_newer() => {
                         let r = &u.latest;

@@ -15,7 +15,7 @@ use crate::net::{ConnKey, TcpState};
 use crate::poller::{self, PollControl, PollResult};
 use crate::selection::Selection;
 use crate::t;
-use crate::update::{self, Release, SessionState, Updates, WindowState};
+use crate::update::{self, CheckError, Release, SessionState, Updates, WindowState};
 use eframe::egui::{self, Color32, RichText, Sense};
 use std::collections::HashMap;
 use std::path::PathBuf;
@@ -61,10 +61,10 @@ enum UpdateState {
     Idle,
     /// Asking GitHub; `silent` = automatic check at start-up (no window unless a new version).
     Checking {
-        rx: mpsc::Receiver<Result<Updates, String>>,
+        rx: mpsc::Receiver<Result<Updates, CheckError>>,
         silent: bool,
     },
-    Failed(String),
+    Failed(CheckError),
     /// The latest release (newer or not) and the missed ones.
     Checked(Updates),
     /// Download + installation; `exe` = the program path before it was renamed.
