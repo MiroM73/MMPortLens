@@ -126,3 +126,13 @@
   (numbers as numbers, dates with the date format, duration `0.000`, formula-like text stays text,
   frozen header + AutoFilter, row colors); in the running program File → Export… → Excel → Save
   dialog wrote 197 rows × 11 columns, read back in Excel, and the window showed the last export.
+- #20 (shared crate with RusTrace), state after porting the filters (#1) and the export (#9) –
+  lines that differ between the copies in the two repositories: `tabexport/zip.rs` 2 (comment),
+  `tabexport/csv.rs` 38 and `html.rs` 39 (tests only), `http.rs` 34, `i18n.rs` 43 (app name),
+  `jsonl.rs` 50 (date source), `update.rs` 225 (app / asset names, environment variable),
+  `tabexport/xlsx.rs` 253 (columns, summary sheets), `colfilter.rs` 846 (numbers / addresses /
+  CIDR here, dates there). A shared crate would need an `mm-*` repository used as a git
+  dependency by both programs and changes in RusTrace, so the decision is left to the owner.
+- Found on the way: the status bar overlaps in a narrow window (new #29); the ⏴ ⏵ buttons of the
+  column window are empty boxes like the sort arrow (comment on #22); the live snapshot test failed
+  again with the own client connection reported as FinWait1 (comment on #23).
