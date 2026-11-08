@@ -132,16 +132,10 @@ toolbar.filter.tip = Shows rows where any visible column contains the text (case
 
 # --- Column filters ---
 filter.hint = Filter…
-filter.tip.text = Filter of this column (case-insensitive):
-  text – contains the text
-  =text – is exactly the text
-  /regex/ – matches the regular expression
-  a|b – any of the alternatives
-  !… – none of the alternatives
+filter.tip.text = Filter of this column (case-insensitive):\n  text – contains the text\n  =text – is exactly the text\n  /regex/ – matches the regular expression\n  a|b – any of the alternatives\n  !… – none of the alternatives
 filter.tip.number = Numbers: >1024, >=1024, <1024, <=1024, 1000-2000, 1000..2000, =443
 filter.tip.address = Addresses: 10.0.0.0/8, fe80::/10 (network), loopback, private, public
-filter.error.regex = Invalid regular expression – this filter is ignored:
-{error}
+filter.error.regex = Invalid regular expression – this filter is ignored:\n{error}
 filter.error.network = Invalid network "{value}" – this filter is ignored. The prefix length is 0–32 for IPv4 and 0–128 for IPv6.
 filter.clear = Column filters: {count}
 filter.clear.tip = Clear all column filters

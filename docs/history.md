@@ -395,3 +395,10 @@
   the Windows services file) showed `1270 – opsmgr` in the tooltip, `1270 (opsmgr)` in the details
   and `opsmgr` in the Service column. The `Used by` line was checked by the unit test only (the
   owner module of service endpoints needs administrator rights).
+- #41 (found while working on #35): `filter.tip.text` and `filter.error.regex` were written over
+  several real lines in all four language files; `i18n::parse` reads one line per key, so the
+  filter tooltip showed only its first line and an invalid regex never showed its reason. Both are
+  now one line with `
+` escapes, and the new test `builtin_values_are_on_one_line` fails for any
+  line of a built-in language file that is not `key = value` (checked: it failed on the old files,
+  passes on the fixed ones; 179 tests with the work in progress).

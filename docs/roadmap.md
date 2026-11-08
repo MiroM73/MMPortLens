@@ -78,7 +78,7 @@ program, README / `docs/architecture.md` / `docs/history.md`, detailed commit wi
 | #40 | Console output of the command line garbled in an OEM code page console (`–` → `ÔÇô`; found in the #4 check) | |
 | #39 | `--help` / `-h` / `-?` / `/?` in a styled egui window instead of the message box: resizable by the bottom-right corner, text zoom (Ctrl + wheel, Ctrl + `+` / `-` / `0`); reuses the renderer of #38, so after it | done ("--help in a styled, resizable window") |
 
-## Any time (small fixes found on the way) – all done, released in v0.3.7
+## Any time (small fixes found on the way) – done up to #29 released in v0.3.7
 | Issue | What | Status |
 |-------|------|--------|
 | #21 part 3 | Status bar hint when Windows reports invalid TCP states | done (df3a539) |
@@ -88,6 +88,7 @@ program, README / `docs/architecture.md` / `docs/history.md`, detailed commit wi
 | #25 | `release.ps1` loses the jq quotes under Windows PowerShell 5.1 while waiting for the workflow | done (16d6136) |
 | #26 | Update check: retry transient GitHub errors (HTTP 502/503/504, timeouts) and explain them; port the change back to RusTrace (copied `update`/`http` code, see #20) | done (739a9c4); RusTrace port is MiroM73/Rustrace#60 |
 | #29 | Status bar texts overlap in a narrow window (found in the #27 check) | done (10e1140) |
+| #41 | Multi-line values in the language files cut after the first line: filter tooltip, regex error (found in #35) | done ("Language files: one line per value") |
 
 ## Deferred indefinitely (owner's decision)
 | Issue | What | Status |

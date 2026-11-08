@@ -785,6 +785,10 @@ added hidden at the end, at least one column visible.
 
 Every user-visible string goes through `t!("key")`; `i18n::tests::builtin_languages_are_complete`
 checks that all four built-in languages have the same keys and placeholders.
+A language file has one `key = value` per line (`#` comments); a line break inside a value is
+written as `
+` – `builtin_values_are_on_one_line` fails for any other line, because `i18n::parse`
+would drop it silently (#41).
 
 ## Icon and version resource (#15)
 

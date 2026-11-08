@@ -121,16 +121,10 @@ toolbar.filter.tip = Zeigt Zeilen, in denen eine sichtbare Spalte den Text enth�
 
 # --- Spaltenfilter ---
 filter.hint = Filter…
-filter.tip.text = Filter dieser Spalte (ohne Groß-/Kleinschreibung):
-  Text – enthält den Text
-  =Text – ist genau der Text
-  /regex/ – passt zum regulären Ausdruck
-  a|b – eine der Alternativen
-  !… – keine der Alternativen
+filter.tip.text = Filter dieser Spalte (ohne Groß-/Kleinschreibung):\n  Text – enthält den Text\n  =Text – ist genau der Text\n  /regex/ – passt zum regulären Ausdruck\n  a|b – eine der Alternativen\n  !… – keine der Alternativen
 filter.tip.number = Zahlen: >1024, >=1024, <1024, <=1024, 1000-2000, 1000..2000, =443
 filter.tip.address = Adressen: 10.0.0.0/8, fe80::/10 (Netz), loopback, private (privat), public (öffentlich)
-filter.error.regex = Ungültiger regulärer Ausdruck – dieser Filter wird ignoriert:
-{error}
+filter.error.regex = Ungültiger regulärer Ausdruck – dieser Filter wird ignoriert:\n{error}
 filter.error.network = Ungültiges Netz „{value}“ – dieser Filter wird ignoriert. Die Präfixlänge ist 0–32 für IPv4 und 0–128 für IPv6.
 filter.clear = Spaltenfilter: {count}
 filter.clear.tip = Alle Spaltenfilter löschen

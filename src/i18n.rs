@@ -302,6 +302,30 @@ mod tests {
         }
     }
 
+    /// A value goes on one line (`\n` for line breaks): a continuation line would be dropped
+    /// silently by `parse` (#41).
+    #[test]
+    fn builtin_values_are_on_one_line() {
+        for (code, text) in BUILTIN {
+            for (n, line) in text.lines().enumerate() {
+                let line = line.trim_start_matches('\u{feff}').trim();
+                if line.is_empty() || line.starts_with('#') {
+                    continue;
+                }
+                let key = line.split_once('=').map(|(k, _)| k.trim());
+                assert!(
+                    key.is_some_and(|k| !k.is_empty() && !k.contains(' ')),
+                    "{code}.lang line {}: not a `key = value` line: {line}",
+                    n + 1
+                );
+            }
+        }
+        // The two values of #41 keep their lines and the placeholder.
+        let en = parse(BUILTIN[0].1);
+        assert!(en["filter.tip.text"].lines().count() >= 5);
+        assert!(en["filter.error.regex"].contains("{error}"));
+    }
+
     #[test]
     fn resolve_codes() {
         let av = vec![
