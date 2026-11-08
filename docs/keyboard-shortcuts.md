@@ -22,7 +22,7 @@ shortcuts** (F1).
 | Shift + mouse wheel | Scroll the table horizontally when the columns do not fit (also the horizontal touchpad gesture) |
 | Ctrl+A | Select all rows shown |
 | Del | Close the selected connections (asks first; IPv4 TCP only) |
-| Alt+Enter | Properties of the process of the cursor row (also **Properties…** in the row context menu) |
+| Alt+Enter | Properties of the processes of the selected rows, one window per process, at most 8 (the cursor row when nothing is selected; also **Properties…** in the row context menu) |
 | Ctrl+C | Copy the selected rows, tab-separated in the visible columns (a header line for several rows; values with a tab, quote or line break are quoted, so they paste into Excel) |
 | Ctrl+S | Export the table (CSV, Excel, JSON Lines, HTML) |
 | Ctrl+H | Color rules window (open / close) |

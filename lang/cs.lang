@@ -31,6 +31,8 @@ menu.view.expand_all = Rozbalit všechny skupiny
 menu.view.collapse_all = Sbalit všechny skupiny
 menu.view.resolve_addresses = Překládat adresy
 menu.view.resolve_addresses.tip = Zjišťovat názvy hostitelů k adresám (reverzní DNS) pro sloupce Vzdálený hostitel a Místní hostitel. Vypnuto: sloupce zobrazují adresy.
+menu.view.properties_separate = Vlastnosti procesu v samostatných oknech
+menu.view.properties_separate.tip = Každé okno vlastností procesu je samostatné okno, které lze přesunout mimo hlavní okno i na jiný monitor; vypnuto = uvnitř hlavního okna.
 menu.view.etw = Zachytávat krátká spojení (ETW, admin)
 menu.view.etw.tip = Event Tracing for Windows vidí každé spojení, i ta, která se otevřou a zavřou mezi dvěma obnoveními (beacony, selhávající health checky, DNS přes TCP). Zobrazí se jako zavřené řádky označené ⚡ a nahrávají se. Potřebuje práva správce; bez nich tabulku plní jen obnovování.
 menu.view.language = Jazyk
@@ -63,7 +65,7 @@ help.copy = Kopírovat vybrané řádky (oddělené tabulátorem, u více řádk
 help.export = Exportovat tabulku (CSV, Excel, JSON Lines, HTML)
 help.rules = Okno barevných pravidel
 help.close = Zavřít vybraná spojení (nejprve se zeptá)
-help.properties = Vlastnosti procesu vybraného řádku
+help.properties = Vlastnosti procesů vybraných řádků (jedno okno na proces)
 help.shortcuts = Tento seznam
 
 # --- Sloupce ---
@@ -174,6 +176,7 @@ properties.open_location = Otevřít umístění souboru
 properties.file_properties = Vlastnosti souboru
 properties.file_properties.failed = Windows nedokázal otevřít vlastnosti souboru.
 properties.close = Zavřít
+properties.limit = Otevřených může být nejvýš {max} oken vlastností procesu – nejprve některá zavři.
 properties.traffic = Živý provoz a I/O (poslední 2 minuty)
 properties.traffic.waiting = Sbírám data – graf začne při dalších obnoveních.
 properties.traffic.tcp = TCP pakety za sekundu

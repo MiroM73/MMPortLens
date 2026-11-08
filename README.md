@@ -45,8 +45,10 @@ Version 1.0.0. What works now:
 - **Process details**: icon, description and company from the version resource, user, command
   line, start time and the **Windows services** running in the process (which service of
   `svchost.exe` it is) – in the details pane under the table, as columns and as a tooltip.
-- **Process properties** window (row context menu → Properties…, Alt+Enter) with Copy, Open file
-  location, File properties and End process; it stays on its process and shows when it exits.
+- **Process properties** windows (row context menu → Properties…, Alt+Enter) with Copy, Open file
+  location, File properties and End process; each stays on its process and shows when it exits.
+  One window per process, several at a time, each in its own OS window that can be moved onto
+  another monitor (View → *Process properties in separate windows*).
   A live graph of the last two minutes shows the TCP packets per second of the process
   (administrator) and its I/O operations per second.
 - **Color rules** (View → Color rules…, Ctrl+H): color rows whose column matches a pattern in the

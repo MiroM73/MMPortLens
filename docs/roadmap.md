@@ -57,7 +57,7 @@ program, README / `docs/architecture.md` / `docs/history.md`, detailed commit wi
 ## Phase 4c – asked by the owner after #3
 | Issue | What | Status |
 |-------|------|--------|
-| #33 | Process properties (#28, #30) in their own OS windows (egui viewports), several at a time, one per PID | |
+| #33 | Process properties (#28, #30) in their own OS windows (egui viewports), several at a time, one per PID | done ("Process properties in their own OS windows") |
 | #34 | Service name of well-known ports: tooltip over the whole port cell (with the owning Windows service of #14), `port (name)` in the details pane, optional system services file | |
 | #35 | Column filters: AND (`&`) and NOT (`!`) per term, precedence `!` > `&` > `\|`, migration of saved `!a\|b` texts (filters, presets, highlight rules); before #16, which reuses the filters. RusTrace port: MiroM73/Rustrace#61 | |
 | #36 | Filter field tooltip: examples for the column and its possible values (State, Protocol); after #35 so the examples can use `&` | |

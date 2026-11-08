@@ -39,6 +39,7 @@ mod menu;
 mod presets;
 mod properties;
 mod properties_graph;
+mod properties_windows;
 mod record;
 mod replay;
 mod replay_events;
@@ -182,8 +183,8 @@ pub struct App {
     active_preset: String,
     /// "Save current as…" / "Manage presets…" (#13).
     preset_windows: presets::PresetWindows,
-    /// The process properties window (#28).
-    properties: Option<properties::Properties>,
+    /// The process properties windows (#28), one per PID, in the order they were opened (#33).
+    properties: Vec<properties::Properties>,
     /// Result of the last action (status bar).
     action_result: Option<actions::ActionResult>,
     /// The traffic counters were refused by Windows (not elevated, #8).
@@ -328,7 +329,7 @@ impl App {
             show_cli_help: false,
             pending_action: None,
             action_result: None,
-            properties: None,
+            properties: Vec::new(),
             active_preset: String::new(),
             preset_windows: Default::default(),
             icons: HashMap::new(),
@@ -518,7 +519,7 @@ impl App {
         // Traffic counters only while a traffic column is shown (they cost CPU, #8) or the
         // properties window draws its graph (#30).
         self.ctl.collect_stats.store(
-            cols.iter().any(|c| c.traffic()) || self.properties.is_some(),
+            cols.iter().any(|c| c.traffic()) || !self.properties.is_empty(),
             Ordering::Relaxed,
         );
         let filter = self.row_filter();
@@ -633,7 +634,7 @@ impl eframe::App for App {
         self.about_window(&ctx);
         self.shortcuts_window(&ctx);
         self.cli_help_window(&ctx);
-        self.properties_window(&ctx);
+        self.properties_windows(&ctx);
         self.confirm_window(&ctx);
         self.rules_window(&ctx);
         self.preset_windows(&ctx);

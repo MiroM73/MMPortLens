@@ -64,6 +64,10 @@ pub struct Config {
     pub filter_presets: Vec<crate::presets::FilterPreset>,
     /// File → Start recording… settings (#3).
     pub record: crate::recording::Settings,
+    /// Process properties in their own native windows (#33); off = inside the main window.
+    pub properties_separate: bool,
+    /// Position and size of the last closed properties window (#33).
+    pub properties_window: Option<crate::update::WindowState>,
     /// Zoom and size of the `--help` window (#39).
     pub help_window: crate::helpwindow::HelpWindowState,
 }
@@ -133,6 +137,8 @@ impl Default for Config {
             filter_presets: crate::presets::default_presets(),
             record: Default::default(),
             help_window: Default::default(),
+            properties_separate: true,
+            properties_window: None,
         }
     }
 }
@@ -216,6 +222,7 @@ mod tests {
         // Older settings get the example color rules; an emptied list stays empty (#10).
         assert_eq!(partial.color_rules, crate::rules::default_rules());
         assert!(partial.marks_over_rules);
+        assert!(partial.properties_separate && partial.properties_window.is_none());
         assert_eq!(partial.filter_presets, crate::presets::default_presets());
         assert!(!partial.group_by_process && partial.collapsed_processes.is_empty());
         assert_eq!(partial.record, crate::recording::Settings::default());

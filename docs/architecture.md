@@ -41,7 +41,7 @@ with the change.
 | `src/config.rs` | `Config` (JSON, every field has a default). |
 | `src/i18n.rs` | `t!()` and the language files – the same module as in RusTrace. |
 | `src/timefmt.rs` | Clock times for the table. |
-| `src/app/` | The UI, split by area like RusTrace: `mod.rs` (state, frame loop), `menu.rs`, `toolbar.rs`, `table.rs`, `statusbar.rs`, `colfilters.rs` (column filter state and field), `admin.rs` (restart as administrator), `update_window.rs` (Help → Check for updates), `input.rs` (keyboard shortcuts, copying the selection), `help.rs` (Help → Keyboard shortcuts), `cli_help.rs` (Help → Command line and the shared help renderer `cli_help_ui`, #38), `actions.rs` (context menu items, confirmation window and result of #6), `details.rs` (details pane, process icons and tooltip of #7), `properties.rs` (process properties window of #28), `properties_graph.rs` (its live traffic / I/O graph, #30), `rules.rs` (color rules window and row colors of #10), `presets.rs` (filter preset combo box and windows of #13), `groups.rs` (group lines of #12), `columnlayout.rs` (header drag and drop, remembered widths, fit on a border double click – #2), `export.rs` (File → Export… window, export thread, status – #9), `record.rs` (start window, events to the writer, ● REC – #3), `replay.rs` (opened recording, replay bar with the time slider – #3), `replay_events.rs` (event list of a recording – #3), `etw.rs` (View menu switch and status bar item of the ETW capture – #4). |
+| `src/app/` | The UI, split by area like RusTrace: `mod.rs` (state, frame loop), `menu.rs`, `toolbar.rs`, `table.rs`, `statusbar.rs`, `colfilters.rs` (column filter state and field), `admin.rs` (restart as administrator), `update_window.rs` (Help → Check for updates), `input.rs` (keyboard shortcuts, copying the selection), `help.rs` (Help → Keyboard shortcuts), `cli_help.rs` (Help → Command line and the shared help renderer `cli_help_ui`, #38), `actions.rs` (context menu items, confirmation window and result of #6), `details.rs` (details pane, process icons and tooltip of #7), `properties.rs` (process properties window of #28), `properties_windows.rs` (several of them in native windows, #33), `properties_graph.rs` (its live traffic / I/O graph, #30), `rules.rs` (color rules window and row colors of #10), `presets.rs` (filter preset combo box and windows of #13), `groups.rs` (group lines of #12), `columnlayout.rs` (header drag and drop, remembered widths, fit on a border double click – #2), `export.rs` (File → Export… window, export thread, status – #9), `record.rs` (start window, events to the writer, ● REC – #3), `replay.rs` (opened recording, replay bar with the time slider – #3), `replay_events.rs` (event list of a recording – #3), `etw.rs` (View menu switch and status bar item of the ETW capture – #4). |
 | `lang/*.lang` | Built-in translations (en, sk, cs, de), embedded with `include_str!`. |
 
 ## Reading the connections
@@ -361,9 +361,9 @@ users' and protected processes when not elevated) the start time is `None` and t
 
 ### Process properties window (#28)
 
-**Properties…** in the row context menu (for the right-clicked row, disabled for PID 0) and
-Alt+Enter (cursor row) open one window (`src/app/properties.rs`, `App::properties`) for a PID; it
-is not tied to the selection and is reused for the next process. Its content is the same
+**Properties…** in the row context menu (disabled for PID 0) and Alt+Enter open the window of a
+PID (`src/app/properties.rs`: state and content; `src/app/properties_windows.rs`: several windows,
+#33); a window is not tied to the selection. Its content is the same
 `process_grid` as the details pane (`details.rs`, the grid id is a parameter so both can be on
 screen; `process_values` gives the name / value lines for the grid and the Copy text) plus the PID
 and the number of TCP / UDP endpoints of the PID in the tracker (closed rows and rows of a reused
@@ -377,6 +377,30 @@ access denied – cannot be decided and counts as running). Buttons: Copy, Open 
 `SEE_MASK_INVALIDATELIST`; the shell shows the dialog on its own thread), End process
 (`request_kill_process` → the confirmation window of #6), Close. Esc closes the window before it
 clears the text filter or the selection.
+
+**Several windows (#33).** `App::properties` is a `Vec<Properties>` in opening order, one per PID,
+at most `MAX_WINDOWS` (8). The context menu opens the PIDs of the selection when the clicked row
+is in it (else of the clicked row), Alt+Enter those of the selected rows (the cursor row when
+nothing is selected); `distinct_pids` drops PID 0 and duplicates and cuts the new windows at the
+limit (status bar message `properties.limit`), a PID that already has a window gets `focus`.
+`properties_windows` draws each one and then applies the `ContentAction`s (close, End process,
+error text) after the vector is put back. With `Config::properties_separate` (default on, View
+menu) and a backend that can open native windows (`!Context::embed_viewports()`), a window is an
+immediate viewport (`show_viewport_immediate`, `ViewportId::from_hash_of(("properties", pid))`,
+the program icon, title = the window title): `CentralPanel` + a vertical `ScrollArea` around the
+whole content; its own × (`close_requested`) or Esc in it closes only it; `focus` sends
+`ViewportCommand::Focus`. The position / size it opens with are fixed in `opened_at` at its first
+frame – the remembered `Config::properties_window` (logical pixels) with a 28 px cascade per index,
+default 540 × 680 – because a builder that changes between frames would move the open window. Each
+frame records the geometry (`window_geometry`: points × zoom, not while minimized / maximized; the
+zoom is read before `ctx.input`, whose closure holds the context lock – calling `zoom_factor()`
+inside it deadlocked the UI), which is stored when the window closes. Otherwise (setting off, or
+no multi-viewport support) each PID is an `egui::Window` (id `properties_window` + PID, cascaded,
+`move_to_top` for focus) as before. Esc in the main window closes the window opened last. End
+process from a native window focuses the main window, where the confirmation is. Immediate
+viewports are drawn in the frame of the main window, so they repaint with it (every refresh) and
+close with it. The sampler of #30 runs for every open window (`sample_properties` → `sample_one`);
+the traffic counters are collected while any window is open.
 
 #### Live traffic and I/O graph (#30)
 

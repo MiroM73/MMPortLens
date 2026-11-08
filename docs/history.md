@@ -363,3 +363,22 @@
   the bottom-right corner shrank the window to 600 × 450 with the text reflowed, × saved that
   size. SendKeys "^0" did not reset on the Slovak layout (it sends the shifted character), which
   led to the physical-key check.
+- #33: process properties in their own OS windows, several at a time. `App::properties` became a
+  `Vec` (one per PID, at most 8; `src/app/properties_windows.rs`), each drawn as an egui immediate
+  viewport with the program icon (fallback: the embedded `egui::Window` when the backend cannot
+  open native windows or the new View setting *Process properties in separate windows* is off).
+  Opening an open PID focuses its window; the context menu / Alt+Enter open one window per
+  distinct PID of the selection; Esc / × in a window close only it, Esc in the main window closes
+  the last opened; position and size of the last closed window are remembered
+  (`Config::properties_window`, cascade for the next ones); the #30 sampler runs for every window.
+  Two bugs found in the check: `ctx.zoom_factor()` inside `ctx.input(..)` deadlocked the UI (the
+  native window stayed white), and building the viewport position from the remembered geometry in
+  every frame moved an open window when another one closed – the opening geometry is now fixed per
+  window. Verified: fmt, clippy, 174 tests (new: `distinct_pids` with the limit, geometry in
+  logical pixels); release build with a scratch config: two rows of different PIDs + Alt+Enter
+  opened two native windows, both moved outside the main window onto the right half of the screen,
+  each with its own values and graph section; Alt+Enter again opened nothing new; Esc in one closed
+  only it and stored its geometry; reopened windows appeared at the stored place, the second
+  cascaded by 28 px; × on one left the other in place; with the setting off Alt+Enter opened the
+  embedded window. The graphs were not checked with traffic of two processes at once (the checked
+  processes deny access without administrator rights).

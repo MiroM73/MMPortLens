@@ -306,7 +306,18 @@ impl App {
             self.toggle_group(g);
         }
         if let Some((pid, info)) = properties {
-            self.open_properties(pid, info);
+            // The processes of the selection when the clicked row is in it (one window per PID,
+            // #33), otherwise of the clicked row.
+            let selected: Vec<_> = self
+                .selected_rows()
+                .into_iter()
+                .map(|r| (r.conn.pid, r.process.clone()))
+                .collect();
+            if selected.iter().any(|(p, _)| *p == pid) {
+                self.open_properties_many(selected);
+            } else {
+                self.open_properties(pid, info);
+            }
         }
         if let Some(a) = action {
             self.menu_action(a);

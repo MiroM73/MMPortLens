@@ -11,15 +11,18 @@ use egui_plot::{Corner, Legend, Line, Plot, PlotPoints};
 const PLOT_HEIGHT: f32 = 110.0;
 
 impl App {
-    /// Feeds the sampler of the open properties window with the snapshot just taken (`at` = time
-    /// of the snapshot): the TCP counters of the window's connections and the process I/O.
+    /// Feeds the samplers of the open properties windows (#33: every one) with the snapshot just
+    /// taken (`at` = time of the snapshot): the TCP counters of the window's connections and the
+    /// process I/O.
     pub(in crate::app) fn sample_properties(&mut self, at: u64) {
-        let Some(p) = &mut self.properties else {
-            return;
-        };
-        if p.exited {
-            return;
+        let mut windows = std::mem::take(&mut self.properties);
+        for p in windows.iter_mut().filter(|p| !p.exited) {
+            self.sample_one(p, at);
         }
+        self.properties = windows;
+    }
+
+    fn sample_one(&self, p: &mut crate::app::properties::Properties, at: u64) {
         let (pid, started) = (p.pid, p.info.started);
         let conns: Vec<_> = self
             .tracker
