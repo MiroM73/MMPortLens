@@ -58,7 +58,8 @@ Version 1.0.0. What works now:
 - **Command line**: start with filters (`--preset`, `--filter`, `--column state==Established`),
   `--interval`, `--paused`, `--lang`; without a window `--export connections.xlsx` writes one
   snapshot and `--record capture.plrec --duration 10m` records (Ctrl+C stops) – for scripts and
-  scheduled tasks, with exit codes. `mmportlens --help` lists everything.
+  scheduled tasks, with exit codes. `mmportlens --help` and **Help → Command line** list the
+  options, column names and ready-to-copy examples.
 - **Group by process** (toolbar *Group*): one collapsible line per process with its number of
   endpoints and traffic, its endpoints under it; collapsed groups are remembered.
 - **Close connection** (IPv4 TCP, like TCPView) and **End process** from the context menu or with

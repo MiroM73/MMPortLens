@@ -110,6 +110,10 @@ impl App {
                     ui.close();
                     self.show_shortcuts = true;
                 }
+                if ui.button(t!("menu.help.cli")).clicked() {
+                    ui.close();
+                    self.show_cli_help = true;
+                }
                 if ui
                     .button(format!("⬆ {}", t!("menu.help.updates")))
                     .clicked()

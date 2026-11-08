@@ -26,6 +26,7 @@ use std::time::{Duration, Instant};
 
 mod actions;
 mod admin;
+pub mod cli_help;
 mod colfilters;
 mod columnlayout;
 mod details;
@@ -155,6 +156,8 @@ pub struct App {
     columns_drag: Option<columnlayout::ColumnDrag>,
     /// Help → Keyboard shortcuts.
     show_shortcuts: bool,
+    /// Help → Command line (#38).
+    show_cli_help: bool,
     /// Close connection / End process waiting for confirmation (#6).
     pending_action: Option<actions::Pending>,
     /// The name of the filter preset chosen last (#13; runtime only, empty = none).
@@ -304,6 +307,7 @@ impl App {
             header_drag: None,
             columns_drag: None,
             show_shortcuts: false,
+            show_cli_help: false,
             pending_action: None,
             action_result: None,
             properties: None,
@@ -615,6 +619,7 @@ impl eframe::App for App {
         egui::CentralPanel::default().show(ui, |ui| self.table(ui));
         self.about_window(&ctx);
         self.shortcuts_window(&ctx);
+        self.cli_help_window(&ctx);
         self.properties_window(&ctx);
         self.confirm_window(&ctx);
         self.rules_window(&ctx);

@@ -54,6 +54,7 @@ menu.help = Help
 menu.help.shortcuts = Keyboard shortcuts
 menu.help.updates = Check for updates…
 menu.help.about = About MM PortLens
+menu.help.cli = Command line…
 
 about.title = About MM PortLens
 about.text = A viewer of network connections in the style of TCPView (Sysinternals).\nCreated by Claude (Anthropic) by the requirements of the project owner.
@@ -459,7 +460,27 @@ cli.opt.help = show this help
 cli.opt.version = show the version
 cli.opt.end = everything after it is the RECORDING
 cli.columns = COLUMN: {columns} – or the column title of the UI language.
-cli.exit = Exit codes of --export and --record: 0 = done, 1 = error, 2 = invalid command line. Their messages go to the console the program was started from; PowerShell waits for the end (and sets $LASTEXITCODE) with "| Out-Null" or Start-Process -Wait, cmd with start /wait.
+cli.exit = Exit codes of --export and --record: 0 = done, 1 = error, 2 = invalid command line.
+cli.wait = Their messages go to the console the program was started from. The program has no console of its own, so PowerShell waits for the end (and sets $LASTEXITCODE) only with "| Out-Null" or Start-Process -Wait, cmd with start /wait.
+cli.window.title = Command line
+cli.section.usage = Usage
+cli.section.options = Options
+cli.section.columns = Column names
+cli.section.exit = Exit codes
+cli.section.examples = Examples
+cli.columns.note = --column accepts the name or the column title of the UI language, ignoring case.
+cli.column.name = Name
+cli.column.title = Column title
+cli.copy.tip = Copy the command to the clipboard
+cli.copied = Copied: {command}
+cli.ex.preset = start with the saved filter preset Listening and the refresh paused
+cli.ex.established = show only established connections to the HTTPS / HTTP ports
+cli.ex.export = write the listening endpoints to a CSV file without a window
+cli.ex.record = record the endpoints of chrome for 10 minutes without a window
+cli.ex.etw = record 5 minutes including the connections shorter than a refresh (ETW, run as administrator)
+cli.ex.replay = open a recording for the replay
+cli.ex.task = Task Scheduler: record 55 minutes every hour (the file is replaced each time)
+cli.ex.lang = this help in German
 cli.example = Examples:
 cli.error.unknown = Unknown option: {option}
 cli.error.missing_value = The option {option} needs a value.

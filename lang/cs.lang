@@ -43,6 +43,7 @@ menu.help = Nápověda
 menu.help.shortcuts = Klávesové zkratky
 menu.help.updates = Zkontrolovat aktualizace…
 menu.help.about = O programu MM PortLens
+menu.help.cli = Příkazový řádek…
 
 about.title = O programu MM PortLens
 about.text = Prohlížeč síťových spojení ve stylu TCPView (Sysinternals).\nVytvořil Claude (Anthropic) podle požadavků vlastníka projektu.
@@ -448,7 +449,27 @@ cli.opt.help = zobrazí tuto nápovědu
 cli.opt.version = zobrazí verzi
 cli.opt.end = vše za ním je NAHRÁVKA
 cli.columns = SLOUPEC: {columns} – nebo název sloupce v jazyce rozhraní.
-cli.exit = Návratové kódy --export a --record: 0 = hotovo, 1 = chyba, 2 = neplatný příkazový řádek. Jejich zprávy jdou do konzole, ze které byl program spuštěn; PowerShell počká na konec (a nastaví $LASTEXITCODE) s "| Out-Null" nebo Start-Process -Wait, cmd se start /wait.
+cli.exit = Návratové kódy --export a --record: 0 = hotovo, 1 = chyba, 2 = neplatný příkazový řádek.
+cli.wait = Jejich zprávy jdou do konzole, ze které byl program spuštěn. Program nemá vlastní konzoli, proto PowerShell počká na konec (a nastaví $LASTEXITCODE) jen s "| Out-Null" nebo Start-Process -Wait, cmd se start /wait.
+cli.window.title = Příkazový řádek
+cli.section.usage = Použití
+cli.section.options = Volby
+cli.section.columns = Názvy sloupců
+cli.section.exit = Návratové kódy
+cli.section.examples = Příklady
+cli.columns.note = --column přijme název nebo název sloupce v jazyce rozhraní, bez ohledu na velikost písmen.
+cli.column.name = Název
+cli.column.title = Název sloupce
+cli.copy.tip = Zkopírovat příkaz do schránky
+cli.copied = Zkopírováno: {command}
+cli.ex.preset = spustit s uloženou předvolbou filtrů Listening a pozastaveným obnovováním
+cli.ex.established = zobrazit jen navázaná spojení na porty HTTPS / HTTP
+cli.ex.export = zapsat naslouchající koncové body do souboru CSV bez okna
+cli.ex.record = nahrávat koncové body chrome 10 minut bez okna
+cli.ex.etw = nahrávat 5 minut včetně spojení kratších než obnovení (ETW, spustit jako správce)
+cli.ex.replay = otevřít nahrávku k přehrávání
+cli.ex.task = Plánovač úloh: každou hodinu nahrávat 55 minut (soubor se pokaždé nahradí)
+cli.ex.lang = tato nápověda německy
 cli.example = Příklady:
 cli.error.unknown = Neznámá volba: {option}
 cli.error.missing_value = Volba {option} potřebuje hodnotu.

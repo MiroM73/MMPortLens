@@ -8,7 +8,8 @@ with the change.
 | File | What it does |
 |------|--------------|
 | `src/main.rs` | Start-up: the command line (`cli`), help / version / errors, the runs without a window (`headless`), always start as administrator, `--restore <file>` after an update, the window. |
-| `src/cli.rs` | Command-line parser (#16): `Options` / `ViewOptions`, `CliError` with translated messages, `filters` (preset + text + column filters checked against the settings), help text, message box, `attach_console` – the style of RusTrace `src/cli.rs`. |
+| `src/cli.rs` | Command-line parser (#16): `Options` / `ViewOptions`, `CliError` with translated messages, `filters` (preset + text + column filters checked against the settings), `PUBLIC_OPTIONS` (the documented options, shared with the help), message box, `attach_console` – the style of RusTrace `src/cli.rs`. |
+| `src/clihelp.rs` | The command-line help as data (#38): `CliHelp` (usage, options, column names, exit codes, examples) built from `cli::PUBLIC_OPTIONS` and the `cli.*` keys; `text()` for the console / message box. |
 | `src/headless.rs` | `--export` (one snapshot) and `--record` (until `--duration` or Ctrl+C) without a window (#16). |
 | `src/rowfilter.rs` | `RowFilter` (switches, text filter, column filters of the visible columns), `compile` – used by the table, a recording and the command line. |
 | `build.rs` | Windows: icon (from `src/icon.rs`) and version information as a resource of the exe (`winresource`). |
@@ -39,7 +40,7 @@ with the change.
 | `src/config.rs` | `Config` (JSON, every field has a default). |
 | `src/i18n.rs` | `t!()` and the language files – the same module as in RusTrace. |
 | `src/timefmt.rs` | Clock times for the table. |
-| `src/app/` | The UI, split by area like RusTrace: `mod.rs` (state, frame loop), `menu.rs`, `toolbar.rs`, `table.rs`, `statusbar.rs`, `colfilters.rs` (column filter state and field), `admin.rs` (restart as administrator), `update_window.rs` (Help → Check for updates), `input.rs` (keyboard shortcuts, copying the selection), `help.rs` (Help → Keyboard shortcuts), `actions.rs` (context menu items, confirmation window and result of #6), `details.rs` (details pane, process icons and tooltip of #7), `properties.rs` (process properties window of #28), `properties_graph.rs` (its live traffic / I/O graph, #30), `rules.rs` (color rules window and row colors of #10), `presets.rs` (filter preset combo box and windows of #13), `groups.rs` (group lines of #12), `columnlayout.rs` (header drag and drop, remembered widths, fit on a border double click – #2), `export.rs` (File → Export… window, export thread, status – #9), `record.rs` (start window, events to the writer, ● REC – #3), `replay.rs` (opened recording, replay bar with the time slider – #3), `replay_events.rs` (event list of a recording – #3), `etw.rs` (View menu switch and status bar item of the ETW capture – #4). |
+| `src/app/` | The UI, split by area like RusTrace: `mod.rs` (state, frame loop), `menu.rs`, `toolbar.rs`, `table.rs`, `statusbar.rs`, `colfilters.rs` (column filter state and field), `admin.rs` (restart as administrator), `update_window.rs` (Help → Check for updates), `input.rs` (keyboard shortcuts, copying the selection), `help.rs` (Help → Keyboard shortcuts), `cli_help.rs` (Help → Command line and the shared help renderer `cli_help_ui`, #38), `actions.rs` (context menu items, confirmation window and result of #6), `details.rs` (details pane, process icons and tooltip of #7), `properties.rs` (process properties window of #28), `properties_graph.rs` (its live traffic / I/O graph, #30), `rules.rs` (color rules window and row colors of #10), `presets.rs` (filter preset combo box and windows of #13), `groups.rs` (group lines of #12), `columnlayout.rs` (header drag and drop, remembered widths, fit on a border double click – #2), `export.rs` (File → Export… window, export thread, status – #9), `record.rs` (start window, events to the writer, ● REC – #3), `replay.rs` (opened recording, replay bar with the time slider – #3), `replay_events.rs` (event list of a recording – #3), `etw.rs` (View menu switch and status bar item of the ETW capture – #4). |
 | `lang/*.lang` | Built-in translations (en, sk, cs, de), embedded with `include_str!`. |
 
 ## Reading the connections
@@ -633,6 +634,21 @@ counts, `--column` adds one filter each time), `main::command_line` acts:
 
 Hidden: `--restore <file>` (update / elevated restart, #15) and `--elevated` keep their old form,
 so older versions still restart this one.
+
+**Help (#38)**: `cli::PUBLIC_OPTIONS` lists the documented options in the help order with a
+"takes a value" flag; the parser uses it for `takes_value`, `clihelp::build` for the help, so an
+option cannot be added to one and forgotten in the other (test `every_parser_option_is_in_the_help`
+also parses each one). `CliHelp` holds the translated parts: usage, the RECORDING line, `(option +
+placeholder, description)` pairs, `(machine name, column title)` for `--column`, exit codes, the
+note how a console waits for the GUI-subsystem exe, and the examples (`command`, translated
+`what`; the commands are not translated, the Task Scheduler one uses `current_exe()`, quoted with
+`\"` when the path has a space). `CliHelp::text(tabs)` gives the `--help` text (padding for the
+console, tabs for the message box); `app::cli_help::cli_help_ui` draws the same data in a
+`ScrollArea` – headings, a striped monospace options grid, the column grid, examples with a 📋
+button (`Context::copy_text`; the button of the command copied last shows ✔ for 4 s, kept in the
+egui temp data). Help → Command line… (`App::cli_help_window`, resizable `egui::Window`) builds the
+help every frame, so a language switch translates it at once. Test `examples_parse`: every
+`mmportlens` example (quotes and `| Out-Null` removed as the shell does) is a valid command line.
 
 **Order in `main`**: parse → `--lang` (so help and errors are already translated) → help / version
 → `--restore` → headless runs → always-start-as-administrator → read the restore file → window.

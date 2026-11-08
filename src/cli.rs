@@ -26,6 +26,25 @@ use crate::update::RESTORE_ARG;
 /// The smallest refresh interval `--interval` accepts (ms).
 pub const MIN_INTERVAL_MS: u64 = 100;
 
+/// The documented options in the order of the help (#38) and whether they take a value. The
+/// parser and the help (`clihelp`) both use this list; the aliases (`-h`, `-?`, `/?`, `-V`) and
+/// the internal options of the restarts (`--restore`, `--elevated`) are not in it.
+pub const PUBLIC_OPTIONS: &[(&str, bool)] = &[
+    (PRESET_ARG, true),
+    ("--filter", true),
+    ("--column", true),
+    ("--interval", true),
+    ("--paused", false),
+    ("--export", true),
+    ("--record", true),
+    ("--duration", true),
+    ("--etw", false),
+    ("--lang", true),
+    ("--help", false),
+    ("--version", false),
+    ("--", false),
+];
+
 /// What the table shows: filters, refresh. Without a window the filters choose the exported or
 /// recorded endpoints.
 #[derive(Debug, Clone, Default, PartialEq, Eq)]
@@ -127,7 +146,8 @@ pub fn column_names() -> String {
         .join(", ")
 }
 
-fn column_name(c: ColumnId) -> &'static str {
+/// The machine name of a column for `--column` (`local_port`).
+pub fn column_name(c: ColumnId) -> &'static str {
     c.key().strip_prefix("column.").unwrap_or(c.key())
 }
 
@@ -223,17 +243,8 @@ pub fn parse<I: IntoIterator<Item = OsString>>(args: I) -> Result<Options, CliEr
             Some((n, v)) if n.starts_with("--") => (n.to_owned(), Some(v.to_owned())),
             _ => (text.into_owned(), None),
         };
-        let takes_value = matches!(
-            name.as_str(),
-            "--filter"
-                | "--column"
-                | "--interval"
-                | "--lang"
-                | "--export"
-                | "--record"
-                | "--duration"
-        ) || name == PRESET_ARG
-            || name == RESTORE_ARG;
+        let takes_value =
+            PUBLIC_OPTIONS.iter().any(|&(n, v)| v && n == name) || name == RESTORE_ARG;
         let value = if takes_value {
             match inline {
                 Some(v) => Some(v),
@@ -388,80 +399,6 @@ pub fn filters(
         });
     }
     Ok(Some(p))
-}
-
-/// The help text (`--help`); `languages` = the codes `--lang` accepts. `tabs`: the option and
-/// its description are separated by a tab (message box) instead of padding (console).
-pub fn help_text(languages: &str, tabs: bool) -> String {
-    let meta = |key: &str| format!("<{}>", t!(key));
-    let opts: [(String, String); 13] = [
-        (
-            format!("--preset {}", meta("cli.meta.name")),
-            t!("cli.opt.preset"),
-        ),
-        (
-            format!("--filter {}", meta("cli.meta.text")),
-            t!("cli.opt.filter"),
-        ),
-        (
-            format!(
-                "--column {}={}",
-                meta("cli.meta.column"),
-                meta("cli.meta.filter")
-            ),
-            t!("cli.opt.column"),
-        ),
-        (
-            format!("--interval {}", meta("cli.meta.ms")),
-            t!("cli.opt.interval", min = MIN_INTERVAL_MS),
-        ),
-        ("--paused".into(), t!("cli.opt.paused")),
-        (
-            format!("--export {}", meta("cli.meta.file")),
-            t!("cli.opt.export"),
-        ),
-        (
-            format!("--record {}", meta("cli.meta.file")),
-            t!("cli.opt.record"),
-        ),
-        (
-            format!("--duration {}", meta("cli.meta.time")),
-            t!("cli.opt.duration"),
-        ),
-        ("--etw".into(), t!("cli.opt.etw")),
-        (
-            format!("--lang {}", meta("cli.meta.code")),
-            t!("cli.opt.lang", languages = languages),
-        ),
-        ("--help".into(), t!("cli.opt.help")),
-        ("--version".into(), t!("cli.opt.version")),
-        ("--".into(), t!("cli.opt.end")),
-    ];
-    let width = opts
-        .iter()
-        .map(|(o, _)| o.chars().count())
-        .max()
-        .unwrap_or(0);
-    let mut s = format!("{}\n\n{}\n\n", t!("cli.usage"), t!("cli.file"));
-    for (opt, desc) in opts {
-        if tabs {
-            s.push_str(&format!("{opt}\t{desc}\n"));
-        } else {
-            s.push_str(&format!("  {opt:width$}  {desc}\n"));
-        }
-    }
-    s.push('\n');
-    s.push_str(&t!("cli.columns", columns = column_names()));
-    s.push_str("\n\n");
-    s.push_str(&t!("cli.exit"));
-    s.push_str("\n\n");
-    s.push_str(&t!("cli.example"));
-    s.push_str("\nmmportlens --preset Listening --paused");
-    s.push_str("\nmmportlens --column state==Established --column remote_port=443|80 --export connections.xlsx | Out-Null");
-    s.push_str(
-        "\nmmportlens --filter chrome --record C:\\Temp\\chrome.plrec --duration 10m | Out-Null",
-    );
-    s
 }
 
 /// Shows a message: `console` on stdout / stderr (`error`) and, on Windows (the release build
@@ -783,12 +720,5 @@ mod tests {
             check_lang("xx", &langs),
             Err(CliError::InvalidLanguage { .. })
         ));
-        let help = help_text("cs, de, en, sk", false);
-        assert!(help.contains("--column <") && !help.contains("--restore"));
-        assert!(
-            !help.contains("--elevated") && !help.contains("cli."),
-            "{help}"
-        );
-        assert!(help_text("en", true).contains("--paused\t"));
     }
 }

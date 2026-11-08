@@ -336,3 +336,17 @@
   latest release. Check of the released ZIP: checksum OK, `mmportlens.exe` has product version
   1.0.0, and `cargo test fetch_latest_release -- --ignored` passes with v1.0.0 as GitHub's latest
   release.
+
+## After 1.0.0 (2026-11-08) – command-line help, phase 4c
+- #38: Help → Command line… window. The help of `--help` became data: `src/clihelp.rs`
+  (`CliHelp`: usage, options, column names, exit codes, examples) built from the new
+  `cli::PUBLIC_OPTIONS`, which the parser also uses for its value options; `cli::help_text` was
+  replaced by `CliHelp::text`. The window (`src/app/cli_help.rs`, renderer `cli_help_ui` for #39)
+  shows the sections, a monospace options grid, the column names with their titles and eight
+  examples with copy buttons. The `remote_port=443|80` example is now quoted (unquoted, PowerShell
+  and cmd treat `|` as a pipe); `cli.exit` was split into exit codes and `cli.wait`. Verified:
+  fmt, clippy, 3 new tests (every parser option in the help with its placeholder and parsed,
+  console text from the same data, every example parses); in the release build the window opens
+  from the Help menu, scrolls, the copy button put `mmportlens --column state==Established --column
+  "remote_port=443|80"` on the clipboard and showed ✔; the export examples run from PowerShell
+  wrote the CSV files with exit code 0.

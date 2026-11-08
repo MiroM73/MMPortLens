@@ -43,6 +43,7 @@ menu.help = Hilfe
 menu.help.shortcuts = Tastenkombinationen
 menu.help.updates = Nach Updates suchen…
 menu.help.about = Über MM PortLens
+menu.help.cli = Befehlszeile…
 
 about.title = Über MM PortLens
 about.text = Ein Betrachter für Netzwerkverbindungen im Stil von TCPView (Sysinternals).\nErstellt von Claude (Anthropic) nach den Anforderungen des Projektinhabers.
@@ -448,7 +449,27 @@ cli.opt.help = diese Hilfe anzeigen
 cli.opt.version = die Version anzeigen
 cli.opt.end = alles danach ist die AUFZEICHNUNG
 cli.columns = SPALTE: {columns} – oder der Spaltentitel in der Sprache der Oberfläche.
-cli.exit = Exit-Codes von --export und --record: 0 = fertig, 1 = Fehler, 2 = ungültige Befehlszeile. Ihre Meldungen gehen an die Konsole, aus der das Programm gestartet wurde; PowerShell wartet auf das Ende (und setzt $LASTEXITCODE) mit "| Out-Null" oder Start-Process -Wait, cmd mit start /wait.
+cli.exit = Exit-Codes von --export und --record: 0 = fertig, 1 = Fehler, 2 = ungültige Befehlszeile.
+cli.wait = Ihre Meldungen gehen an die Konsole, aus der das Programm gestartet wurde. Das Programm hat keine eigene Konsole, daher wartet PowerShell nur mit "| Out-Null" oder Start-Process -Wait auf das Ende (und setzt $LASTEXITCODE), cmd mit start /wait.
+cli.window.title = Befehlszeile
+cli.section.usage = Aufruf
+cli.section.options = Optionen
+cli.section.columns = Spaltennamen
+cli.section.exit = Exit-Codes
+cli.section.examples = Beispiele
+cli.columns.note = --column akzeptiert den Namen oder den Spaltentitel in der Sprache der Oberfläche, ohne Beachtung der Groß-/Kleinschreibung.
+cli.column.name = Name
+cli.column.title = Spaltentitel
+cli.copy.tip = Befehl in die Zwischenablage kopieren
+cli.copied = Kopiert: {command}
+cli.ex.preset = mit der gespeicherten Filtervorlage Listening und angehaltener Aktualisierung starten
+cli.ex.established = nur aufgebaute Verbindungen zu den HTTPS- / HTTP-Ports anzeigen
+cli.ex.export = die lauschenden Endpunkte ohne Fenster in eine CSV-Datei schreiben
+cli.ex.record = die Endpunkte von chrome 10 Minuten lang ohne Fenster aufzeichnen
+cli.ex.etw = 5 Minuten aufzeichnen, auch Verbindungen kürzer als eine Aktualisierung (ETW, als Administrator ausführen)
+cli.ex.replay = eine Aufzeichnung zur Wiedergabe öffnen
+cli.ex.task = Aufgabenplanung: jede Stunde 55 Minuten aufzeichnen (die Datei wird jedes Mal ersetzt)
+cli.ex.lang = diese Hilfe auf Deutsch
 cli.example = Beispiele:
 cli.error.unknown = Unbekannte Option: {option}
 cli.error.missing_value = Die Option {option} braucht einen Wert.

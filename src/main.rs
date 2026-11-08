@@ -7,6 +7,7 @@
 mod actions;
 mod app;
 mod cli;
+mod clihelp;
 mod colfilter;
 mod columns;
 mod config;
@@ -73,12 +74,12 @@ fn command_line(cfg: &config::Config, raw: &[String]) -> (app::Startup, Option<P
         _ => None,
     };
     if opts.help {
-        let langs = languages.join(", ");
+        let help = clihelp::build(&languages.join(", "));
         // Aligned with spaces on the console, with tabs in the message box.
         cli::show_message(
             &t!("cli.title.help"),
-            &cli::help_text(&langs, false),
-            &cli::help_text(&langs, true),
+            &help.text(false),
+            &help.text(true),
             false,
         );
         std::process::exit(0)
