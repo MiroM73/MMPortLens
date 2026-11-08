@@ -164,6 +164,7 @@ mod tests {
             rate_in: None,
             updated: 0,
             etw: false,
+            as_of: None,
         }
     }
 

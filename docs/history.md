@@ -439,3 +439,12 @@
   passed, the workflow succeeded and the draft was published with the notes as the latest release.
   Check of the released ZIP: checksum OK, `mmportlens.exe` has product version 1.0.7, and
   `cargo test fetch_latest_release -- --ignored` passes with v1.0.7 as GitHub's latest release.
+
+## After 1.0.7 (2026-11-08)
+- #31: in a replay the *Duration* column is the age of the endpoint at the slider time, not at
+  the wall clock. `Row` got `as_of: Option<u64>` (the reference time, `None` = now) which the
+  replay sets to the slider time; `cell_text` (table, column and text filters, Created "today"
+  check) and `tabexport::cell` (export) use it. Verified: fmt, clippy, tests (a replayed row with
+  `created = at - 5000` shows `5.000 s`, the export gives 5 s); release build with a recording
+  from 19:41: at the slider time 19:41:11.746 a connection created at 19:06:45.746 showed
+  *34 min 26 s* (before: the age until now, ~2 h 50 min).

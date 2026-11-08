@@ -102,6 +102,7 @@ fn event_row(e: &Event) -> Row {
         rate_in: None,
         updated: e.time,
         etw: e.etw,
+        as_of: None,
     }
 }
 
@@ -137,6 +138,7 @@ mod tests {
             rate_in: None,
             updated: 0,
             etw: false,
+            as_of: None,
         }
     }
 

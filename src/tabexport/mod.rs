@@ -289,7 +289,8 @@ fn int(v: Option<u64>) -> Cell<'static> {
 }
 
 /// The typed value of a cell: numbers as numbers, times as dates, raw byte counts; everything
-/// else is the text of the table. `now` = the time of the export (durations).
+/// else is the text of the table. `now` = the time of the export (durations); a replayed row
+/// uses its own reference time (`Row::as_of`, #31).
 pub fn cell(row: &Row, col: ColumnId, now: u64) -> Cell<'static> {
     let c = &row.conn;
     match col {
@@ -299,7 +300,7 @@ pub fn cell(row: &Row, col: ColumnId, now: u64) -> Cell<'static> {
         ColumnId::FirstSeen => date(Some(row.first_seen)),
         ColumnId::Created => date(c.created),
         ColumnId::Duration => c.created.map_or(Cell::Empty, |t| {
-            Cell::Seconds(now.saturating_sub(t) as f64 / 1000.0)
+            Cell::Seconds(row.as_of.unwrap_or(now).saturating_sub(t) as f64 / 1000.0)
         }),
         ColumnId::BytesSent => int(c.stats.map(|s| s.bytes_out)),
         ColumnId::BytesReceived => int(c.stats.map(|s| s.bytes_in)),
@@ -454,6 +455,7 @@ pub(crate) mod tests {
             rate_in: None,
             updated: NOON,
             etw: false,
+            as_of: None,
         };
         vec![
             row(
@@ -524,6 +526,10 @@ pub(crate) mod tests {
         assert_eq!(cell(&rows[0], ColumnId::RateSent, now), Cell::Int(1536));
         assert_eq!(cell(&rows[0], ColumnId::Duration, now), Cell::Seconds(1.5));
         assert_eq!(cell(&rows[1], ColumnId::Duration, now), Cell::Empty);
+        // A replayed row: the age at its own reference time, not at the export time (#31).
+        let mut replayed = rows[0].clone();
+        replayed.as_of = replayed.conn.created.map(|t| t + 5000);
+        assert_eq!(cell(&replayed, ColumnId::Duration, now), Cell::Seconds(5.0));
         assert_eq!(
             cell(&rows[0], ColumnId::Process, now),
             Cell::Text("chrome.exe".into())

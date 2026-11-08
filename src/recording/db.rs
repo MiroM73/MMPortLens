@@ -564,6 +564,7 @@ impl RecordingReader {
                 rate_in: None,
                 updated: e.time,
                 etw,
+                as_of: Some(at),
             });
         }
         Ok(rows)

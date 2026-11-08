@@ -70,7 +70,8 @@ refresh of ~170 endpoints then takes ~1 ms). The live tests check that an own ne
 created within a second of now and that its module is the test executable.
 
 Columns: **Created** (`timefmt::stamp`: `HH:MM:SS.mmm` today, else the date), **Duration**
-(`timefmt::duration`, from now; sorting by Duration is the reverse of Created), **Module**;
+(`timefmt::duration`, from `Row::as_of()` – now in the live table, the slider time in a replay,
+#31; sorting by Duration is the reverse of Created), **Module**;
 **First seen** is hidden by default but stays as an option. The **Windows services** column shows
 the exact service when the module is one of the services of the process
 (`columns::win_services`), otherwise all of them. Linux has none of this (`None`).
@@ -568,9 +569,12 @@ pages around them), filters by text (`LIKE` over process, path, addresses, ports
 escaped) and kinds, sorts by time (header click); a click moves the slider to the event. The live
 refresh and a running recording go on in the background.
 
+The replayed rows carry the slider time in `Row::as_of` (`state_at` in `recording/db.rs`); the Duration and
+Created cells (`columns::cell_text`, so also the column / text filters, and `tabexport::cell` for
+the export) are computed against it instead of the wall clock (#31). Live rows have `None` = now.
+
 Recording without a window: `--record` of the command line (#16, see there). Not done here:
-the *Duration* column in the replay counts to now (#31), invalid-state flips of Windows produce
-many *State changed* events (#32).
+invalid-state flips of Windows produce many *State changed* events (#32).
 
 ## Column filters (#1)
 

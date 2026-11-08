@@ -253,11 +253,11 @@ pub fn cell_text(row: &Row, col: ColumnId) -> String {
         ColumnId::Description => row.process.description.clone(),
         ColumnId::Created => c
             .created
-            .map(|t| crate::timefmt::stamp(t, crate::model::now_ms()))
+            .map(|t| crate::timefmt::stamp(t, row.as_of()))
             .unwrap_or_default(),
         ColumnId::Duration => c
             .created
-            .map(|t| crate::timefmt::duration(crate::model::now_ms().saturating_sub(t)))
+            .map(|t| crate::timefmt::duration(row.as_of().saturating_sub(t)))
             .unwrap_or_default(),
         ColumnId::Module => c.module.as_deref().unwrap_or_default().to_owned(),
         ColumnId::Source => if row.etw { "ETW" } else { "" }.to_owned(),
@@ -750,6 +750,7 @@ mod tests {
             rate_in: None,
             updated: 0,
             etw: false,
+            as_of: None,
         };
         // Unresolved: the address.
         assert_eq!(cell_text(&row, ColumnId::RemoteHost), "140.82.112.3");
@@ -801,6 +802,7 @@ mod tests {
             rate_in: None,
             updated: 0,
             etw: false,
+            as_of: None,
         };
         assert_eq!(cell_text(&row, ColumnId::WinServices), "Dnscache");
         assert_eq!(cell_text(&row, ColumnId::Module), "dnscache");
@@ -829,6 +831,11 @@ mod tests {
         row.conn.created = None;
         assert_eq!(compare(&older, &row, ColumnId::Created), Ordering::Less);
         assert_eq!(cell_text(&row, ColumnId::Duration), "");
+        // A replayed row: the age at the slider time, not at the wall clock (#31).
+        let at = 1_700_000_000_000;
+        row.conn.created = Some(at - 5000);
+        row.as_of = Some(at);
+        assert_eq!(cell_text(&row, ColumnId::Duration), "5.000 s");
     }
 
     #[test]

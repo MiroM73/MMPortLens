@@ -53,6 +53,16 @@ pub struct Row {
     pub updated: u64,
     /// Seen only by ETW, never by a snapshot: a connection shorter than a refresh (#4).
     pub etw: bool,
+    /// Reference time of the time columns (Duration, Created): `None` = now (the live table),
+    /// the slider time in a replay (#31).
+    pub as_of: Option<u64>,
+}
+
+impl Row {
+    /// The time the Duration / Created columns are computed against.
+    pub fn as_of(&self) -> u64 {
+        self.as_of.unwrap_or_else(now_ms)
+    }
 }
 
 /// Bytes per second between two counter readings `dt_ms` apart; `None` without both readings or
@@ -234,6 +244,7 @@ impl Tracker {
                         rate_in: None,
                         updated: now,
                         etw: false,
+                        as_of: None,
                     });
                     if !first {
                         emit(EventKind::New, row.get(), None);
@@ -357,6 +368,7 @@ impl Tracker {
                     rate_in: None,
                     updated: s.last,
                     etw: true,
+                    as_of: None,
                 },
             );
             // Further events of the same endpoint in this batch (another PID) are not new.
