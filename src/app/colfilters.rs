@@ -2,7 +2,7 @@
 //! `ColumnFilter`s, and the field drawn in a header cell. The syntax is in `crate::colfilter`.
 
 use crate::app::*;
-use crate::colfilter::{ColumnFilter, FilterError, FilterKind};
+use crate::colfilter::{ColumnFilter, FilterKind};
 
 impl App {
     /// Recompiles the column filters after their texts changed and rebuilds the view.
@@ -75,7 +75,7 @@ impl App {
         let tip = match error {
             Some(e) => {
                 edit = edit.background_color(ui.visuals().error_fg_color.gamma_multiply(0.35));
-                filter_error_text(e)
+                e.text()
             }
             None => {
                 if self.col_filters.iter().any(|(c, _)| *c == id) {
@@ -98,11 +98,4 @@ fn filter_tip(kind: FilterKind) -> String {
         FilterKind::Address => tip.push_str(&format!("\n{}", t!("filter.tip.address"))),
     }
     tip
-}
-
-fn filter_error_text(e: &FilterError) -> String {
-    match e {
-        FilterError::Regex(error) => t!("filter.error.regex", error = error),
-        FilterError::Network(value) => t!("filter.error.network", value = value),
-    }
 }

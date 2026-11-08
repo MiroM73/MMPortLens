@@ -6,7 +6,8 @@ use crate::config::INTERVALS;
 
 /// "500 ms", "2 s" …
 fn interval_label(ms: u64) -> String {
-    if ms < 1000 {
+    // `--interval` (#16) may give any number of ms.
+    if ms < 1000 || !ms.is_multiple_of(1000) {
         t!("interval.ms", n = ms)
     } else {
         t!("interval.s", n = ms / 1000)
@@ -48,6 +49,7 @@ impl App {
             if ms != self.cfg.interval_ms {
                 self.cfg.interval_ms = ms;
                 self.ctl.interval_ms.store(ms, Ordering::Relaxed);
+                self.run_only.interval_ms = None;
                 self.settings_changed();
             }
 

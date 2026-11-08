@@ -50,19 +50,6 @@ impl App {
         self.settings_changed();
     }
 
-    /// `--preset <name>` at start; an unknown name is reported in the status bar.
-    pub(in crate::app) fn apply_preset_by_name(&mut self, name: &str) {
-        match presets::find(&self.cfg.filter_presets, name).cloned() {
-            Some(p) => self.apply_preset(&p),
-            None => {
-                self.action_result = Some(actions::ActionResult {
-                    text: t!("preset.unknown", name = name),
-                    error: true,
-                })
-            }
-        }
-    }
-
     /// The active preset and whether the filters were changed since it was chosen.
     fn chosen_preset(&self) -> Option<(&FilterPreset, bool)> {
         let p = self

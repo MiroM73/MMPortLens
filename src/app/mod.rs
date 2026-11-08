@@ -13,6 +13,7 @@ use crate::i18n;
 use crate::model::{Changes, Mark, Row, Tracker, now_ms};
 use crate::net::{ConnKey, TcpState};
 use crate::poller::{self, PollControl, PollResult};
+use crate::rowfilter::RowFilter;
 use crate::selection::Selection;
 use crate::t;
 use crate::update::{self, CheckError, Release, SessionState, Updates, WindowState};
@@ -197,62 +198,67 @@ pub struct App {
     /// An opened recording (#3): the table shows its state at the slider time instead of the
     /// live endpoints.
     replay: Option<replay::Replay>,
+    /// The saved values of settings the command line changed for this run only (#16).
+    run_only: RunOnly,
 }
 
-/// What decides whether a row is shown: the protocol switches, the text filter and the column
-/// filters of the visible columns. A copy is kept by a recording "only rows matching the
-/// current filters" (#3).
-#[derive(Clone)]
-pub(in crate::app) struct RowFilter {
-    show_tcp: bool,
-    show_udp: bool,
-    show_ipv4: bool,
-    show_ipv6: bool,
-    show_listening: bool,
-    /// The text filter, lower case.
-    needle: String,
-    cols: Vec<ColumnId>,
-    col_filters: Vec<(ColumnId, ColumnFilter)>,
+/// What the window starts with (#16): the command line, or the state of the previous version
+/// after an update / elevated restart.
+#[derive(Default)]
+pub struct Startup {
+    pub restore: Option<SessionState>,
+    /// The last elevated start failed or was cancelled.
+    pub elevate_error: Option<ElevateError>,
+    /// A recording to open (#3).
+    pub recording: Option<PathBuf>,
+    /// The filters to start with (`--preset`, `--filter`, `--column`), merged by `cli::filters`.
+    pub filters: Option<crate::presets::FilterPreset>,
+    /// `--preset` named no saved preset (status bar).
+    pub unknown_preset: Option<String>,
+    /// `--interval`, `--paused`, `--lang` (for this run only).
+    pub interval: Option<u64>,
+    pub paused: bool,
+    pub lang: Option<String>,
 }
 
-impl RowFilter {
-    pub(in crate::app) fn matches(&self, r: &Row) -> bool {
-        let p = r.conn.proto;
-        if (p.is_tcp() && !self.show_tcp) || (!p.is_tcp() && !self.show_udp) {
-            return false;
-        }
-        if (p.is_v6() && !self.show_ipv6) || (!p.is_v6() && !self.show_ipv4) {
-            return false;
-        }
-        if !self.show_listening && r.conn.remote.is_none() {
-            return false;
-        }
-        let text_ok = self.needle.is_empty()
-            || self
-                .cols
-                .iter()
-                .any(|&col| cell_text(r, col).to_lowercase().contains(&self.needle));
-        text_ok
-            && self
-                .col_filters
-                .iter()
-                .filter(|(id, _)| self.cols.contains(id))
-                .all(|(id, f)| f.matches(&cell_text(r, *id)))
-    }
+/// The saved values of the settings `--lang` / `--interval` replaced for this run; `None` once
+/// the user chose another value in the window (that one is saved).
+#[derive(Default)]
+struct RunOnly {
+    language: Option<String>,
+    interval_ms: Option<u64>,
 }
 
 impl App {
-    pub fn new(
-        cc: &eframe::CreationContext<'_>,
-        restore: Option<SessionState>,
-        elevate_error: Option<ElevateError>,
-        preset: Option<String>,
-        recording: Option<PathBuf>,
-    ) -> Self {
-        let cfg = Config::load();
+    pub fn new(cc: &eframe::CreationContext<'_>, startup: Startup) -> Self {
+        let Startup {
+            restore,
+            elevate_error,
+            recording,
+            filters,
+            unknown_preset,
+            interval,
+            paused,
+            lang,
+        } = startup;
+        let mut cfg = Config::load();
+        // `--lang` and `--interval` hold for this run only: the saved values are written back.
+        let saved = RunOnly {
+            language: lang.as_ref().map(|_| cfg.language.clone()),
+            interval_ms: interval.map(|_| cfg.interval_ms),
+        };
+        if let Some(code) = lang {
+            cfg.language = code;
+        }
+        if let Some(ms) = interval {
+            cfg.interval_ms = ms;
+        }
         i18n::set_language(&cfg.language);
         let ctx = cc.egui_ctx.clone();
         let (ctl, rx) = poller::start(cfg.interval_ms, move || ctx.request_repaint());
+        if paused {
+            ctl.paused.store(true, Ordering::Relaxed);
+        }
         let mut app = Self {
             cfg,
             cfg_dirty: false,
@@ -320,6 +326,7 @@ impl App {
             show_record: false,
             record_result: None,
             replay: None,
+            run_only: saved,
         };
         app.apply_theme(&cc.egui_ctx);
         app.recompile_rules();
@@ -329,8 +336,16 @@ impl App {
         }
         if let Some(state) = restore {
             app.restore_session(state);
-        } else if let Some(name) = preset {
-            app.apply_preset_by_name(&name);
+        } else {
+            if let Some(p) = filters {
+                app.apply_preset(&p);
+            }
+            if let Some(name) = unknown_preset {
+                app.action_result = Some(actions::ActionResult {
+                    text: t!("preset.unknown", name = name),
+                    error: true,
+                });
+            }
         }
         if let Some(path) = recording {
             app.open_recording(path);
@@ -349,6 +364,22 @@ impl App {
             _ => egui::ThemePreference::System,
         };
         ctx.set_theme(pref);
+    }
+
+    /// Writes the settings, with the saved values of what the command line changed for this run.
+    pub(in crate::app) fn save_config(&self) -> std::io::Result<()> {
+        let r = &self.run_only;
+        if r.language.is_none() && r.interval_ms.is_none() {
+            return self.cfg.save();
+        }
+        let mut cfg = self.cfg.clone();
+        if let Some(l) = &r.language {
+            cfg.language = l.clone();
+        }
+        if let Some(ms) = r.interval_ms {
+            cfg.interval_ms = ms;
+        }
+        cfg.save()
     }
 
     /// Marks the settings for saving (debounced in the frame loop).
@@ -586,7 +617,7 @@ impl eframe::App for App {
         // Save settings (debounced, so we do not write on every click).
         let closing = ctx.input(|i| i.viewport().close_requested());
         if self.cfg_dirty && (closing || self.last_save.elapsed() > Duration::from_millis(800)) {
-            if let Err(e) = self.cfg.save() {
+            if let Err(e) = self.save_config() {
                 self.error = Some(t!("error.save_settings", error = e));
             }
             self.cfg_dirty = false;

@@ -123,6 +123,13 @@ impl Default for Settings {
     }
 }
 
+/// Name of this computer (heading of the HTML report, recording meta).
+pub fn computer_name() -> String {
+    std::env::var("COMPUTERNAME")
+        .or_else(|_| std::env::var("HOSTNAME"))
+        .unwrap_or_default()
+}
+
 /// The exported columns: the visible ones, with `ColumnSet::All` followed by the hidden ones.
 pub fn export_columns(
     set: ColumnSet,

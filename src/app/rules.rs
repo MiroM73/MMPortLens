@@ -59,13 +59,6 @@ fn preview(ui: &mut egui::Ui, dark: bool, look: RowLook) {
         });
 }
 
-fn error_text(e: &FilterError) -> String {
-    match e {
-        FilterError::Regex(error) => t!("filter.error.regex", error = error),
-        FilterError::Network(value) => t!("filter.error.network", value = value),
-    }
-}
-
 impl App {
     /// Compiles the rules after a change and rebuilds the view.
     pub(in crate::app) fn recompile_rules(&mut self) {
@@ -215,7 +208,7 @@ impl App {
                         ui.end_row();
                         let n = self.cfg.color_rules.len();
                         for i in 0..n {
-                            let err = self.rules.error(i).map(error_text);
+                            let err = self.rules.error(i).map(FilterError::text);
                             let r = &mut self.cfg.color_rules[i];
                             ui.push_id(i, |ui| {
                                 changed |= ui.checkbox(&mut r.enabled, "").changed();

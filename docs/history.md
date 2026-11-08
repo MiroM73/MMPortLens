@@ -276,3 +276,20 @@
   queued snapshots be recorded before the starting state (fixed: the start state takes the time of
   the last snapshot); #31 (Duration in the replay) and #32 (invalid-state flips flood a
   recording). Headless recording from the command line stays with #16. 148 tests.
+- #16: command line. `src/cli.rs` (the parser style of RusTrace: help in the UI language,
+  message box with a window, console without one) with `--preset` (kept from #13), `--filter`,
+  `--column <col>=<filter>` (repeatable; column key or title), `--interval`, `--paused`, `--lang`
+  (run-only, the saved values are written back), a `.plrec` RECORDING, `--help`, `--version`, and
+  without a window `--export <file>` (one snapshot, `src/headless.rs`) and `--record <file>
+  --duration <time>` (Ctrl+C / Ctrl+Break / closing the console finish the file properly); exit
+  codes 0 / 1 / 2. `RowFilter` moved to `src/rowfilter.rs` so the command line shares it with the
+  table and the recording; `FilterError::text`, `FilterPreset::description`,
+  `tabexport::computer_name`, `poller::snapshot` shared too; the old `preset_arg` / `file_arg`
+  scanners removed (unknown arguments are now errors). Verified: 11 new unit tests (the 2 of the removed scanners dropped; 157 in total),
+  clippy, and in the release build from PowerShell: `--export x.csv | Out-Null` writes the file
+  and `$LASTEXITCODE` is 0; filters and `--lang sk` messages; unknown preset / column, `.pdf` →
+  exit 2; unwritable path → exit 1; `--record --duration 6s --interval 500` (282 events, meta with
+  interval and duration), `--column state==Established` (`filter` meta), Ctrl+Break → finished
+  file and exit 0; with a window: `--column`, `--filter`, `--interval 750` / `1500` in the
+  toolbar, `--paused`, `--lang de` / `sk`, unknown preset in the status bar, the scratch settings
+  kept language and interval, invalid line and `--help` as message boxes.

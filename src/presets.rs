@@ -6,7 +6,7 @@ use crate::columns::ColumnId;
 use crate::t;
 use serde::{Deserialize, Serialize};
 
-/// Command line switch choosing a preset at start (the first piece of the command line of #16).
+/// Command line switch choosing a preset at start (since #13; parsed by `crate::cli`, #16).
 pub const PRESET_ARG: &str = "--preset";
 
 /// One preset; without the name it is also a snapshot of the current filters.
@@ -67,6 +67,32 @@ impl FilterPreset {
         };
         norm(self) == norm(other)
     }
+
+    /// The filters as text (recording meta, the HTML export of the command line): the text
+    /// filter, the column filters and the switches that are off.
+    pub fn description(&self) -> String {
+        let mut parts: Vec<String> = Vec::new();
+        if !self.text.trim().is_empty() {
+            parts.push(format!("\"{}\"", self.text.trim()));
+        }
+        for (c, text) in &self.column_filters {
+            if !text.trim().is_empty() {
+                parts.push(format!("{}: {}", c.title(), text.trim()));
+            }
+        }
+        for (on, name) in [
+            (self.show_tcp, "TCP"),
+            (self.show_udp, "UDP"),
+            (self.show_ipv4, "IPv4"),
+            (self.show_ipv6, "IPv6"),
+            (self.show_listening, "Listening"),
+        ] {
+            if !on {
+                parts.push(format!("-{name}"));
+            }
+        }
+        parts.join(", ")
+    }
 }
 
 /// The presets of the first start (names in the current UI language).
@@ -118,18 +144,6 @@ pub fn save(presets: &mut Vec<FilterPreset>, preset: FilterPreset) -> bool {
     }
 }
 
-/// The value of `--preset <name>` or `--preset=<name>`.
-pub fn preset_arg(args: &[String]) -> Option<String> {
-    args.iter().enumerate().find_map(|(i, a)| {
-        if a == PRESET_ARG {
-            return args.get(i + 1).cloned();
-        }
-        a.strip_prefix(PRESET_ARG)?
-            .strip_prefix('=')
-            .map(str::to_owned)
-    })
-}
-
 #[cfg(test)]
 mod tests {
     use super::*;
@@ -179,21 +193,6 @@ mod tests {
             }
         ));
         assert_eq!(p.len(), n + 1);
-    }
-
-    #[test]
-    fn command_line() {
-        let args = |v: &[&str]| v.iter().map(|s| s.to_string()).collect::<Vec<_>>();
-        assert_eq!(
-            preset_arg(&args(&["--preset", "No loopback"])).as_deref(),
-            Some("No loopback")
-        );
-        assert_eq!(
-            preset_arg(&args(&["--restore", "x", "--preset=Teams"])).as_deref(),
-            Some("Teams")
-        );
-        assert_eq!(preset_arg(&args(&["--preset"])), None);
-        assert_eq!(preset_arg(&args(&["--presets=x"])), None);
     }
 
     #[test]

@@ -77,6 +77,11 @@ fn run(ctl: &PollControl, tx: &mpsc::Sender<PollResult>, wake: impl Fn()) {
     }
 }
 
+/// One reading without the poll thread (`--export` of the command line, #16).
+pub fn snapshot() -> PollResult {
+    poll_once(&mut Reader::default(), &mut ProcessCache::default(), None)
+}
+
 fn poll_once(
     reader: &mut Reader,
     cache: &mut ProcessCache,

@@ -29,24 +29,6 @@ pub(in crate::app) struct RecordResult {
 /// How long the result stays in the status bar.
 const RESULT_SECS: u64 = 30;
 
-/// A row for the filter of an event (a closed endpoint keeps its last state).
-fn event_row(e: &Event) -> Row {
-    let mut conn = e.conn.clone();
-    conn.state = e.shown_state();
-    Row {
-        conn,
-        process: e.process.clone(),
-        first_seen: e.time,
-        mark: Mark::None,
-        mark_until: 0,
-        local_host: None,
-        remote_host: None,
-        rate_out: None,
-        rate_in: None,
-        updated: e.time,
-    }
-}
-
 /// `mm:ss` or `h:mm:ss`.
 fn clock_len(ms: u64) -> String {
     let s = ms / 1000;
@@ -216,29 +198,9 @@ impl App {
         self.show_record = open;
     }
 
-    /// The filters of the table as text (recording meta, HTML export): the text filter, the
-    /// column filters and the switches that are off.
+    /// The filters of the table as text (recording meta).
     pub(in crate::app) fn filter_description(&self) -> String {
-        let mut parts: Vec<String> = Vec::new();
-        if !self.filter.trim().is_empty() {
-            parts.push(format!("\"{}\"", self.filter.trim()));
-        }
-        for (c, text) in self.column_filter_list() {
-            parts.push(format!("{}: {text}", c.title()));
-        }
-        let c = &self.cfg;
-        for (on, name) in [
-            (c.show_tcp, "TCP"),
-            (c.show_udp, "UDP"),
-            (c.show_ipv4, "IPv4"),
-            (c.show_ipv6, "IPv6"),
-            (c.show_listening, "Listening"),
-        ] {
-            if !on {
-                parts.push(format!("-{name}"));
-            }
-        }
-        parts.join(", ")
+        self.current_filters().description()
     }
 
     /// Asks for the file and starts the writer thread with the current endpoints as the
@@ -269,11 +231,11 @@ impl App {
             .tracker
             .present_events(now)
             .into_iter()
-            .filter(|e| filter.as_ref().is_none_or(|f| f.matches(&event_row(e))))
+            .filter(|e| filter.as_ref().is_none_or(|f| f.matches_event(e)))
             .collect();
         let description = self.filter_description();
         let mut meta = vec![
-            ("computer".to_string(), export::computer_name()),
+            ("computer".to_string(), crate::tabexport::computer_name()),
             ("start_ms".into(), now.to_string()),
             ("interval_ms".into(), self.cfg.interval_ms.to_string()),
             ("app_version".into(), VERSION.to_string()),
@@ -314,7 +276,7 @@ impl App {
         let events: Vec<Event> = events
             .into_iter()
             .filter(|e| rec.kinds.wants(e.kind))
-            .filter(|e| rec.filter.as_ref().is_none_or(|f| f.matches(&event_row(e))))
+            .filter(|e| rec.filter.as_ref().is_none_or(|f| f.matches_event(e)))
             .collect();
         if !events.is_empty() {
             rec.recorder.send(events);

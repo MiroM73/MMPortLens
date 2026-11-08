@@ -7,7 +7,10 @@ with the change.
 
 | File | What it does |
 |------|--------------|
-| `src/main.rs` | Window start-up: icon, `--restore <file>` after an update, `update::cleanup_old`. |
+| `src/main.rs` | Start-up: the command line (`cli`), help / version / errors, the runs without a window (`headless`), always start as administrator, `--restore <file>` after an update, the window. |
+| `src/cli.rs` | Command-line parser (#16): `Options` / `ViewOptions`, `CliError` with translated messages, `filters` (preset + text + column filters checked against the settings), help text, message box, `attach_console` – the style of RusTrace `src/cli.rs`. |
+| `src/headless.rs` | `--export` (one snapshot) and `--record` (until `--duration` or Ctrl+C) without a window (#16). |
+| `src/rowfilter.rs` | `RowFilter` (switches, text filter, column filters of the visible columns), `compile` – used by the table, a recording and the command line. |
 | `build.rs` | Windows: icon (from `src/icon.rs`) and version information as a resource of the exe (`winresource`). |
 | `src/icon.rs` | The program icon drawn in code (window icon, `.ico` for `build.rs`). |
 | `src/elevation.rs` | Administrator mode: `is_elevated` (token elevation), `relaunch_elevated` (`ShellExecuteW` "runas"), command-line quoting. |
@@ -23,7 +26,7 @@ with the change.
 | `src/rates.rs` | `Sampler`: per-second TCP and I/O rates of one process from cumulative counters, ring buffer of the last two minutes – pure, tested (#30). |
 | `src/poller.rs` | Background thread: snapshot + process names every interval, sent over a channel. |
 | `src/model.rs` | `Tracker`: merges snapshots into rows, marks new / changed / closed rows and expires the marks; `update_with_events` / `present_events` for a recording (#3). |
-| `src/recording/` | Recording (#3): `mod.rs` (`Event`, `EventKind`, `EventKinds`, start-window `Settings`, `parse_duration`, `file_arg`), `db.rs` (all SQL: `RecordingWriter`, `RecordingReader`, `EventQuery`; tests in `db_tests.rs`), `threads.rs` (writer thread `Recorder`, `ReplayWorker`). |
+| `src/recording/` | Recording (#3): `mod.rs` (`Event`, `EventKind`, `EventKinds`, start-window `Settings`, `parse_duration`), `db.rs` (all SQL: `RecordingWriter`, `RecordingReader`, `EventQuery`; tests in `db_tests.rs`), `threads.rs` (writer thread `Recorder`, `ReplayWorker`). |
 | `src/colfilter.rs` | Column filter syntax: parsing and matching (`ColumnFilter`, `FilterKind`, `FilterError`) – core from RusTrace. |
 | `src/selection.rs` | `Selection` (cursor, anchor, selected `ConnKey`s) and `Nav` (arrow / page targets) – pure, tested (#17). |
 | `src/dns.rs` | Reverse DNS (#5): `DnsCache` (TTL, negative results, pending – pure), `Resolver` (cache + worker pool), `system_lookup` (`GetNameInfoW` / `getnameinfo`). |
@@ -400,7 +403,8 @@ still queued and are processed later with later times, so the file stays in time
 **Start** (`app/record.rs`, File → Start recording… or the red toolbar button): duration (until
 stopped, 1 / 5 / 15 / 60 min, custom `10m` / `1h30m` / `90s`), event kinds, "only rows matching the
 current filters". The filter is frozen at the start: `App::row_filter()` returns a `RowFilter`
-(switches, text filter, column filters, visible columns) – the same struct `rebuild_view` uses –
+(`src/rowfilter.rs`: switches, text filter, column filters, visible columns) – the same struct
+`rebuild_view` uses –
 and the recording keeps a copy. Every refresh `receive` passes the events of the chosen kinds and
 endpoints to the writer; the duration ends in `check_recording`, the program waits for the writer
 when it closes. The status bar shows `● REC 01:23 / 05:00 · 812 events` and Stop; afterwards the
@@ -441,7 +445,7 @@ newest `State` is answered (a dragged slider) and only the pages of the newest e
 (`generation`); the count of a query is computed once per generation.
 
 **UI** (`app/replay.rs`, `app/replay_events.rs`): File → Open recording…, the *Open* button after a
-recording, or `mmportlens.exe file.plrec` (`recording::file_arg`, also a double-clicked file) set
+recording, or `mmportlens.exe file.plrec` (the RECORDING of `cli::parse`, also a double-clicked file) set
 `App::replay`. `App::source_rows()` then returns the replayed rows instead of the tracker's, so the
 table, column / text filters, sorting, color rules, grouping, details pane and export work
 unchanged; the selection is kept within the replayed keys. Close connection, End process and
@@ -452,7 +456,7 @@ pages around them), filters by text (`LIKE` over process, path, addresses, ports
 escaped) and kinds, sorts by time (header click); a click moves the slider to the event. The live
 refresh and a running recording go on in the background.
 
-Not done here: headless recording from the command line (`--record`, `--duration` – #16),
+Recording without a window: `--record` of the command line (#16, see there). Not done here:
 the *Duration* column in the replay counts to now (#31), invalid-state flips of Windows produce
 many *State changed* events (#32).
 
@@ -532,10 +536,79 @@ state names are the netstat names, not translated, so the filters work in every 
 - "Save current as…" (name field; an existing name is replaced in place, `presets::save`) and
   "Manage presets…" (rename in place, up / down, 💾 = replace with the current filters, delete,
   restore the examples).
-- Command line `--preset <name>` or `--preset=<name>` (`presets::preset_arg`, the first piece of
-  #16): applied after start (exact name first, then ignoring case); an unknown name is reported
-  in the status bar. The settings of a restart after an update (`--restore`) win over it; an
-  elevated restart keeps the argument.
+- Command line `--preset <name>` or `--preset=<name>` (since #13, now parsed by `cli`, #16):
+  applied after start (exact name first, then ignoring case); an unknown name is reported in the
+  status bar (without a window it is an error, exit code 2). The settings of a restart after an
+  update (`--restore`) win over it; an elevated restart keeps the argument.
+
+## Command line (#16)
+
+`mmportlens [OPTIONS] [RECORDING.plrec]` – `src/cli.rs` parses (hand-written, no dependency, the
+RusTrace style: `--opt value` or `--opt=value`, `--` ends the options, the last repeated option
+counts, `--column` adds one filter each time), `main::command_line` acts:
+
+| Option | Meaning |
+|--------|---------|
+| RECORDING | a `.plrec` file opened for the replay (#3; a double-clicked file); any other argument is an error |
+| `--preset <name>` | a saved filter preset (#13) |
+| `--filter <text>` | the text filter of the toolbar |
+| `--column <col>=<filter>` | a column filter in the syntax of #1; `col` is the column key without `column.` (`state`, `local_port`, `remote_address`, `-` / space for `_`) or the title in the UI language; the column is made visible like choosing a preset |
+| `--interval <ms>` | refresh interval (≥ 100) for this run |
+| `--paused` | start paused (the first snapshot is still read) |
+| `--lang <code>` | UI language for this run |
+| `--export <file>` | without a window: one snapshot, format by the extension |
+| `--record <file>` / `--duration <time>` | without a window: record until the time is up (`10m`, `90s`, `1h30m`, minutes – `recording::parse_duration`) or Ctrl+C; `.plrec` is added to a name without an extension |
+| `--help` / `--version` | message box (and stdout) |
+
+Hidden: `--restore <file>` (update / elevated restart, #15) and `--elevated` keep their old form,
+so older versions still restart this one.
+
+**Order in `main`**: parse → `--lang` (so help and errors are already translated) → help / version
+→ `--restore` → headless runs → always-start-as-administrator → read the restore file → window.
+`cli::filters(view, saved presets, base)` merges the filter options: `--preset` replaces the
+base, `--filter` its text, each `--column` the filter of its column; unknown presets / columns and
+invalid filter syntax (regex, network) are `CliError`s. With a window the base is what the table
+would start with (saved switches, remembered column filters) and the result goes to
+`App::apply_preset`; an unknown preset is shown in the status bar as before #16 and the other
+options still apply. `App::new` takes a `Startup` (restore state, elevation error, recording,
+filters, interval, paused, language). `--lang` / `--interval` are run-only: `App::run_only` keeps
+the saved values and `App::save_config` writes them back, until the user picks a language in the
+menu or an interval in the toolbar (then that one is saved). The toolbar shows any interval
+(`750 ms`).
+
+**Errors and output**: exit code 0 = done, 1 = error (reading the tables, writing the file), 2 =
+invalid command line. A start with a window shows errors and the help in a message box
+(`cli::show_message`, `MessageBoxW`; the release build has no console) and on stdout / stderr.
+When the arguments contain `--export` / `--record`, `cli::attach_console`
+(`AttachConsole(ATTACH_PARENT_PROCESS)`) runs first and every message (also an invalid line) goes
+only to the console – an unattended task never waits for a click. Because the exe is a GUI
+program, PowerShell does not wait for it on its own: `mmportlens --export x.csv | Out-Null` (or
+`Start-Process -Wait`, `start /wait` in cmd) waits and sets `$LASTEXITCODE`.
+
+Combinations refused: `--export` with `--record`, either of them with a RECORDING or `--paused`,
+`--export` with `--interval`, `--duration` without `--record`, an export extension other than
+`.csv` / `.txt`, `.xlsx`, `.jsonl` / `.ndjson`, `.html` / `.htm`.
+
+**`headless::export`** reads one snapshot (`poller::snapshot`, no thread), runs it through a
+`Tracker` (no marks on a first snapshot), and uses the table settings: visible columns plus the
+columns with a command-line filter (`visible_columns`), `RowFilter::from_preset` for the filters
+(none given = every endpoint; the saved switches and remembered column filters of the window do
+**not** apply, so a script does not depend on the last window session), `Config::sort`, and
+`Config::export` for columns (visible / all), CSV separator / encoding / formula guard, header,
+colors (color rules of #10, light colors). Host names (#5) are looked up when a host column is
+visible or exported and *Resolve addresses* is on: 16 threads, at most 5 s, late names are left
+out. Traffic columns stay empty (one snapshot has no counters / rates). The HTML heading lists the
+time, the rows and the filters (`FilterPreset::description`, also the `filter` meta of a
+recording).
+
+**`headless::record`** starts the poll thread with `--interval` (or the saved interval), takes the
+first snapshot as the starting state (`present_events`), writes the meta like the window (plus
+`duration_ms`, `filter`) and passes the events of every refresh – the kinds of
+`Config::record.kinds`, the endpoints of the command-line filter – to `Recorder`. It ends when the
+duration is up, on Ctrl+C / Ctrl+Break / closing the console (`SetConsoleCtrlHandler`; for close,
+logoff and shutdown the handler waits up to 4.5 s until the file is finished, Windows ends the
+process when the handler returns), or when the writer fails (exit 1). A failed refresh is printed
+and skipped. On Linux there is no handler: Ctrl+C ends the process (use `--duration`).
 
 ## Group by process (#12)
 
@@ -599,7 +672,9 @@ elevated, like *Show details for all processes* in Process Explorer.
   window is created; a program that is not elevated and was not started with `--elevated`
   starts itself elevated with its own arguments plus `--elevated` and ends. `--elevated` stops a
   loop when elevation does not produce an elevated token. A failure is shown in the status bar.
-  The check runs before `restore_arg`, which deletes the restore file the child still needs.
+  The check runs before the restore file is read (`SessionState::take` deletes it, the child
+  still needs it), and only for a start with a window: `--help`, `--version`, `--export` and
+  `--record` never elevate (an elevated child has no console and its exit code is lost).
 - `join_args` quotes the arguments by the `CommandLineToArgvW` rules (unit-tested).
 - Elevating to a *different* account (over-the-shoulder UAC) uses that account's `%APPDATA%`
   settings and `%TEMP%`; the restore file path is absolute, so it is still found.
@@ -674,7 +749,9 @@ description, icon; services by PID; start time identifies a reused PID; icon alp
 conversion, FILETIME, version keys), close / kill checks and the `MIB_TCPROW` layout, ending an own child process,
 closing an own loopback connection (elevated: it disappears; not elevated: exactly
 `AccessDenied`), host / service
-cells, selection (clicks, ranges, re-sorting, navigation targets), the table export (typed cells, every writer, cancel), column filters (syntax, regex, numeric ranges, CIDR, address classes, errors,
+cells, selection (clicks, ranges, re-sorting, navigation targets), the command line (every option and
+error, combinations, filters on top of a base, column names, help text), row filters, the
+headless export of a live snapshot (an own listener exported as JSON Lines), the table export (typed cells, every writer, cancel), column filters (syntax, regex, numeric ranges, CIDR, address classes, errors,
 speed), the icon / `.ico` layout, update logic (versions, GitHub JSON, missed releases,
 release notes, SHA-256 files, ZIP reading, installation into a temporary folder, session state)
 and the live snapshot test.

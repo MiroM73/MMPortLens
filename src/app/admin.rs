@@ -31,7 +31,7 @@ impl App {
         match elevation::relaunch_elevated(&args) {
             Ok(()) => {
                 // The settings first, the new program reads them.
-                let _ = self.cfg.save();
+                let _ = self.save_config();
                 self.cfg_dirty = false;
                 self.ctl.stop.store(true, Ordering::Relaxed);
                 ctx.send_viewport_cmd(egui::ViewportCommand::Close);

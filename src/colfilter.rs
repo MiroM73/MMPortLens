@@ -43,6 +43,16 @@ pub enum FilterError {
     Network(String),
 }
 
+impl FilterError {
+    /// The translated message (tooltip of the field, command line errors).
+    pub fn text(&self) -> String {
+        match self {
+            FilterError::Regex(error) => crate::t!("filter.error.regex", error = error),
+            FilterError::Network(value) => crate::t!("filter.error.network", value = value),
+        }
+    }
+}
+
 /// An address alternative.
 #[derive(Clone, Copy, PartialEq, Debug)]
 enum Net {

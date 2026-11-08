@@ -203,6 +203,7 @@ impl App {
             ui.close();
             i18n::set_language(&code);
             self.cfg.language = code;
+            self.run_only.language = None;
             self.settings_changed();
         }
     }

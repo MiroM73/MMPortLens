@@ -55,6 +55,10 @@ Early version (0.3.7). What works now:
 - **Filter presets** in the toolbar: save the switches, the text filter and the column filters
   under a name and switch them with one click (examples: Only Established, Listening ports, No
   loopback …); `mmportlens.exe --preset "<name>"` starts with a preset.
+- **Command line**: start with filters (`--preset`, `--filter`, `--column state==Established`),
+  `--interval`, `--paused`, `--lang`; without a window `--export connections.xlsx` writes one
+  snapshot and `--record capture.plrec --duration 10m` records (Ctrl+C stops) – for scripts and
+  scheduled tasks, with exit codes. `mmportlens --help` lists everything.
 - **Group by process** (toolbar *Group*): one collapsible line per process with its number of
   endpoints and traffic, its endpoints under it; collapsed groups are remembered.
 - **Close connection** (IPv4 TCP, like TCPView) and **End process** from the context menu or with

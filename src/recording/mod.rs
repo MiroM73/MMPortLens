@@ -123,18 +123,6 @@ impl Event {
     }
 }
 
-/// A recording given on the command line (`mmportlens capture.plrec`, a double-clicked file):
-/// the first argument with the `.plrec` extension.
-pub fn file_arg(args: &[String]) -> Option<std::path::PathBuf> {
-    args.iter()
-        .map(std::path::Path::new)
-        .find(|p| {
-            p.extension()
-                .is_some_and(|e| e.eq_ignore_ascii_case(EXTENSION))
-        })
-        .map(|p| p.to_path_buf())
-}
-
 /// Recording durations offered in the start window (minutes; `None` = until stopped).
 pub const DURATIONS: [Option<u64>; 5] = [None, Some(1), Some(5), Some(15), Some(60)];
 
@@ -179,7 +167,7 @@ impl Settings {
 }
 
 /// Parses a duration like `10m`, `90s`, `1h`, `1h30m` or a bare number of minutes into ms
-/// (the custom duration of the start window, later `--duration` of #16).
+/// (the custom duration of the start window, `--duration` of the command line, #16).
 pub fn parse_duration(text: &str) -> Option<u64> {
     let t = text.trim().to_ascii_lowercase();
     if t.is_empty() {
@@ -228,16 +216,6 @@ mod tests {
         assert!(!only_new.wants(EventKind::Closed));
         assert_eq!(only_new.text(), "new");
         assert_eq!(EventKinds::default().text(), "new,closed,changed");
-    }
-
-    #[test]
-    fn recording_on_the_command_line() {
-        let args = |a: &[&str]| a.iter().map(|s| s.to_string()).collect::<Vec<_>>();
-        assert_eq!(file_arg(&args(&["--preset", "x"])), None);
-        assert_eq!(
-            file_arg(&args(&["--preset", "x", "dir/a b.PLREC"])),
-            Some("dir/a b.PLREC".into())
-        );
     }
 
     #[test]

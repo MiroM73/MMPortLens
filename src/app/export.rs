@@ -282,7 +282,7 @@ impl App {
                 sheet_name: t!("export.sheet"),
                 ..Default::default()
             },
-            html_title: t!("export.html.title", host = computer_name()),
+            html_title: t!("export.html.title", host = tabexport::computer_name()),
             html_info: self.export_info(rows.len(), now),
             html_colors: e.colors,
             rows,
@@ -457,13 +457,6 @@ fn encoding_name(e: CsvEncoding) -> String {
         CsvEncoding::Utf8 => "UTF-8".into(),
         CsvEncoding::Utf16Le => "UTF-16 LE".into(),
     }
-}
-
-/// Name of this computer for the heading of the HTML report.
-pub(in crate::app) fn computer_name() -> String {
-    std::env::var("COMPUTERNAME")
-        .or_else(|_| std::env::var("HOSTNAME"))
-        .unwrap_or_default()
 }
 
 /// Opens Explorer with the file selected (other systems: its folder) – from RusTrace.
