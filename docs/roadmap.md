@@ -73,7 +73,7 @@ program, README / `docs/architecture.md` / `docs/history.md`, detailed commit wi
 | #19 | Statistics over time (data from the recording of #3) | done ("Statistics window: connections over time, top processes, hosts and ports"), released in v1.1.1; charts for an opened recording are not part of it |
 | #11 | Country and ASN (offline) – least critical, depends on an offline database | |
 | #31 | Replay: the Duration column counts to now instead of the slider time (found in the #3 check) | done ("Replay: Duration counts to the slider time"), released in v1.1.1 |
-| #32 | Invalid TCP state flips of Windows flood recordings with State changed events (found in the #3 check) | |
+| #32 | Invalid TCP state flips of Windows flood recordings with State changed events (found in the #3 check) | done ("Ignore invalid and implausible TCP state flips"), not released yet |
 | #37 | Process names of system / other users' processes without administrator rights from the process snapshot instead of `<pid>` (found in the #16 check) | |
 | #38 | Help → Command line window: options, column names, exit codes and examples with copy buttons, from the same structured data as `--help` (extends #16) | done ("Help → Command line window"), released in v1.0.7 |
 | #40 | Console output of the command line garbled in an OEM code page console (`–` → `ÔÇô`; found in the #4 check) | done ("Console messages in the code page PowerShell decodes with"), released in v1.1.1; RusTrace port is MiroM73/Rustrace#62 |

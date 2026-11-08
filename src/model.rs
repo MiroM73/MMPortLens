@@ -56,6 +56,9 @@ pub struct Row {
     /// Reference time of the time columns (Duration, Created): `None` = now (the live table),
     /// the slider time in a replay (#31).
     pub as_of: Option<u64>,
+    /// The TCP state the last snapshot reported when the row shows another one: an invalid
+    /// state (0) while the last valid state is kept, or a wrong state of a listener (#32).
+    pub os_state: Option<TcpState>,
 }
 
 impl Row {
@@ -74,6 +77,119 @@ pub fn rate(old: Option<u64>, new: Option<u64>, dt_ms: u64) -> Option<f64> {
     }
 }
 
+/// Which rules [`settle_state`] applies to the state of an endpoint.
+#[derive(Clone, Copy, PartialEq, Eq, Debug)]
+pub enum StateRules {
+    /// UDP, or TCP outside Windows: only an invalid state keeps the last valid one.
+    Plain,
+    /// A TCP endpoint without a remote side on Windows: always `Listen`.
+    Listener,
+    /// A TCP connection on Windows: only plausible steps of the TCP state machine are taken at
+    /// once, others after [`CONFIRM`] equal reports in a row.
+    Connection,
+}
+
+impl StateRules {
+    pub fn of(conn: &Connection) -> Self {
+        match (cfg!(windows) && conn.proto.is_tcp(), conn.remote.is_some()) {
+            (false, _) => StateRules::Plain,
+            (true, false) => StateRules::Listener,
+            (true, true) => StateRules::Connection,
+        }
+    }
+}
+
+/// How many refreshes in a row an implausible state of a connection must be reported before it
+/// is taken (#32).
+pub const CONFIRM: u8 = 5;
+
+/// Position of a state in the life of a connection: a connection only moves forward (polling
+/// may skip states, e.g. Established -> TimeWait). `None` = never a state of a connection with a
+/// remote side (Listen, invalid) – and Closed: a closed connection disappears from the table, so
+/// a reported Closed of a live one is wrong (half of the changes left in a test recording were
+/// steps to or from Closed).
+fn conn_rank(s: TcpState) -> Option<u8> {
+    use TcpState::*;
+    Some(match s {
+        SynSent | SynReceived => 1,
+        Established => 2,
+        FinWait1 | CloseWait => 3,
+        FinWait2 | Closing | LastAck => 4,
+        TimeWait => 5,
+        DeleteTcb => 6,
+        Closed | Listen | Unknown(_) => return None,
+    })
+}
+
+/// The state a row shows after a snapshot reported `reported`, and whether the step from `old`
+/// is a real change (a *Changed* mark and event) – #32. `pending` is the implausible state
+/// reported in the refreshes before and how often (kept by the tracker per row).
+///
+/// Some Windows machines report the invalid state 0 and valid but wrong states for live sockets
+/// from one refresh to the next (#21): listeners as FinWait1 or Closed, connections as Listen,
+/// Closed or jumping back and forth between Established, FinWait1 and CloseWait. Every flip was a
+/// change, so a recording of an idle minute was full of them. Now:
+/// - a listener on Windows is always `Listen` (Windows lists only listeners and connections);
+/// - an invalid state – and for a connection also `Listen` and `Closed` – keeps the last valid
+///   state (or is shown as reported when there is none); stepping from or to it is no change;
+/// - a connection on Windows takes a step forward in its life ([`conn_rank`]) at once; a step back
+///   or sideways only when it was reported [`CONFIRM`] times in a row (wrong states were seen to
+///   stay for three refreshes).
+pub fn settle_state(
+    rules: StateRules,
+    old: Option<TcpState>,
+    reported: Option<TcpState>,
+    pending: &mut Option<(TcpState, u8)>,
+) -> (Option<TcpState>, bool) {
+    let usable = |s: TcpState| match rules {
+        StateRules::Connection => conn_rank(s).is_some(),
+        _ => !matches!(s, TcpState::Unknown(_)),
+    };
+    let old_valid = old.filter(|&s| usable(s));
+    if rules == StateRules::Listener {
+        *pending = None;
+        return (
+            Some(TcpState::Listen),
+            old_valid.is_some_and(|s| s != TcpState::Listen),
+        );
+    }
+    let Some(r) = reported else {
+        *pending = None;
+        return (None, old.is_some());
+    };
+    if !usable(r) {
+        // Invalid: keep the last valid state. A pending implausible state is not confirmed.
+        *pending = None;
+        return (old_valid.or(reported), false);
+    }
+    let Some(o) = old_valid else {
+        // Nothing valid to compare with: take it without a change.
+        *pending = None;
+        return (reported, false);
+    };
+    if r == o {
+        *pending = None;
+        return (old, false);
+    }
+    let plausible = rules == StateRules::Plain
+        || matches!((conn_rank(o), conn_rank(r)), (Some(a), Some(b)) if b > a);
+    if plausible {
+        *pending = None;
+        return (reported, true);
+    }
+    let count = match *pending {
+        Some((s, n)) if s == r => n + 1,
+        _ => 1,
+    };
+    if count >= CONFIRM {
+        *pending = None;
+        (reported, true)
+    } else {
+        *pending = Some((r, count));
+        (old, false)
+    }
+}
+
 /// What one refresh changed – the base for the status bar and later for recording.
 #[derive(Clone, Copy, Default, PartialEq, Eq, Debug)]
 pub struct Changes {
@@ -88,6 +204,8 @@ pub struct Tracker {
     started: bool,
     /// Snapshots merged so far (ETW rows only from the second one on, #4).
     snapshots: u64,
+    /// Implausible states of connections not confirmed yet ([`settle_state`], #32).
+    pending: HashMap<ConnKey, (TcpState, u8)>,
 }
 
 /// An endpoint as ETW and the tables can both identify it (#4): TCP by protocol and both
@@ -189,26 +307,39 @@ impl Tracker {
         self.snapshots += 1;
         let until = now + hold_ms;
         let mut seen = HashSet::with_capacity(snapshot.len());
-        for (conn, process) in snapshot {
+        for (mut conn, process) in snapshot {
             let key = conn.key();
             seen.insert(key);
+            let reported = conn.state;
             match self.rows.get_mut(&key) {
                 Some(row) => {
+                    // A row that comes back starts again from what the snapshot says.
+                    let old = (row.mark != Mark::Closed)
+                        .then_some(row.conn.state)
+                        .flatten();
+                    let mut pending = self.pending.remove(&key);
+                    let (state, changed) =
+                        settle_state(StateRules::of(&conn), old, reported, &mut pending);
+                    if let Some(p) = pending {
+                        self.pending.insert(key, p);
+                    }
+                    conn.state = state;
                     let kind = if row.mark == Mark::Closed {
                         Some(EventKind::New)
-                    } else if row.conn.state != conn.state {
+                    } else if changed {
                         Some(EventKind::Changed)
                     } else {
                         None
                     };
                     let before = row.conn.state;
+                    row.os_state = (reported != state).then_some(reported).flatten();
                     if row.mark == Mark::Closed {
                         // Came back (same addresses and PID) – treat as a new endpoint.
                         row.mark = Mark::New;
                         row.mark_until = until;
                         row.first_seen = now;
                         ch.new += 1;
-                    } else if row.conn.state != conn.state {
+                    } else if changed {
                         row.mark = Mark::Changed;
                         row.mark_until = until;
                         ch.changed += 1;
@@ -228,6 +359,8 @@ impl Tracker {
                     }
                 }
                 None => {
+                    let (state, _) = settle_state(StateRules::of(&conn), None, reported, &mut None);
+                    conn.state = state;
                     let mark = if first { Mark::None } else { Mark::New };
                     if !first {
                         ch.new += 1;
@@ -245,6 +378,7 @@ impl Tracker {
                         updated: now,
                         etw: false,
                         as_of: None,
+                        os_state: (reported != state).then_some(reported).flatten(),
                     });
                     if !first {
                         emit(EventKind::New, row.get(), None);
@@ -369,6 +503,7 @@ impl Tracker {
                     updated: s.last,
                     etw: true,
                     as_of: None,
+                    os_state: None,
                 },
             );
             // Further events of the same endpoint in this batch (another PID) are not new.
@@ -385,6 +520,10 @@ impl Tracker {
         let before = self.rows.len();
         self.rows
             .retain(|_, r| !(r.mark == Mark::Closed && r.mark_until <= now));
+        if !self.pending.is_empty() {
+            let rows = &self.rows;
+            self.pending.retain(|k, _| rows.contains_key(k));
+        }
         let mut changed = before != self.rows.len();
         for r in self.rows.values_mut() {
             if matches!(r.mark, Mark::New | Mark::Changed) && r.mark_until <= now {
@@ -752,6 +891,149 @@ mod tests {
         let row = t.rows().find(|r| r.conn.local.port() == 7).unwrap();
         assert!(!row.etw);
         assert_eq!(row.mark, Mark::New);
+    }
+
+    #[test]
+    fn invalid_states_are_no_changes() {
+        use StateRules::*;
+        use TcpState::*;
+        let bad = Some(Unknown(0));
+        let settle = |rules, old, reported| settle_state(rules, old, reported, &mut None);
+        for rules in [Plain, Connection] {
+            // An invalid state keeps the last valid one, steps to / from it count not.
+            assert_eq!(
+                settle(rules, Some(Established), bad),
+                (Some(Established), false)
+            );
+            assert_eq!(settle(rules, None, bad), (bad, false));
+            assert_eq!(
+                settle(rules, bad, Some(Established)),
+                (Some(Established), false)
+            );
+            assert_eq!(
+                settle(rules, Some(Established), Some(TimeWait)),
+                (Some(TimeWait), true)
+            );
+            assert_eq!(
+                settle(rules, Some(TimeWait), Some(TimeWait)),
+                (Some(TimeWait), false)
+            );
+            assert_eq!(settle(rules, None, Some(SynSent)), (Some(SynSent), false));
+        }
+        // Plain rules take any valid step; a connection never is Listen.
+        assert_eq!(
+            settle(Plain, Some(Listen), Some(Closed)),
+            (Some(Closed), true)
+        );
+        assert_eq!(
+            settle(Connection, Some(Established), Some(Listen)),
+            (Some(Established), false)
+        );
+        assert_eq!(
+            settle(Connection, Some(Listen), Some(Established)),
+            (Some(Established), false)
+        );
+        // Listeners are always Listen.
+        for reported in [bad, Some(FinWait1), Some(Closed), Some(Listen)] {
+            assert_eq!(
+                settle(Listener, Some(Listen), reported),
+                (Some(Listen), false)
+            );
+        }
+        assert_eq!(settle(Listener, bad, Some(FinWait1)), (Some(Listen), false));
+        // UDP has no state.
+        assert_eq!(settle(Plain, None, None), (None, false));
+    }
+
+    #[test]
+    fn implausible_steps_of_a_connection_need_confirmation() {
+        use TcpState::*;
+        let mut pending = None;
+        let mut step = |old, reported| {
+            settle_state(
+                StateRules::Connection,
+                Some(old),
+                Some(reported),
+                &mut pending,
+            )
+        };
+        // Forward, also skipping states.
+        assert_eq!(step(SynSent, Established), (Some(Established), true));
+        assert_eq!(step(Established, TimeWait), (Some(TimeWait), true));
+        // Back: kept until it was reported CONFIRM times in a row.
+        for _ in 1..CONFIRM {
+            assert_eq!(step(FinWait1, Established), (Some(FinWait1), false));
+        }
+        assert_eq!(step(FinWait1, Established), (Some(Established), true));
+        // An interruption starts the count again; so does another implausible state.
+        assert_eq!(step(TimeWait, SynSent), (Some(TimeWait), false));
+        assert_eq!(step(TimeWait, SynSent), (Some(TimeWait), false));
+        assert_eq!(step(TimeWait, TimeWait), (Some(TimeWait), false));
+        for _ in 1..CONFIRM {
+            assert_eq!(step(TimeWait, SynSent), (Some(TimeWait), false));
+        }
+        assert_eq!(step(TimeWait, Established), (Some(TimeWait), false));
+        // Closed of a live connection is never taken; from Closed it is no change.
+        for _ in 0..CONFIRM * 2 {
+            assert_eq!(step(Established, Closed), (Some(Established), false));
+        }
+        assert_eq!(step(Closed, FinWait1), (Some(FinWait1), false));
+        // Sideways (FinWait1 <-> CloseWait) is implausible too.
+        assert_eq!(step(FinWait1, CloseWait), (Some(FinWait1), false));
+    }
+
+    /// Flips through invalid and implausible states make no events; real steps do (#32).
+    #[test]
+    fn state_flips_make_no_events() {
+        use TcpState::*;
+        let run = |states: &[TcpState], listener: bool| {
+            let mut t = Tracker::default();
+            let mut ev = Vec::new();
+            for (i, s) in states.iter().enumerate() {
+                let (mut c, p) = conn(1, *s);
+                if listener {
+                    c.remote = None;
+                }
+                t.update_with_events(vec![(c, p)], i as u64 * 1000, 500, Some(&mut ev));
+            }
+            let shown = t.rows().next().map(|r| (r.conn.state, r.os_state));
+            (ev, shown)
+        };
+        let (ev, shown) = run(&[Established, Unknown(0), Established, Unknown(0)], false);
+        assert!(ev.is_empty(), "{ev:?}");
+        assert_eq!(shown, Some((Some(Established), Some(Unknown(0)))));
+
+        let (ev, shown) = run(&[Established, Unknown(0), TimeWait], false);
+        assert_eq!(ev.len(), 1);
+        assert_eq!(ev[0].kind, EventKind::Changed);
+        assert_eq!(
+            (ev[0].state_before, ev[0].conn.state),
+            (Some(Established), Some(TimeWait))
+        );
+        assert_eq!(shown, Some((Some(TimeWait), None)));
+
+        if cfg!(windows) {
+            // Seen on the owner's PC: connections jumping between states.
+            let flips = [
+                Established,
+                Listen,
+                FinWait1,
+                Established,
+                Closed,
+                CloseWait,
+                Established,
+            ];
+            let (ev, shown) = run(&flips, false);
+            assert_eq!(ev.len(), 1, "{ev:?}"); // only Established -> FinWait1
+            assert_eq!(shown.unwrap().0, Some(FinWait1));
+            let (ev, shown) = run(&[Listen, FinWait1, Closed, Unknown(0), Listen], true);
+            assert!(ev.is_empty(), "{ev:?}");
+            assert_eq!(shown.unwrap().0, Some(Listen));
+            // A new listener reported in a wrong state starts as Listen.
+            let (ev, shown) = run(&[FinWait1], true);
+            assert!(ev.is_empty());
+            assert_eq!(shown, Some((Some(Listen), Some(FinWait1))));
+        }
     }
 
     #[test]

@@ -456,6 +456,7 @@ pub(crate) mod tests {
             updated: NOON,
             etw: false,
             as_of: None,
+            os_state: None,
         };
         vec![
             row(

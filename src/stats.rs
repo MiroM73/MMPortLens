@@ -221,6 +221,7 @@ mod tests {
             updated: 0,
             etw: false,
             as_of: None,
+            os_state: None,
         }
     }
 

@@ -554,8 +554,11 @@ impl App {
                 Some(TcpState::Established) => counts.established += 1,
                 Some(TcpState::Listen) => counts.listening += 1,
                 Some(TcpState::TimeWait) => counts.time_wait += 1,
-                Some(TcpState::Unknown(_)) => counts.invalid += 1,
                 _ => {}
+            }
+            // What Windows reported, also when the row shows the last valid state (#32).
+            if let Some(TcpState::Unknown(_)) = r.os_state.or(r.conn.state) {
+                counts.invalid += 1;
             }
             if resolve {
                 self.fill_host_names(&mut r, &cols, now);

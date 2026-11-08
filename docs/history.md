@@ -514,3 +514,16 @@
   Verified: fmt, clippy (Windows, Linux), tests (size in points per scale, shrinking); release
   build: `MoveWindow` 1500 × 32728 → still running, 16383 px inner, normal close; the `--help`
   window at 20000 px width → 16399 px.
+- #32: Windows' invalid and wrong TCP states no longer flood the table and recordings with
+  *State changed*. `model::settle_state` (pure, tested): listeners on Windows are always Listen,
+  an invalid state keeps the last valid one without a change, a Windows connection takes forward
+  steps at once and steps back / sideways only after 5 equal reports, Listen and Closed of a
+  connection are ignored. `Row::os_state` keeps the reported state for the State tooltip and the
+  invalid-state count; `state.reported.tip` and an extended `status.invalid_states.tip` in four
+  languages. Verified: fmt, clippy (Windows, Linux), tests (the sequences of the issue, listener
+  flips, confirmation counting); release build: two 60 s recordings side by side on the owner's
+  PC – old build 224 *State changed* events, new build 20 (a first version with only the invalid /
+  listener rules still had 90, mostly steps to / from Closed and back between Established and
+  FinWait1, hence the plausibility rules); the window shows listeners as Listen with the tooltip
+  "Windows reported Invalid (0) in the last refresh. Shown is Listen …" and still counts
+  "Invalid TCP states: 35".

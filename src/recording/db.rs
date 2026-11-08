@@ -565,6 +565,7 @@ impl RecordingReader {
                 updated: e.time,
                 etw,
                 as_of: Some(at),
+                os_state: None,
             });
         }
         Ok(rows)

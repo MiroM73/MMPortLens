@@ -198,10 +198,20 @@ impl App {
                             }
                         } else {
                             let resp = ui.add(label);
-                            if c == ColumnId::State
-                                && let Some(TcpState::Unknown(v)) = r.conn.state
-                            {
-                                resp.on_hover_text(t!("state.invalid.tip", value = v));
+                            if c == ColumnId::State {
+                                if let Some(reported) = r.os_state {
+                                    resp.on_hover_text(t!(
+                                        "state.reported.tip",
+                                        reported = crate::columns::state_text(reported),
+                                        shown = r
+                                            .conn
+                                            .state
+                                            .map(crate::columns::state_text)
+                                            .unwrap_or_default()
+                                    ));
+                                } else if let Some(TcpState::Unknown(v)) = r.conn.state {
+                                    resp.on_hover_text(t!("state.invalid.tip", value = v));
+                                }
                             }
                         }
                     });

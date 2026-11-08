@@ -102,6 +102,31 @@ others. It is an OS problem, not a decoding one. Consequences in the code:
   FinWait1 or Closed – seen in about 15 of 100 runs on the affected PC) in a snapshot that also
   contains invalid states; on a clean Windows (CI) and on Linux a wrong state fails.
 
+**State flips (#32).** On the same machines the states of live sockets change from one refresh
+to the next: listeners `Listen → Invalid (0) → Closed → FinWait1 → Listen`, connections with a
+remote side `Established → Listen → FinWait1 → Established → Closed → CloseWait`. Each flip was a
+*Changed* mark (yellow row) and a recording event (953 events in 14 s on the owner's PC).
+`Tracker::update_with_events` now passes every reported state through the pure
+`model::settle_state` (rules per endpoint `StateRules::of`):
+- **Plain** (UDP; TCP on Linux): an invalid state keeps the last valid one, a step from or to an
+  invalid state is no change.
+- **Listener** (Windows TCP without a remote side – Windows lists only listeners and
+  connections): always `Listen`.
+- **Connection** (Windows TCP with a remote side): `Listen`, `Closed` (a closed connection
+  disappears from the table) and invalid states are not usable – the last usable state is kept;
+  a step *forward* in the life of a connection (`conn_rank`: SynSent / SynReceived → Established
+  → FinWait1 / CloseWait → FinWait2 / Closing / LastAck → TimeWait → DeleteTcb; skipping states
+  is fine) is taken at once, a step back or sideways only after `CONFIRM` (5) equal reports in a
+  row (`Tracker::pending` counts them per `ConnKey`, dropped with the row). Wrong states were seen
+  to stay for three refreshes.
+A row without a usable previous state shows what was reported, without a change. The reported
+state is kept in `Row::os_state` when the row shows another one: the State cell then has the
+tooltip `state.reported.tip` ("Windows reported Invalid (0) in the last refresh. Shown is Listen
+…") and the status bar still counts the rows Windows reported as invalid. Measured with two
+parallel `--record … --duration 60s` runs (old and new build, 1 s): *State changed* events 224 →
+20 (420 → 90 with only the invalid / listener rules, so the plausibility rules were added); the 20
+left were wrong states reported for five refreshes or real changes.
+
 Limit of polling: a connection that opens and closes between two refreshes is never seen – see
 *Short connections with ETW (#4)*.
 
@@ -600,8 +625,9 @@ The replayed rows carry the slider time in `Row::as_of` (`state_at` in `recordin
 Created cells (`columns::cell_text`, so also the column / text filters, and `tabexport::cell` for
 the export) are computed against it instead of the wall clock (#31). Live rows have `None` = now.
 
-Recording without a window: `--record` of the command line (#16, see there). Not done here:
-invalid-state flips of Windows produce many *State changed* events (#32).
+Recording without a window: `--record` of the command line (#16, see there). Invalid-state
+flips of Windows are filtered by the tracker before they become events (#32, see *Invalid TCP
+states*).
 
 ## Column filters (#1)
 
