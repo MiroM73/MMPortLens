@@ -527,3 +527,13 @@
   FinWait1, hence the plausibility rules); the window shows listeners as Listen with the tooltip
   "Windows reported Invalid (0) in the last refresh. Shown is Listen …" and still counts
   "Invalid TCP states: 35".
+- #37: without administrator rights the processes of other users and of the system have their
+  names (`svchost.exe`, `lsass.exe`, `services.exe`) instead of `<pid>`. New
+  `winproc::process_list` (Toolhelp snapshot, also used by `console.rs` instead of its own copy),
+  taken at most once per refresh by `ProcessCache` when a process has no readable path; a cached
+  entry without start time and path is checked against it to notice a reused PID. Linux reads
+  `/proc/*/comm` instead of one `comm` per PID. Verified: fmt, clippy (Windows, Linux), tests
+  (new: the snapshot has the own process and `services.exe`, whose path is not readable when not
+  elevated); release build not elevated: `--export --column local_port==135` gave `svchost.exe`
+  (1788) twice, `--filter svchost` 68 rows, a full export no `<pid>` at all; the window shows
+  svchost.exe, lsass.exe, services.exe, spoolsv.exe for the listeners.

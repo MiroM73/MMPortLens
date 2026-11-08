@@ -118,10 +118,6 @@ mod win {
         pub fn GetFileType(handle: *mut c_void) -> u32;
         pub fn GetConsoleOutputCP() -> u32;
         pub fn GetCurrentProcessId() -> u32;
-        pub fn CreateToolhelp32Snapshot(flags: u32, pid: u32) -> *mut c_void;
-        pub fn Process32FirstW(snapshot: *mut c_void, entry: *mut ProcessEntry) -> i32;
-        pub fn Process32NextW(snapshot: *mut c_void, entry: *mut ProcessEntry) -> i32;
-        pub fn CloseHandle(handle: *mut c_void) -> i32;
         pub fn WideCharToMultiByte(
             code_page: u32,
             flags: u32,
@@ -136,54 +132,14 @@ mod win {
     pub const STD_OUTPUT_HANDLE: u32 = -11i32 as u32;
     pub const STD_ERROR_HANDLE: u32 = -12i32 as u32;
     pub const FILE_TYPE_PIPE: u32 = 3;
-    pub const TH32CS_SNAPPROCESS: u32 = 2;
-
-    /// `PROCESSENTRY32W`.
-    #[repr(C)]
-    pub struct ProcessEntry {
-        pub size: u32,
-        pub usage: u32,
-        pub pid: u32,
-        pub heap_id: usize,
-        pub module_id: u32,
-        pub threads: u32,
-        pub parent_pid: u32,
-        pub priority: i32,
-        pub flags: u32,
-        pub exe: [u16; 260],
-    }
 
     /// The executable name of the parent process (Toolhelp snapshot); `None` when unknown.
     pub fn parent_exe() -> Option<String> {
-        // SAFETY: the snapshot handle is checked and closed; `entry` is a local whose `size` is
-        // set as the API requires; the name is read up to its NUL within the fixed array.
-        unsafe {
-            let snap = CreateToolhelp32Snapshot(TH32CS_SNAPPROCESS, 0);
-            if snap.is_null() || snap as isize == -1 {
-                return None;
-            }
-            let mut entries = Vec::new();
-            let mut entry: ProcessEntry = std::mem::zeroed();
-            entry.size = std::mem::size_of::<ProcessEntry>() as u32;
-            let mut ok = Process32FirstW(snap, &mut entry) != 0;
-            while ok {
-                let len = entry
-                    .exe
-                    .iter()
-                    .position(|&c| c == 0)
-                    .unwrap_or(entry.exe.len());
-                entries.push((
-                    entry.pid,
-                    entry.parent_pid,
-                    String::from_utf16_lossy(&entry.exe[..len]),
-                ));
-                ok = Process32NextW(snap, &mut entry) != 0;
-            }
-            CloseHandle(snap);
-            let me = GetCurrentProcessId();
-            let parent = entries.iter().find(|e| e.0 == me)?.1;
-            entries.into_iter().find(|e| e.0 == parent).map(|e| e.2)
-        }
+        let list = crate::winproc::process_list();
+        // SAFETY: no arguments.
+        let me = unsafe { GetCurrentProcessId() };
+        let parent = list.iter().find(|e| e.pid == me)?.parent_pid;
+        list.into_iter().find(|e| e.pid == parent).map(|e| e.exe)
     }
 }
 

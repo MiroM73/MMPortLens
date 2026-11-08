@@ -50,17 +50,25 @@ pub struct ProcessCache {
     icons: HashMap<String, Option<Arc<Icon>>>,
     services: HashMap<u32, Vec<(String, String)>>,
     services_read: Option<Instant>,
+    /// PID → executable name of every process (Windows: one Toolhelp snapshot), taken at most
+    /// once per refresh and only when a process without a readable path needs it (#37).
+    names: Option<HashMap<u32, String>>,
 }
 
 impl ProcessCache {
     pub fn get(&mut self, pid: u32) -> Arc<ProcessInfo> {
         let started = platform::start_time(pid);
-        if let Some(p) = self.map.get(&pid)
+        if let Some(p) = self.map.get(&pid).cloned()
             && p.started == started
         {
-            return p.clone();
+            // Without access the start time is unknown, so a reused PID is told apart by the
+            // name in the process list instead.
+            let unchecked = started.is_none() && p.path.is_empty() && special_name(pid).is_none();
+            if !unchecked || self.name_of(pid).is_none_or(|n| n == p.name) {
+                return p;
+            }
         }
-        let mut info = lookup(pid);
+        let mut info = lookup(pid, |pid| self.name_of(pid));
         info.started = started;
         if !info.path.is_empty() {
             info.icon = self
@@ -96,8 +104,18 @@ impl ProcessCache {
         }
     }
 
-    /// Forgets PIDs not in `alive`.
+    /// The executable name of `pid` from the process list of this refresh.
+    fn name_of(&mut self, pid: u32) -> Option<String> {
+        self.names
+            .get_or_insert_with(platform::process_names)
+            .get(&pid)
+            .cloned()
+    }
+
+    /// Forgets PIDs not in `alive`. Called once per refresh: the process list is taken again
+    /// when needed.
     pub fn retain(&mut self, alive: &HashSet<u32>) {
+        self.names = None;
         self.map.retain(|pid, _| alive.contains(pid));
         // Icons of executables that no longer run are dropped too.
         let paths: HashSet<&str> = self.map.values().map(|p| p.path.as_str()).collect();
@@ -149,7 +167,8 @@ fn special_name(pid: u32) -> Option<&'static str> {
     }
 }
 
-fn lookup(pid: u32) -> ProcessInfo {
+/// The details of `pid`; `name_of` gives the name of a process whose path cannot be read.
+fn lookup(pid: u32, name_of: impl FnOnce(u32) -> Option<String>) -> ProcessInfo {
     if let Some(name) = special_name(pid) {
         return ProcessInfo {
             name: name.into(),
@@ -158,7 +177,7 @@ fn lookup(pid: u32) -> ProcessInfo {
     }
     let path = platform::image_path(pid).unwrap_or_default();
     let name = if path.is_empty() {
-        platform::short_name(pid).unwrap_or_else(|| format!("<{pid}>"))
+        name_of(pid).unwrap_or_else(|| format!("<{pid}>"))
     } else {
         file_name(&path).to_owned()
     };
@@ -177,10 +196,15 @@ fn lookup(pid: u32) -> ProcessInfo {
 #[cfg(windows)]
 mod platform {
     pub use crate::winproc::{details, icon, image_path, io_counters, services, start_time};
+    use std::collections::HashMap;
 
-    /// Without a path (access denied) Windows gives us no name either.
-    pub fn short_name(_pid: u32) -> Option<String> {
-        None
+    /// PID → executable name of every process. Windows gives the names of other users' and
+    /// protected processes, whose path needs administrator rights (#37).
+    pub fn process_names() -> HashMap<u32, String> {
+        crate::winproc::process_list()
+            .into_iter()
+            .map(|e| (e.pid, e.exe))
+            .collect()
     }
 }
 
@@ -199,10 +223,18 @@ mod platform {
             .map(|p| p.to_string_lossy().into_owned())
     }
 
-    pub fn short_name(pid: u32) -> Option<String> {
-        std::fs::read_to_string(format!("/proc/{pid}/comm"))
-            .ok()
-            .map(|s| s.trim().to_owned())
+    /// PID → command name (`/proc/<pid>/comm`) of every process.
+    pub fn process_names() -> HashMap<u32, String> {
+        let Ok(dir) = std::fs::read_dir("/proc") else {
+            return HashMap::new();
+        };
+        dir.flatten()
+            .filter_map(|e| {
+                let pid: u32 = e.file_name().to_str()?.parse().ok()?;
+                let comm = std::fs::read_to_string(e.path().join("comm")).ok()?;
+                Some((pid, comm.trim().to_owned()))
+            })
+            .collect()
     }
 
     /// Start time from `/proc/<pid>/stat` (field 22, clock ticks after boot, assumed 100 Hz)

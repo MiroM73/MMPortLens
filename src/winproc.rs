@@ -671,6 +671,71 @@ mod imp {
         map
     }
 
+    #[link(name = "kernel32")]
+    unsafe extern "system" {
+        fn CreateToolhelp32Snapshot(flags: u32, pid: u32) -> Handle;
+        fn Process32FirstW(snapshot: Handle, entry: *mut ProcessEntry32) -> i32;
+        fn Process32NextW(snapshot: Handle, entry: *mut ProcessEntry32) -> i32;
+    }
+    const TH32CS_SNAPPROCESS: u32 = 2;
+
+    /// `PROCESSENTRY32W`.
+    #[repr(C)]
+    struct ProcessEntry32 {
+        size: u32,
+        usage: u32,
+        pid: u32,
+        heap_id: usize,
+        module_id: u32,
+        threads: u32,
+        parent_pid: u32,
+        priority: i32,
+        flags: u32,
+        exe: [u16; 260],
+    }
+
+    /// One process of [`process_list`].
+    #[derive(Clone, Debug, PartialEq, Eq)]
+    pub struct ProcessEntry {
+        pub pid: u32,
+        pub parent_pid: u32,
+        /// The executable file name (`svchost.exe`), without a path.
+        pub exe: String,
+    }
+
+    /// Every running process with its executable name (Toolhelp snapshot). Windows gives the
+    /// names of all processes, also of other users' and protected ones, without administrator
+    /// rights (#37). Empty when the snapshot fails.
+    pub fn process_list() -> Vec<ProcessEntry> {
+        let mut list = Vec::new();
+        // SAFETY: the snapshot handle is checked and closed; `entry` is a local whose `size` is
+        // set as the API requires; the name is read up to its NUL within the fixed array.
+        unsafe {
+            let snap = CreateToolhelp32Snapshot(TH32CS_SNAPPROCESS, 0);
+            if snap.is_null() || snap as isize == -1 {
+                return list;
+            }
+            let mut entry: ProcessEntry32 = std::mem::zeroed();
+            entry.size = std::mem::size_of::<ProcessEntry32>() as u32;
+            let mut ok = Process32FirstW(snap, &mut entry) != 0;
+            while ok {
+                let len = entry
+                    .exe
+                    .iter()
+                    .position(|&c| c == 0)
+                    .unwrap_or(entry.exe.len());
+                list.push(ProcessEntry {
+                    pid: entry.pid,
+                    parent_pid: entry.parent_pid,
+                    exe: String::from_utf16_lossy(&entry.exe[..len]),
+                });
+                ok = Process32NextW(snap, &mut entry) != 0;
+            }
+            CloseHandle(snap);
+        }
+        list
+    }
+
     /// A NUL-terminated UTF-16 string.
     ///
     /// # Safety
@@ -756,6 +821,31 @@ mod tests {
         let icon = icon(&path).expect("notepad has an icon");
         assert_eq!(icon.rgba.len(), icon.size[0] * icon.size[1] * 4);
         assert!(icon.rgba.as_chunks::<4>().0.iter().any(|p| p[3] > 0));
+    }
+
+    /// The snapshot lists the own process and, also without administrator rights, the names
+    /// of system processes whose path cannot be read (#37).
+    #[cfg(windows)]
+    #[test]
+    fn process_list_has_names_of_system_processes() {
+        let list = process_list();
+        let me = list
+            .iter()
+            .find(|e| e.pid == std::process::id())
+            .expect("own process in the snapshot");
+        assert!(
+            me.exe.to_ascii_lowercase().starts_with("mmportlens"),
+            "{me:?}"
+        );
+        let services = list
+            .iter()
+            .find(|e| e.exe.eq_ignore_ascii_case("services.exe"))
+            .expect("services.exe runs on every Windows");
+        assert_ne!(services.pid, 0);
+        // Not elevated, the path of services.exe cannot be read, but the name is known.
+        if !crate::elevation::is_elevated() {
+            assert_eq!(image_path(services.pid), None);
+        }
     }
 
     #[cfg(windows)]

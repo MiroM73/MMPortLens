@@ -379,6 +379,17 @@ time** of its process (`GetProcessTimes`; Linux `/proc/<pid>/stat` field 22 + `b
 reused by a new process has another start time and is looked up again. Without access (other
 users' and protected processes when not elevated) the start time is `None` and the entry stays.
 
+**Names without access (#37).** The path (and with it the name) of such a process needs
+`OpenProcess`, which Windows refuses without elevation, so these rows showed `<1788>` and filters
+for `svchost` found nothing. The process snapshot gives every executable name to any user:
+`winproc::process_list` (`CreateToolhelp32Snapshot` + `Process32FirstW` / `NextW` → PID, parent
+PID, `szExeFile`; also used by `console.rs` for the parent process of #40) is taken at most **once
+per refresh** and only when needed (`ProcessCache::names`, reset in `retain`): when a looked-up
+process has no readable path, and to tell a reused PID apart for a cached entry without a start
+time and path (another name in the list → looked up again). Path, icon, user and command line stay
+empty; the services of #7 come from the service manager anyway. Linux reads `/proc/*/comm` the
+same way. `<pid>` is left only for a process that ended before the snapshot.
+
 - Windows (`winproc.rs`, all with `PROCESS_QUERY_LIMITED_INFORMATION`): image path
   (`QueryFullProcessImageNameW`), user (`OpenProcessToken` + `TokenUser` + `LookupAccountSidW` →
   `DOMAIN\user`), command line (`NtQueryInformationProcess` class 60, Windows 8.1+; the
