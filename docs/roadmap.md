@@ -41,7 +41,7 @@ program, README / `docs/architecture.md` / `docs/history.md`, detailed commit wi
 | #14 | Real creation time and owner module of TCP connections | done (1f660a1) |
 | #8 | Bytes sent / received per connection (ESTATS, needs admin – administrator mode of #15 exists) | done (50055c3); the counters as administrator not yet checked by hand |
 
-## Phase 4 – comfort (done, not released yet)
+## Phase 4 – comfort (done, released in v0.2.9)
 | Issue | What | Status |
 |-------|------|--------|
 | #28 | Process properties window from the row context menu (reuses the process details of #7 and the end-process action of #6) | done (af117ca) |

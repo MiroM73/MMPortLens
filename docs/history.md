@@ -186,3 +186,10 @@
   the details pane following. Found and fixed on the way: a label in the group line widened the
   first column (and would have saved that width), a half-transparent tint left stripes between
   the cells.
+- Released **v0.2.9** (`scripts/release.ps1 0.2.9 -NoWatch -Yes` run under PowerShell 7, written
+  release notes). The local tests passed (120); the workflow was watched with `gh run watch` (OK)
+  and the draft published with the notes as the latest release. Check of the released ZIP:
+  checksum OK, `mmportlens.exe` has product version 0.2.9, and the update code (`cargo test
+  fetch_latest_release -- --ignored`) passes with v0.2.9 as GitHub's latest release. The update
+  window of an older version was not opened by hand. Comments added to #16 (`--preset` of #13 is
+  the first piece of the command line) and #23 (the live snapshot test failed once more).
