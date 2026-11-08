@@ -29,6 +29,7 @@ mod admin;
 mod colfilters;
 mod columnlayout;
 mod details;
+mod etw;
 mod export;
 mod groups;
 mod help;
@@ -166,6 +167,9 @@ pub struct App {
     action_result: Option<actions::ActionResult>,
     /// The traffic counters were refused by Windows (not elevated, #8).
     stats_denied: bool,
+    /// The ETW capture of short connections (#4) and the rows it added since it was switched on.
+    etw_status: crate::net::etw::EtwStatus,
+    etw_rows: usize,
     /// Textures of the process icons by executable path (#7).
     icons: HashMap<String, egui::TextureHandle>,
     last_changes: Changes,
@@ -259,6 +263,7 @@ impl App {
         if paused {
             ctl.paused.store(true, Ordering::Relaxed);
         }
+        ctl.etw.store(cfg.etw_capture, Ordering::Relaxed);
         let mut app = Self {
             cfg,
             cfg_dirty: false,
@@ -306,6 +311,8 @@ impl App {
             preset_windows: Default::default(),
             icons: HashMap::new(),
             stats_denied: false,
+            etw_status: Default::default(),
+            etw_rows: 0,
             last_changes: Changes::default(),
             last_took: Duration::ZERO,
             last_poll: None,
@@ -403,6 +410,17 @@ impl App {
                         self.cfg.highlight_ms,
                         events.as_mut(),
                     );
+                    // Connections shorter than a refresh, seen only by ETW (#4).
+                    let etw = self.tracker.merge_etw(
+                        snap.etw,
+                        snap.taken,
+                        self.cfg.highlight_ms,
+                        events.as_mut(),
+                    );
+                    self.last_changes.new += etw;
+                    self.last_changes.closed += etw;
+                    self.etw_rows += etw;
+                    self.etw_status = snap.etw_status;
                     if let Some(events) = events {
                         self.record_events(events);
                     }
@@ -626,7 +644,8 @@ impl eframe::App for App {
             ctx.request_repaint_after(Duration::from_millis(900));
         }
         if closing {
-            self.ctl.stop.store(true, Ordering::Relaxed);
+            // Stops the ETW session too, which would outlive the process (#4).
+            self.ctl.shutdown();
             // The recording is finished into a complete file before the program ends.
             if let Some(rec) = self.recording.take() {
                 let _ = rec.recorder.wait();

@@ -102,6 +102,7 @@ impl App {
             ui.colored_label(ui.visuals().warn_fg_color, t!("status.traffic_denied"))
                 .on_hover_text(t!("status.traffic_denied.tip"));
         }
+        self.etw_status_item(ui);
         self.record_status(ui);
         self.admin_status(ui);
         self.action_status(ui);

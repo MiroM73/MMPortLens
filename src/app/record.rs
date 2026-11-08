@@ -240,6 +240,15 @@ impl App {
             ("interval_ms".into(), self.cfg.interval_ms.to_string()),
             ("app_version".into(), VERSION.to_string()),
             ("events".into(), kinds.text()),
+            (
+                "etw".into(),
+                if self.etw_status == crate::net::etw::EtwStatus::Running {
+                    "on"
+                } else {
+                    "off"
+                }
+                .into(),
+            ),
         ];
         if let Some(d) = duration {
             meta.push(("duration_ms".into(), d.to_string()));

@@ -184,6 +184,11 @@ impl App {
                                 resp.inner.on_hover_text(name);
                             }
                         } else if c == ColumnId::Process {
+                            // Seen only by ETW: shorter than a refresh (#4).
+                            if r.etw {
+                                ui.label(RichText::new("⚡").color(Color32::from_rgb(230, 170, 0)))
+                                    .on_hover_text(t!("table.etw.tip"));
+                            }
                             // Icon + name; the tooltip says what the process is (#7).
                             if let Some(tex) = self.icon_texture(&r.process) {
                                 ui.add(

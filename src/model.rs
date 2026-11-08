@@ -5,10 +5,12 @@
 //! Times are milliseconds since the Unix epoch, passed in by the caller – the logic is pure and
 //! tested without waiting.
 
-use crate::net::{ConnKey, Connection};
+use crate::net::etw::Seen;
+use crate::net::{ConnKey, Connection, Protocol, TcpState};
 use crate::process::ProcessInfo;
 use crate::recording::{Event, EventKind};
 use std::collections::{HashMap, HashSet};
+use std::net::IpAddr;
 use std::sync::Arc;
 use std::time::{SystemTime, UNIX_EPOCH};
 
@@ -49,6 +51,8 @@ pub struct Row {
     pub rate_in: Option<f64>,
     /// Time of the snapshot that last updated the row (base of the rates).
     pub updated: u64,
+    /// Seen only by ETW, never by a snapshot: a connection shorter than a refresh (#4).
+    pub etw: bool,
 }
 
 /// Bytes per second between two counter readings `dt_ms` apart; `None` without both readings or
@@ -72,6 +76,62 @@ pub struct Changes {
 pub struct Tracker {
     rows: HashMap<ConnKey, Row>,
     started: bool,
+    /// Snapshots merged so far (ETW rows only from the second one on, #4).
+    snapshots: u64,
+}
+
+/// An endpoint as ETW and the tables can both identify it (#4): TCP by protocol and both
+/// addresses without the scope and the process (the kernel reports some events with PID 0),
+/// UDP by the local port only (a socket bound to `0.0.0.0` / `[::]` sends from a concrete
+/// address, a dual-stack socket also over IPv4).
+#[derive(Clone, Copy, PartialEq, Eq, Hash, Debug)]
+enum Loose {
+    Tcp(IpAddr, u16, IpAddr, u16),
+    Udp(u16),
+}
+
+fn loose(
+    proto: Protocol,
+    local: std::net::SocketAddr,
+    remote: Option<std::net::SocketAddr>,
+) -> Loose {
+    match (proto.is_tcp(), remote) {
+        (true, Some(r)) => Loose::Tcp(
+            local.ip().to_canonical(),
+            local.port(),
+            r.ip().to_canonical(),
+            r.port(),
+        ),
+        _ => Loose::Udp(local.port()),
+    }
+}
+
+/// What the tracker knows about the rows of one [`Loose`] endpoint.
+#[derive(Clone, Default, Debug)]
+struct Known {
+    /// Local address and PID of the live (not closed) rows; UDP: `None` = bound to any address.
+    live: Vec<(Option<IpAddr>, u32)>,
+    /// When the latest of its closed rows was closed.
+    closed_at: Option<u64>,
+}
+
+impl Known {
+    /// A live row stands for what ETW saw of `s`. A TCP connection the local side closed first
+    /// stays in the table in TimeWait with PID 0: when ETW saw it opened by a known process,
+    /// only a live row with a PID counts, so the ETW row shows who made the connection.
+    fn covers(&self, s: &Seen) -> bool {
+        let ip = s.key.local.ip().to_canonical();
+        let udp = !s.key.proto.is_tcp();
+        let mut live = self
+            .live
+            .iter()
+            .filter(|(a, _)| !udp || a.is_none_or(|a| a == ip));
+        if !udp && s.opened.is_some() && s.key.pid != 0 {
+            live.any(|&(_, pid)| pid != 0)
+        } else {
+            live.next().is_some()
+        }
+    }
 }
 
 impl Tracker {
@@ -108,6 +168,7 @@ impl Tracker {
                     conn,
                     state_before: before,
                     process: row.process.clone(),
+                    etw: false,
                 });
             }
         };
@@ -115,6 +176,7 @@ impl Tracker {
         // The very first snapshot is the starting point, not a flood of "new" rows.
         let first = !self.started;
         self.started = true;
+        self.snapshots += 1;
         let until = now + hold_ms;
         let mut seen = HashSet::with_capacity(snapshot.len());
         for (conn, process) in snapshot {
@@ -148,6 +210,7 @@ impl Tracker {
                     row.updated = now;
                     row.conn = conn;
                     row.process = process;
+                    row.etw = false;
                     match kind {
                         Some(EventKind::Changed) => emit(EventKind::Changed, row, before),
                         Some(k) => emit(k, row, None),
@@ -170,6 +233,7 @@ impl Tracker {
                         rate_out: None,
                         rate_in: None,
                         updated: now,
+                        etw: false,
                     });
                     if !first {
                         emit(EventKind::New, row.get(), None);
@@ -187,6 +251,120 @@ impl Tracker {
         }
         self.expire(now);
         ch
+    }
+
+    /// Adds the connections ETW saw but the snapshot just merged did not (#4) – opened and
+    /// closed between two refreshes. They become closed rows marked [`Row::etw`], and with
+    /// `events` a new + closed event at the times ETW saw them. An endpoint the tables know is
+    /// skipped: a live row, or a closed one unless ETW saw it opened again after it was closed
+    /// (TCP: a connect / accept; UDP: any datagram). Call it right after
+    /// [`Tracker::update_with_events`] with the same snapshot time; returns the rows added.
+    pub fn merge_etw(
+        &mut self,
+        seen: Vec<(Seen, Arc<ProcessInfo>)>,
+        now: u64,
+        hold_ms: u64,
+        mut events: Option<&mut Vec<Event>>,
+    ) -> usize {
+        // The first snapshot is the starting point; ETW saw nothing before it.
+        if self.snapshots < 2 || seen.is_empty() {
+            return 0;
+        }
+        let mut known: HashMap<Loose, Known> = HashMap::new();
+        for r in self.rows.values() {
+            let k = known
+                .entry(loose(r.conn.proto, r.conn.local, r.conn.remote))
+                .or_default();
+            if r.mark == Mark::Closed {
+                let at = r.mark_until.saturating_sub(hold_ms);
+                k.closed_at = Some(k.closed_at.map_or(at, |t| t.max(at)));
+            } else {
+                let ip = r.conn.local.ip().to_canonical();
+                k.live
+                    .push(((!ip.is_unspecified()).then_some(ip), r.conn.pid));
+            }
+        }
+        let mut added = 0;
+        for (s, process) in seen {
+            let udp = !s.key.proto.is_tcp();
+            let lk = loose(s.key.proto, s.key.local, s.key.remote);
+            let k = known.get(&lk);
+            let new = match k {
+                None => true,
+                Some(k) if k.covers(&s) => false,
+                Some(k) => {
+                    // Closed: only a later opening is a new connection.
+                    let opened = if udp { Some(s.first) } else { s.opened };
+                    match (k.closed_at, opened) {
+                        (Some(closed), Some(t)) => t > closed,
+                        (None, _) => true,
+                        _ => false,
+                    }
+                }
+            };
+            if !new {
+                continue;
+            }
+            let state = (!udp).then_some(TcpState::Established);
+            let opened = s.opened.unwrap_or(s.first);
+            let conn = Connection {
+                proto: s.key.proto,
+                local: s.key.local,
+                remote: s.key.remote,
+                state,
+                pid: s.key.pid,
+                created: s.opened,
+                module: None,
+                stats: Some(crate::net::estats::TcpStats {
+                    bytes_out: s.bytes_out,
+                    bytes_in: s.bytes_in,
+                    segs_out: s.sends,
+                    segs_in: s.recvs,
+                }),
+            };
+            if let Some(ev) = events.as_deref_mut() {
+                let mut c = conn.clone();
+                c.stats = None;
+                ev.push(Event {
+                    time: opened,
+                    kind: EventKind::New,
+                    conn: c.clone(),
+                    state_before: None,
+                    process: process.clone(),
+                    etw: true,
+                });
+                c.state = None;
+                ev.push(Event {
+                    time: s.closed.unwrap_or(now).max(opened),
+                    kind: EventKind::Closed,
+                    conn: c,
+                    state_before: state,
+                    process: process.clone(),
+                    etw: true,
+                });
+            }
+            self.rows.insert(
+                conn.key(),
+                Row {
+                    conn,
+                    process,
+                    first_seen: opened,
+                    mark: Mark::Closed,
+                    mark_until: now + hold_ms,
+                    local_host: None,
+                    remote_host: None,
+                    rate_out: None,
+                    rate_in: None,
+                    updated: s.last,
+                    etw: true,
+                },
+            );
+            // Further events of the same endpoint in this batch (another PID) are not new.
+            let k = known.entry(lk).or_default();
+            k.closed_at = Some(k.closed_at.map_or(now, |t| t.max(now)));
+            added += 1;
+        }
+        added
     }
 
     /// Ends expired marks and drops closed rows whose time is up. Returns true when something
@@ -228,6 +406,7 @@ impl Tracker {
                     conn,
                     state_before: None,
                     process: r.process.clone(),
+                    etw: false,
                 }
             })
             .collect()
@@ -431,6 +610,136 @@ mod tests {
         );
         assert_eq!(ev.len(), 1);
         assert_eq!((ev[0].kind, ev[0].conn.local.port()), (EventKind::New, 2));
+    }
+
+    fn seen(proto: Protocol, local: &str, remote: &str, pid: u32) -> Seen {
+        Seen {
+            key: ConnKey {
+                proto,
+                local: local.parse().unwrap(),
+                remote: Some(remote.parse().unwrap()),
+                pid,
+            },
+            first: 1200,
+            last: 1300,
+            opened: proto.is_tcp().then_some(1200),
+            closed: proto.is_tcp().then_some(1300),
+            bytes_out: 100,
+            bytes_in: 2000,
+            sends: 1,
+            recvs: 2,
+        }
+    }
+
+    fn p() -> Arc<ProcessInfo> {
+        Arc::new(ProcessInfo::default())
+    }
+
+    #[test]
+    fn etw_adds_only_unknown_connections() {
+        let udp = |port: u16, local: &str| {
+            (
+                Connection {
+                    proto: Protocol::Udp,
+                    local: format!("{local}:{port}").parse().unwrap(),
+                    remote: None,
+                    state: None,
+                    pid: 200,
+                    created: None,
+                    module: None,
+                    stats: None,
+                },
+                p(),
+            )
+        };
+        let time_wait = || {
+            let (mut c, cp) = conn(8, TcpState::TimeWait);
+            c.remote = Some("10.0.0.2:80".parse().unwrap());
+            c.pid = 0;
+            (c, cp)
+        };
+        let mut t = Tracker::default();
+        // Nothing before the second snapshot.
+        t.update(vec![conn(1, TcpState::Established)], 0, 3000);
+        assert_eq!(
+            t.merge_etw(
+                vec![(seen(Protocol::Tcp, "10.0.0.1:9", "10.0.0.2:80", 5), p())],
+                0,
+                3000,
+                None
+            ),
+            0
+        );
+        let mut ev = Vec::new();
+        let ch = t.update_with_events(
+            vec![
+                conn(1, TcpState::Established),
+                udp(53, "0.0.0.0"),
+                time_wait(),
+            ],
+            2000,
+            3000,
+            Some(&mut ev),
+        );
+        assert_eq!(ch.new, 2);
+        ev.clear();
+        let batch = vec![
+            // Known: the live TCP row (ETW reports PID 0) and the UDP socket on any address.
+            (seen(Protocol::Tcp, "10.0.0.1:1", "10.0.0.2:443", 0), p()),
+            (
+                seen(Protocol::Udp, "192.168.1.5:53", "8.8.8.8:53", 200),
+                p(),
+            ),
+            // Unknown: a short TCP connection and a short UDP socket.
+            (seen(Protocol::Tcp, "10.0.0.1:7", "10.0.0.2:80", 300), p()),
+            (
+                seen(Protocol::Udp6, "[fe80::1]:5353", "[ff02::fb]:5353", 300),
+                p(),
+            ),
+            // The same TCP connection again with another PID: not a second row.
+            (seen(Protocol::Tcp, "10.0.0.1:7", "10.0.0.2:80", 0), p()),
+            // Its TimeWait row (PID 0) does not tell the process: a row from ETW.
+            (seen(Protocol::Tcp, "10.0.0.1:8", "10.0.0.2:80", 400), p()),
+        ];
+        assert_eq!(t.merge_etw(batch, 2000, 3000, Some(&mut ev)), 3);
+        assert!(t.rows().any(|r| r.etw && r.conn.pid == 400));
+        let row = t.rows().find(|r| r.conn.local.port() == 7).unwrap();
+        assert!(row.etw);
+        assert_eq!(row.mark, Mark::Closed);
+        assert_eq!((row.first_seen, row.conn.created), (1200, Some(1200)));
+        assert_eq!(row.conn.state, Some(TcpState::Established));
+        assert_eq!(row.conn.stats.unwrap().bytes_in, 2000);
+        assert!(t.rows().any(|r| r.etw && r.conn.proto == Protocol::Udp6));
+        assert_eq!(ev.len(), 6);
+        assert!(ev.iter().all(|e| e.etw && e.conn.stats.is_none()));
+        let tcp: Vec<&Event> = ev.iter().filter(|e| e.conn.local.port() == 7).collect();
+        assert_eq!((tcp[0].kind, tcp[0].time), (EventKind::New, 1200));
+        assert_eq!((tcp[1].kind, tcp[1].time), (EventKind::Closed, 1300));
+        assert_eq!(tcp[1].state_before, Some(TcpState::Established));
+        // The UDP socket closed by the tables has no disconnect: closed at the snapshot.
+        let u: Vec<&Event> = ev.iter().filter(|e| e.conn.local.port() == 5353).collect();
+        assert_eq!(
+            (u[1].kind, u[1].time, u[1].state_before),
+            (EventKind::Closed, 2000, None)
+        );
+
+        // Port 1 closes (seen closed by the tables at 3000); its late disconnect event is not
+        // a new connection, a reconnect after the close is.
+        t.update(vec![udp(53, "0.0.0.0")], 3000, 3000);
+        let mut late = seen(Protocol::Tcp, "10.0.0.1:1", "10.0.0.2:443", 100);
+        late.opened = None;
+        assert_eq!(t.merge_etw(vec![(late.clone(), p())], 3000, 3000, None), 0);
+        late.opened = Some(3100);
+        t.update(vec![udp(53, "0.0.0.0")], 4000, 3000);
+        assert_eq!(t.merge_etw(vec![(late, p())], 4000, 3000, None), 1);
+        // A snapshot that sees an ETW row makes it a normal row again.
+        let (mut c, cp) = conn(7, TcpState::Established);
+        c.remote = Some("10.0.0.2:80".parse().unwrap());
+        c.pid = 300;
+        t.update(vec![(c, cp), udp(53, "0.0.0.0")], 5000, 3000);
+        let row = t.rows().find(|r| r.conn.local.port() == 7).unwrap();
+        assert!(!row.etw);
+        assert_eq!(row.mark, Mark::New);
     }
 
     #[test]

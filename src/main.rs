@@ -106,6 +106,7 @@ fn command_line(cfg: &config::Config, raw: &[String]) -> (app::Startup, Option<P
                 opts.duration,
                 filters.as_ref(),
                 opts.view.interval.unwrap_or(cfg.interval_ms),
+                opts.etw || cfg.etw_capture,
                 cfg,
             ),
             (None, None) => unreachable!("headless without --export / --record"),

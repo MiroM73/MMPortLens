@@ -114,6 +114,8 @@ pub struct Event {
     /// The state before the event (changed and closed TCP endpoints).
     pub state_before: Option<TcpState>,
     pub process: Arc<ProcessInfo>,
+    /// A connection seen only by ETW (#4); `events.source = 1` in the file.
+    pub etw: bool,
 }
 
 impl Event {

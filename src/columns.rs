@@ -702,6 +702,7 @@ mod tests {
             rate_out: None,
             rate_in: None,
             updated: 0,
+            etw: false,
         };
         // Unresolved: the address.
         assert_eq!(cell_text(&row, ColumnId::RemoteHost), "140.82.112.3");
@@ -752,6 +753,7 @@ mod tests {
             rate_out: None,
             rate_in: None,
             updated: 0,
+            etw: false,
         };
         assert_eq!(cell_text(&row, ColumnId::WinServices), "Dnscache");
         assert_eq!(cell_text(&row, ColumnId::Module), "dnscache");

@@ -276,6 +276,7 @@ mod tests {
             },
             state_before: None,
             process: Arc::new(ProcessInfo::default()),
+            etw: false,
         }
     }
 

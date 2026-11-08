@@ -293,3 +293,20 @@
   file and exit 0; with a window: `--column`, `--filter`, `--interval 750` / `1500` in the
   toolbar, `--paused`, `--lang de` / `sk`, unknown preset in the status bar, the scratch settings
   kept language and interval, invalid line and `--help` as message boxes.
+- #4: short-lived connections with ETW. `src/net/etw.rs` (pure: decoding of the
+  Microsoft-Windows-Kernel-Network events from the provider manifest, `Collector` with a cutoff at
+  the table read) and `src/net/etw_win.rs` (real-time session over `StartTraceW` / `EnableTraceEx2`
+  / `OpenTraceW` / `ProcessTrace`, no crate; orphaned sessions of dead MM PortLens processes are
+  stopped, `PollControl::shutdown` stops the own one on exit). The poll thread runs the session and
+  hands the aggregated endpoints to `Tracker::merge_etw`, which adds the unknown ones as closed rows
+  marked ⚡ (also the process of connections the table only shows as TimeWait with PID 0) and new +
+  closed events with their ETW times. Recording schema version 2 (`events.source`, `meta.etw`;
+  version 1 files still open), View → Capture short connections (ETW, admin), status bar item,
+  `--record … --etw`. Found on the way: a standard user can create a trace session, only enabling
+  the kernel provider is refused. Verified: 9 new tests (decode, FILETIME, collector, merge,
+  recording round trip, version 1 file, session names, start refused / runs and stops) – 166 in
+  total, clippy; without administrator: the session is refused and none is left behind
+  (`logman query -ets`), the status bar shows "ETW: administrator only", the menu item, `--record
+  --duration 2s --etw` warns on stderr and writes `etw = off`, `--etw` alone → "needs --record".
+  Not checked by hand as administrator; the acceptance test `etw_sees_short_connections` (100
+  connections < 50 ms) runs on the elevated Windows CI.

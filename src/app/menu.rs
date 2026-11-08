@@ -47,6 +47,14 @@ impl App {
                     self.view_dirty = true;
                     self.settings_changed();
                 }
+                if cfg!(windows)
+                    && ui
+                        .checkbox(&mut self.cfg.etw_capture, t!("menu.view.etw"))
+                        .on_hover_text(t!("menu.view.etw.tip"))
+                        .changed()
+                {
+                    self.set_etw_capture();
+                }
                 ui.separator();
                 if ui
                     .checkbox(

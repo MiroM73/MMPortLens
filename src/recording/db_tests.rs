@@ -27,6 +27,7 @@ fn event(time: u64, kind: EventKind, port: u16, state: Option<TcpState>, name: &
             started: Some(100),
             ..Default::default()
         }),
+        etw: false,
     }
 }
 
@@ -220,6 +221,7 @@ fn schema_version_and_format_are_checked() {
     let other = RecordingReader {
         db: Db::open_in_memory().unwrap(),
         processes: HashMap::new(),
+        cols: String::new(),
     };
     assert!(matches!(other.check(), Err(RecError::NotRecording)));
 }
@@ -339,4 +341,62 @@ fn busy_hour() {
     assert!(size < 50_000_000);
     drop(r);
     std::fs::remove_dir_all(&dir).unwrap();
+}
+
+#[test]
+fn etw_events_keep_their_source() {
+    let mut w = RecordingWriter::in_memory().unwrap();
+    let est = Some(TcpState::Established);
+    let mut new = event(1500, EventKind::New, 7, est, "short.exe");
+    new.etw = true;
+    let mut gone = event(1600, EventKind::Closed, 7, None, "short.exe");
+    gone.etw = true;
+    w.write(&[
+        event(1000, EventKind::Present, 1, est, "app.exe"),
+        new,
+        gone,
+    ])
+    .unwrap();
+    let mut r = w.into_reader();
+    let rows = r.state_at(1550, 3000).unwrap();
+    let short = rows.iter().find(|r| r.conn.local.port() == 7).unwrap();
+    assert!(short.etw);
+    assert_eq!(short.mark, Mark::New);
+    assert!(!rows.iter().find(|r| r.conn.local.port() == 1).unwrap().etw);
+    let rows = r.state_at(1700, 3000).unwrap();
+    let short = rows.iter().find(|r| r.conn.local.port() == 7).unwrap();
+    assert_eq!((short.mark, short.etw), (Mark::Closed, true));
+    let ev = r.events(&EventQuery::default(), 0, 10).unwrap();
+    assert_eq!(
+        ev.iter().map(|e| e.etw).collect::<Vec<_>>(),
+        [false, true, true]
+    );
+    let readable: String =
+        r.db.query_row(
+            "SELECT group_concat(source) FROM events_readable",
+            [],
+            |row| row.get(0),
+        )
+        .unwrap();
+    assert_eq!(readable, "refresh,ETW,ETW");
+}
+
+#[test]
+fn version_1_files_have_no_source() {
+    // A recording of version 0.3.7: the events table without `source`.
+    let mut w = RecordingWriter::in_memory().unwrap();
+    w.write(&[event(1000, EventKind::Present, 1, None, "app.exe")])
+        .unwrap();
+    let mut r = w.into_reader();
+    r.db.execute_batch(
+        "DROP VIEW events_readable; ALTER TABLE events DROP COLUMN source;
+         PRAGMA user_version = 1;",
+    )
+    .unwrap();
+    assert_eq!(r.check().unwrap(), 1);
+    r.cols = event_cols(1);
+    let rows = r.state_at(2000, 3000).unwrap();
+    assert_eq!(rows.len(), 1);
+    assert!(!rows[0].etw);
+    assert_eq!(r.events(&EventQuery::default(), 0, 10).unwrap().len(), 1);
 }

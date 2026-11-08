@@ -8,6 +8,7 @@
 use crate::columns::ColumnId;
 use crate::config::Config;
 use crate::model::{Row, Tracker, now_ms};
+use crate::net::etw::{EtwStatus, error_text as etw_error_text};
 use crate::poller;
 use crate::presets::FilterPreset;
 use crate::recording::Event;
@@ -258,13 +259,14 @@ fn duration_text(ms: u64) -> String {
     parts.join(" ")
 }
 
-/// Records connection events into `target` until `duration` (ms) is up or Ctrl+C; returns the
-/// message for the console.
+/// Records connection events into `target` until `duration` (ms) is up or Ctrl+C, with `etw`
+/// also the connections shorter than a refresh (#4); returns the message for the console.
 pub fn record(
     target: &Path,
     duration: Option<u64>,
     filters: Option<&FilterPreset>,
     interval_ms: u64,
+    etw: bool,
     cfg: &Config,
 ) -> Result<String, String> {
     let path = recording_path(target);
@@ -275,7 +277,9 @@ pub fn record(
     catch_ctrl_c();
 
     let (ctl, rx) = poller::start(interval_ms, || {});
-    let stop_poller = || ctl.stop.store(true, Ordering::Relaxed);
+    ctl.etw.store(etw, Ordering::Relaxed);
+    // Also stops the ETW session: it would outlive the process.
+    let stop_poller = || ctl.shutdown();
     // The starting state: the first snapshot.
     let snap = loop {
         if STOP.load(Ordering::SeqCst) {
@@ -294,6 +298,11 @@ pub fn record(
             }
         }
     };
+    let etw_meta = if snap.etw_status == EtwStatus::Running {
+        "on"
+    } else {
+        "off"
+    };
     let mut tracker = Tracker::default();
     tracker.update_with_events(snap.rows, snap.taken, cfg.highlight_ms, None);
     let start = snap.taken;
@@ -308,6 +317,8 @@ pub fn record(
         ("interval_ms".into(), interval_ms.to_string()),
         ("app_version".into(), env!("CARGO_PKG_VERSION").to_string()),
         ("events".into(), kinds.text()),
+        // What runs, not what was asked for: a standard user gets no session.
+        ("etw".into(), etw_meta.into()),
     ];
     if let Some(d) = duration {
         meta.push(("duration_ms".into(), d.to_string()));
@@ -338,6 +349,7 @@ pub fn record(
     );
     let until = duration.map(|d| start + d);
     let mut failed = None;
+    let mut etw_warned = false;
     while !STOP.load(Ordering::SeqCst) && until.is_none_or(|u| now_ms() < u) {
         // The writer ended by itself: a write error.
         if let Some(res) = recorder.finished() {
@@ -353,6 +365,13 @@ pub fn record(
                     cfg.highlight_ms,
                     Some(&mut events),
                 );
+                tracker.merge_etw(snap.etw, snap.taken, cfg.highlight_ms, Some(&mut events));
+                if let EtwStatus::Error(e) = &snap.etw_status
+                    && !etw_warned
+                {
+                    eprintln!("{}", etw_error_text(e));
+                    etw_warned = true;
+                }
                 let events: Vec<Event> = events
                     .into_iter()
                     .filter(|e| kinds.wants(e.kind) && wanted(e))

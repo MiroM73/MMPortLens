@@ -20,6 +20,8 @@ with the change.
 | `src/net/winrows.rs` | Pure decoding of the iphlpapi `*_OWNER_MODULE` table buffers (tested on every platform). |
 | `src/net/windows.rs` | Windows backend: `GetExtendedTcpTable` / `GetExtendedUdpTable` with the owner module classes, `GetOwnerModuleFrom*Entry` with a cache (`ModuleCache`), declared directly with `unsafe extern "system"` (no binding crate). |
 | `src/net/estats.rs` | Traffic counters per TCP connection (ESTATS, #8): `Collector`, the pure `tcp_row` / `tcp6_row` / `decode_data`. |
+| `src/net/etw.rs` | ETW (#4), pure part: `decode` of the Kernel-Network events, `Collector` (events → one `Seen` per endpoint up to a cutoff), `EtwStatus` / `EtwError`; `start` picks the platform. |
+| `src/net/etw_win.rs` | The real-time ETW session (`StartTraceW`, `EnableTraceEx2`, `OpenTraceW` / `ProcessTrace` in the `etw` thread, `QueryAllTracesW` to stop orphans), declared directly. |
 | `src/net/procfs.rs` | Linux backend: `/proc/net/{tcp,tcp6,udp,udp6}` + socket inode → PID from `/proc/<pid>/fd`. |
 | `src/process.rs` | `ProcessInfo` (name, path, start time, user, command line, company, description, services, icon) and `ProcessCache` keyed by PID + start time (#7). |
 | `src/winproc.rs` | Windows process details: image path, start time, user (token), command line (`NtQueryInformationProcess`), version strings, icon (`ExtractIconExW` → RGBA), services per PID (`EnumServicesStatusExW`) (#7), I/O counters (`GetProcessIoCounters`, #30). |
@@ -37,7 +39,7 @@ with the change.
 | `src/config.rs` | `Config` (JSON, every field has a default). |
 | `src/i18n.rs` | `t!()` and the language files – the same module as in RusTrace. |
 | `src/timefmt.rs` | Clock times for the table. |
-| `src/app/` | The UI, split by area like RusTrace: `mod.rs` (state, frame loop), `menu.rs`, `toolbar.rs`, `table.rs`, `statusbar.rs`, `colfilters.rs` (column filter state and field), `admin.rs` (restart as administrator), `update_window.rs` (Help → Check for updates), `input.rs` (keyboard shortcuts, copying the selection), `help.rs` (Help → Keyboard shortcuts), `actions.rs` (context menu items, confirmation window and result of #6), `details.rs` (details pane, process icons and tooltip of #7), `properties.rs` (process properties window of #28), `properties_graph.rs` (its live traffic / I/O graph, #30), `rules.rs` (color rules window and row colors of #10), `presets.rs` (filter preset combo box and windows of #13), `groups.rs` (group lines of #12), `columnlayout.rs` (header drag and drop, remembered widths, fit on a border double click – #2), `export.rs` (File → Export… window, export thread, status – #9), `record.rs` (start window, events to the writer, ● REC – #3), `replay.rs` (opened recording, replay bar with the time slider – #3), `replay_events.rs` (event list of a recording – #3). |
+| `src/app/` | The UI, split by area like RusTrace: `mod.rs` (state, frame loop), `menu.rs`, `toolbar.rs`, `table.rs`, `statusbar.rs`, `colfilters.rs` (column filter state and field), `admin.rs` (restart as administrator), `update_window.rs` (Help → Check for updates), `input.rs` (keyboard shortcuts, copying the selection), `help.rs` (Help → Keyboard shortcuts), `actions.rs` (context menu items, confirmation window and result of #6), `details.rs` (details pane, process icons and tooltip of #7), `properties.rs` (process properties window of #28), `properties_graph.rs` (its live traffic / I/O graph, #30), `rules.rs` (color rules window and row colors of #10), `presets.rs` (filter preset combo box and windows of #13), `groups.rs` (group lines of #12), `columnlayout.rs` (header drag and drop, remembered widths, fit on a border double click – #2), `export.rs` (File → Export… window, export thread, status – #9), `record.rs` (start window, events to the writer, ● REC – #3), `replay.rs` (opened recording, replay bar with the time slider – #3), `replay_events.rs` (event list of a recording – #3), `etw.rs` (View menu switch and status bar item of the ETW capture – #4). |
 | `lang/*.lang` | Built-in translations (en, sk, cs, de), embedded with `include_str!`. |
 
 ## Reading the connections
@@ -93,8 +95,8 @@ others. It is an OS problem, not a decoding one. Consequences in the code:
   FinWait1 or Closed – seen in about 15 of 100 runs on the affected PC) in a snapshot that also
   contains invalid states; on a clean Windows (CI) and on Linux a wrong state fails.
 
-Limit of polling: a connection that opens and closes between two refreshes is never seen. ETW
-(Microsoft-Windows-Kernel-Network) would catch those – see the issues.
+Limit of polling: a connection that opens and closes between two refreshes is never seen – see
+*Short connections with ETW (#4)*.
 
 ### Traffic per connection (#8)
 `net::estats::Collector` runs in the poll thread after the tables are read, only while
@@ -118,8 +120,68 @@ explanation; the cells stay empty.
 
 `Tracker::update` computes the rates from the difference to the previous snapshot of the same row
 (`model::rate`: bytes × 1000 / ms between the snapshots, 0 when a counter went back); the texts are
-`columns::bytes` (1 KB = 1024 B) and `columns::rate`. UDP has no per-endpoint counters (ETW, #4).
+`columns::bytes` (1 KB = 1024 B) and `columns::rate`. UDP has no per-endpoint counters (the ETW
+rows of #4 carry the bytes ETW saw).
 The properties window also switches the collection on for its graph (#30).
+
+### Short connections with ETW (#4)
+
+**Session** (`src/net/etw_win.rs`): a real-time session `MMPortLens ETW <pid>` (64 KB buffers,
+4–64 of them, flushed every second) with the provider *Microsoft-Windows-Kernel-Network*
+`{7DD42A49-5329-4832-8DFD-43D979153A88}`, keywords IPv4 | IPv6. `ProcessTrace` runs in the thread
+`etw` and calls `callback` per event, which decodes it (`etw::decode`) and sends an `EtwEvent` over
+a channel. The time stamp is a FILETIME (no raw time stamps requested). A standard user may create
+the session, but `EnableTraceEx2` answers `ERROR_ACCESS_DENIED` → `EtwError::Denied` (the session
+is stopped again by `Drop`). A trace session outlives its process: `Session::start` first stops
+sessions named `MMPortLens ETW <pid>` whose process no longer runs (`QueryAllTracesW`), an existing
+session of the own PID is stopped and created again, and `Drop` stops the session and joins the
+thread before freeing the callback's `Sender`. The structure layouts are checked by `const` size
+assertions (x64: properties 120, `EVENT_RECORD` 112, `EVENT_TRACE_LOGFILEW` 448 bytes).
+
+**Events** (from the provider manifest, `wevtutil gp Microsoft-Windows-Kernel-Network /ge /gm`):
+TCPv4 10 send, 11 receive, 12 connect, 13 disconnect, 14 retransmit, 15 accept, 16 reconnect,
+18 copy; TCPv6 the same + 16 (26–34); UDPv4 42 / 43, UDPv6 58 / 59 send / receive. Every payload
+starts with `PID u32, size u32, daddr, saddr, dport, sport` (addresses 4 or 16 bytes, ports in
+network byte order); `saddr:sport` is the local side for sends and receives alike. 17 / 49
+(attempt failed) carry no addresses and are ignored.
+
+**Poll thread** (`poller.rs`): `PollControl::etw` switches the session on / off (a failed start is
+not retried until the switch goes off and on); the events are drained every 25 ms into the
+`Collector` (cleared while paused, at most 500 000 kept). Each snapshot takes the events older than
+the moment the tables were read (`Collector::take(cutoff)`; later ones belong to the next snapshot,
+so a connection opened after the read is not taken for a short one) as one `Seen` per protocol +
+local + remote (first / last time, connect or accept time, disconnect time, bytes and event counts,
+the first non-zero PID) with the process from the cache, plus the `EtwStatus`.
+`PollControl::shutdown` (window closing, end of `--record`) stops the session from the calling
+thread – a process that just exits would leave it in the system.
+
+**Merge** (`Tracker::merge_etw`, after `update_with_events` with the same time; not for the first
+snapshot): a `Seen` is skipped when the tracker knows its endpoint – TCP by protocol and both
+addresses without scope and PID (the kernel reports some events with PID 0), UDP by the local port
+with the same or an unspecified local address – as a live row, or as a closed row unless ETW saw it
+opened after that close (TCP connect / accept, UDP any datagram; a late disconnect is no new
+connection). Exception: a connection the local side closed first stays in the table as TimeWait
+with **PID 0**; when ETW saw it opened by a known process, only a live row with a PID counts, so the
+table also gets the row that tells who made it. Everything else becomes a **closed** row with
+`Row::etw` (state Established for TCP, `created` / first seen = the connect time, `stats` = the ETW
+bytes and send / receive events, UDP rows with the peer as remote side) and, while recording, a new
+event at the open time and a closed one at the disconnect (or snapshot) time, both with
+`Event::etw`. A later snapshot that sees the endpoint makes it a normal row (`etw = false`).
+
+**UI**: View → *Capture short connections (ETW, admin)* (`Config::etw_capture`, Windows only;
+`app/etw.rs`), ⚡ before the process name with a tooltip (`table.rs`), status bar `⚡ ETW: N` (rows
+added since it was switched on) or the reason it does not run (*administrator only*). The rows count
+in *Last refresh +new −closed*. Recordings store `events.source` and `meta.etw` (on / off as it
+ran); `--record … --etw` (or the setting) captures without a window and prints the reason to stderr
+when it cannot.
+
+**Tests**: decoding of IPv4 / IPv6 payloads, FILETIME, `Collector` aggregation and cutoff,
+`merge_etw` (known / unknown / PID 0 / TimeWait / late disconnect / reconnect / snapshot takes
+over), recording round trip and version 1 files; `etw_win` tests the session names and that a start
+is either refused (standard user) or runs and stops. `poller::tests::etw_sees_short_connections` is
+the acceptance test: 100 loopback connections, each closed within 50 ms, must all appear in the
+tracker, at least 100 rows of them from ETW; it needs an administrator (skipped otherwise; the
+Windows CI runs elevated).
 
 ## Rows, marks and refresh
 
@@ -413,12 +475,13 @@ result with an *Open* button (30 s).
 **File** (`recording/db.rs`, the only SQL in the program; `rusqlite` with the bundled SQLite):
 
 - `meta(key, value)`: `format = mmportlens-recording`, `computer`, `start_ms`, `end_ms`,
-  `interval_ms`, `app_version`, `events` (recorded kinds), `duration_ms`, `filter`;
-  `PRAGMA user_version = 1` (a newer file is refused, a SQLite file without `format` is "not a
+  `interval_ms`, `app_version`, `events` (recorded kinds), `duration_ms`, `filter`, `etw`
+  (on / off, #4); `PRAGMA user_version = 2` (version 1 = before #4, read without `source`) (a newer file is refused, a SQLite file without `format` is "not a
   recording").
 - `processes(id, pid, name, path, create_time)` – interned by PID + start time + name + path.
 - `events(id, time_ms, kind, proto, local_addr, local_port, remote_addr, remote_port,
-  state_before, state_after, created, process_id, conn_id)`; kind 0 present / 1 new / 2 closed /
+  state_before, state_after, created, process_id, conn_id, source)`; source 0 refresh / 1 ETW
+  (#4; ETW events carry the times ETW saw, earlier than the refresh that wrote them); kind 0 present / 1 new / 2 closed /
   3 changed, proto 1 TCP / 2 TCPv6 / 3 UDP / 4 UDPv6, states as `MIB_TCP_STATE` numbers
   (`TcpState::to_mib`), addresses as text (readable in DB Browser for SQLite; the view
   `events_readable` spells everything out). `conn_id` numbers the endpoints in the writer.

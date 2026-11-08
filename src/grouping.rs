@@ -163,6 +163,7 @@ mod tests {
             rate_out: None,
             rate_in: None,
             updated: 0,
+            etw: false,
         }
     }
 

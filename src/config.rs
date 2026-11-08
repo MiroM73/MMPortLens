@@ -33,6 +33,8 @@ pub struct Config {
     pub resolve_addresses: bool,
     /// The details pane under the table (#7).
     pub show_details: bool,
+    /// Capture the connections shorter than a refresh with ETW (Windows, administrator, #4).
+    pub etw_capture: bool,
     /// The filter row under the column headers is shown (#1).
     pub show_column_filters: bool,
     /// The column filters are saved and restored at the next start.
@@ -112,6 +114,7 @@ impl Default for Config {
             show_ipv6: true,
             show_listening: true,
             resolve_addresses: true,
+            etw_capture: false,
             show_details: true,
             show_column_filters: true,
             remember_column_filters: false,

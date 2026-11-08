@@ -6,7 +6,9 @@
 //!   kinds, the filter used; the schema version is `PRAGMA user_version`.
 //! * `processes(id, pid, name, path, create_time)` – every process once; events refer to it.
 //! * `events(id, time_ms, kind, proto, local_addr, local_port, remote_addr, remote_port,
-//!   state_before, state_after, created, process_id, conn_id)` with an index on `time_ms`;
+//!   state_before, state_after, created, process_id, conn_id, source)` with an index on
+//!   `time_ms`; `source` is 0 for what a refresh saw and 1 for a connection seen only by ETW
+//!   (#4, schema version 2 – a version 1 file has no such column and is read as all 0);
 //!   `conn_id` numbers the endpoints (same protocol, addresses and process) and the index
 //!   `events_conn(conn_id, time_ms, kind)` lets the replay find the last event of every
 //!   endpoint without sorting (32 ms instead of 136 ms at the end of a busy hour). Kinds,
@@ -29,7 +31,7 @@ use std::path::Path;
 use std::sync::Arc;
 
 /// Version of the schema in `PRAGMA user_version`; a newer file is refused.
-pub const SCHEMA_VERSION: i64 = 1;
+pub const SCHEMA_VERSION: i64 = 2;
 /// `meta.format` of every recording (tells a recording from another SQLite file).
 const FORMAT: &str = "mmportlens-recording";
 
@@ -55,7 +57,8 @@ CREATE TABLE events(
     state_after INTEGER,
     created INTEGER,
     process_id INTEGER NOT NULL REFERENCES processes(id),
-    conn_id INTEGER NOT NULL
+    conn_id INTEGER NOT NULL,
+    source INTEGER NOT NULL DEFAULT 0
 );
 CREATE INDEX events_time ON events(time_ms);
 CREATE INDEX events_conn ON events(conn_id, time_ms, kind);
@@ -69,7 +72,8 @@ SELECT e.id,
                     WHEN 4 THEN 'UDPv6' END AS protocol,
        e.local_addr, e.local_port, e.remote_addr, e.remote_port,
        e.state_before, e.state_after,
-       p.pid, p.name AS process, p.path
+       p.pid, p.name AS process, p.path,
+       CASE e.source WHEN 1 THEN 'ETW' ELSE 'refresh' END AS source
 FROM events e JOIN processes p ON p.id = e.process_id;
 ";
 
@@ -213,8 +217,9 @@ impl RecordingWriter {
             )?;
             let mut add = tx.prepare_cached(
                 "INSERT INTO events(time_ms, kind, proto, local_addr, local_port, remote_addr,
-                     remote_port, state_before, state_after, created, process_id, conn_id)
-                 VALUES (?1, ?2, ?3, ?4, ?5, ?6, ?7, ?8, ?9, ?10, ?11, ?12)",
+                     remote_port, state_before, state_after, created, process_id, conn_id,
+                     source)
+                 VALUES (?1, ?2, ?3, ?4, ?5, ?6, ?7, ?8, ?9, ?10, ?11, ?12, ?13)",
             )?;
             for e in events {
                 let p = &e.process;
@@ -254,6 +259,7 @@ impl RecordingWriter {
                     c.created.map(ms),
                     pid,
                     conn_id,
+                    e.etw as i64,
                 ])?;
             }
         }
@@ -287,6 +293,7 @@ impl RecordingWriter {
         RecordingReader {
             db: self.db,
             processes: HashMap::new(),
+            cols: event_cols(SCHEMA_VERSION),
         }
     }
 }
@@ -371,10 +378,16 @@ impl EventQuery {
     }
 }
 
-/// Columns read for an event (`e` = events, `p` = processes).
-const EVENT_COLS: &str = "e.time_ms, e.kind, e.proto, e.local_addr, e.local_port, e.remote_addr,
-    e.remote_port, e.state_before, e.state_after, e.created, e.process_id,
-    p.pid, p.name, p.path, p.create_time";
+/// Columns read for an event (`e` = events, `p` = processes); a file of schema version 1 has no
+/// `source` (#4).
+fn event_cols(version: i64) -> String {
+    let source = if version >= 2 { "e.source" } else { "0" };
+    format!(
+        "e.time_ms, e.kind, e.proto, e.local_addr, e.local_port, e.remote_addr,
+         e.remote_port, e.state_before, e.state_after, e.created, e.process_id,
+         p.pid, p.name, p.path, p.create_time, {source}"
+    )
+}
 
 /// One row of [`EVENT_COLS`] before the process is shared.
 struct RawEvent {
@@ -384,6 +397,7 @@ struct RawEvent {
     state_before: Option<TcpState>,
     process_id: i64,
     process: ProcessInfo,
+    etw: bool,
 }
 
 fn raw_event(r: &rusqlite::Row<'_>) -> rusqlite::Result<RawEvent> {
@@ -416,6 +430,7 @@ fn raw_event(r: &rusqlite::Row<'_>) -> rusqlite::Result<RawEvent> {
             started: r.get::<_, Option<i64>>(14)?.map(|v| v.max(0) as u64),
             ..Default::default()
         },
+        etw: r.get::<_, i64>(15)? == 1,
     })
 }
 
@@ -424,6 +439,8 @@ pub struct RecordingReader {
     db: Db,
     /// The processes read so far, shared by all their rows.
     processes: HashMap<i64, Arc<ProcessInfo>>,
+    /// The event columns for the schema version of the file.
+    cols: String,
 }
 
 impl RecordingReader {
@@ -433,15 +450,18 @@ impl RecordingReader {
             path,
             OpenFlags::SQLITE_OPEN_READ_ONLY | OpenFlags::SQLITE_OPEN_NO_MUTEX,
         )?;
-        let r = Self {
+        let mut r = Self {
             db,
             processes: HashMap::new(),
+            cols: String::new(),
         };
-        r.check()?;
+        let version = r.check()?;
+        r.cols = event_cols(version);
         Ok(r)
     }
 
-    fn check(&self) -> Result<()> {
+    /// The schema version, when the file is a recording this version understands.
+    fn check(&self) -> Result<i64> {
         let version: i64 = self.db.query_row("PRAGMA user_version", [], |r| r.get(0))?;
         if version > SCHEMA_VERSION {
             return Err(RecError::Newer(version));
@@ -456,7 +476,7 @@ impl RecordingReader {
         if version < 1 || format.as_deref() != Some(FORMAT) {
             return Err(RecError::NotRecording);
         }
-        Ok(())
+        Ok(version)
     }
 
     pub fn info(&self) -> Result<Info> {
@@ -491,6 +511,7 @@ impl RecordingReader {
             conn: raw.conn,
             state_before: raw.state_before,
             process,
+            etw: raw.etw,
         }
     }
 
@@ -498,13 +519,14 @@ impl RecordingReader {
     /// only while closed less than `hold_ms` ago (shown as closed, like in the live table).
     /// Rows whose last event is younger than `hold_ms` are marked new / changed / closed.
     pub fn state_at(&mut self, at: u64, hold_ms: u64) -> Result<Vec<Row>> {
+        let cols = &self.cols;
         let sql = format!(
             "WITH last AS (
                  SELECT max(id) AS id,
                         max(CASE WHEN kind IN (0, 1) THEN time_ms END) AS seen
                  FROM events WHERE time_ms <= ?1
                  GROUP BY conn_id)
-             SELECT {EVENT_COLS}, last.seen
+             SELECT {cols}, last.seen
              FROM last JOIN events e ON e.id = last.id JOIN processes p ON p.id = e.process_id
              WHERE e.kind != 2 OR e.time_ms > ?2"
         );
@@ -512,7 +534,7 @@ impl RecordingReader {
         let raws: Vec<(RawEvent, Option<i64>)> = {
             let mut st = self.db.prepare_cached(&sql)?;
             st.query_map(params![ms(at), recent], |r| {
-                Ok((raw_event(r)?, r.get::<_, Option<i64>>(15)?))
+                Ok((raw_event(r)?, r.get::<_, Option<i64>>(16)?))
             })?
             .collect::<rusqlite::Result<_>>()?
         };
@@ -527,6 +549,7 @@ impl RecordingReader {
                 _ => Mark::None,
             };
             let state = e.shown_state();
+            let etw = e.etw;
             let mut conn = e.conn;
             conn.state = state;
             rows.push(Row {
@@ -540,6 +563,7 @@ impl RecordingReader {
                 rate_out: None,
                 rate_in: None,
                 updated: e.time,
+                etw,
             });
         }
         Ok(rows)
@@ -570,8 +594,9 @@ impl RecordingReader {
     pub fn events(&mut self, q: &EventQuery, offset: u64, limit: u64) -> Result<Vec<Event>> {
         let (clause, text) = q.clause();
         let order = if q.newest_first { "DESC" } else { "ASC" };
+        let cols = &self.cols;
         let sql = format!(
-            "SELECT {EVENT_COLS} FROM events e JOIN processes p ON p.id = e.process_id
+            "SELECT {cols} FROM events e JOIN processes p ON p.id = e.process_id
              WHERE {clause} ORDER BY e.time_ms {order}, e.id {order} LIMIT ?2 OFFSET ?3"
         );
         let raws: Vec<RawEvent> = {

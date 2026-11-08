@@ -69,6 +69,8 @@ pub struct Options {
     pub record: Option<PathBuf>,
     /// How long `--record` records (ms); `None` = until Ctrl+C.
     pub duration: Option<u64>,
+    /// `--record` also captures the short connections with ETW (#4).
+    pub etw: bool,
 }
 
 impl Options {
@@ -270,6 +272,7 @@ pub fn parse<I: IntoIterator<Item = OsString>>(args: I) -> Result<Options, CliEr
                 );
             }
             "--paused" => o.view.paused = true,
+            "--etw" => o.etw = true,
             "--lang" => o.lang = Some(value),
             "--export" => o.export = Some(PathBuf::from(value)),
             "--record" => o.record = Some(PathBuf::from(value)),
@@ -301,11 +304,13 @@ fn check_combinations(o: &Options) -> Result<(), CliError> {
     if o.export.is_some() && o.record.is_some() {
         return conflict("--export", "--record");
     }
-    if o.duration.is_some() && o.record.is_none() {
-        return Err(CliError::Needs {
-            option: "--duration".into(),
-            needs: "--record".into(),
-        });
+    for (set, option) in [(o.duration.is_some(), "--duration"), (o.etw, "--etw")] {
+        if set && o.record.is_none() {
+            return Err(CliError::Needs {
+                option: option.into(),
+                needs: "--record".into(),
+            });
+        }
     }
     for (set, name) in [
         (o.export.is_some(), "--export"),
@@ -389,7 +394,7 @@ pub fn filters(
 /// its description are separated by a tab (message box) instead of padding (console).
 pub fn help_text(languages: &str, tabs: bool) -> String {
     let meta = |key: &str| format!("<{}>", t!(key));
-    let opts: [(String, String); 12] = [
+    let opts: [(String, String); 13] = [
         (
             format!("--preset {}", meta("cli.meta.name")),
             t!("cli.opt.preset"),
@@ -423,6 +428,7 @@ pub fn help_text(languages: &str, tabs: bool) -> String {
             format!("--duration {}", meta("cli.meta.time")),
             t!("cli.opt.duration"),
         ),
+        ("--etw".into(), t!("cli.opt.etw")),
         (
             format!("--lang {}", meta("cli.meta.code")),
             t!("cli.opt.lang", languages = languages),
@@ -655,6 +661,14 @@ mod tests {
                 needs: "--record".into()
             }
         );
+        assert_eq!(
+            err(&["--etw"]),
+            CliError::Needs {
+                option: "--etw".into(),
+                needs: "--record".into()
+            }
+        );
+        assert!(p(&["--record", "r.plrec", "--etw"]).unwrap().etw);
         assert_eq!(
             err(&["--export", "x.csv", "a.plrec"]),
             conflict("--export", "RECORDING")

@@ -73,6 +73,10 @@ Early version (0.3.7). What works now:
   new and closed endpoints, state changes – for a chosen time (until stopped, 1 – 60 min or
   custom), optionally only the rows matching the current filters, into a `.plrec` file (a SQLite
   database, about 10 MB for a busy hour). ● REC in the status bar shows the time and the events.
+- **Short connections with ETW** (View → Capture short connections, administrator): Event
+  Tracing for Windows sees also the connections that open and close between two refreshes
+  (beacons, failing health checks); they appear as closed rows marked ⚡, with their process and
+  bytes, and are recorded (`--record … --etw` on the command line).
 - **Replay** (File → Open recording…, or `mmportlens.exe file.plrec`): the table shows the
   endpoints at the moment of a time slider, with the usual filters, sorting and export; the
   event list below it can be filtered, and a click on an event jumps to it.

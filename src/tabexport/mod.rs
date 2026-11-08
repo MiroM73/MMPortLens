@@ -453,6 +453,7 @@ pub(crate) mod tests {
             rate_out: Some(1536.4),
             rate_in: None,
             updated: NOON,
+            etw: false,
         };
         vec![
             row(

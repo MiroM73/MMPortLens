@@ -15,9 +15,12 @@ use std::net::{IpAddr, SocketAddr};
 use std::sync::Arc;
 
 pub mod estats;
+pub mod etw;
 pub mod procfs;
 pub mod winrows;
 
+#[cfg(windows)]
+mod etw_win;
 #[cfg(windows)]
 mod windows;
 

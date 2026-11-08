@@ -67,7 +67,7 @@ program, README / `docs/architecture.md` / `docs/history.md`, detailed commit wi
 |-------|------|--------|
 | #3 | Record connection events for a period of time | done ("Record connection events and replay them"); the command-line part is #16 |
 | #16 | Command line: filters (#1), export (#9), recording (#3) – therefore after them | done ("Command line: filters, headless export and recording") |
-| #4 | ETW for short-lived connections (extends the recording of #3) | |
+| #4 | ETW for short-lived connections (extends the recording of #3) | done ("Capture short-lived connections with ETW"); the capture as administrator not yet checked by hand (the acceptance test runs on the elevated CI) |
 | #18 | Watch rules and alerts (builds on #10 and #3) | |
 | #19 | Statistics over time (data from the recording of #3) | |
 | #11 | Country and ASN (offline) – least critical, depends on an offline database | |
