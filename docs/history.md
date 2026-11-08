@@ -322,6 +322,8 @@
   GUI showed TCP rows turned around, so only **UDP** receives are swapped (`saddr` = sender there,
   local side everywhere else). The acceptance test now checks both live: TCP received bytes 0 on
   the client and 100 on the server rows, UDP receiver row 5 bytes in with the sender as remote.
+  Final elevated run: the acceptance test passes; the GUI with `=ETW` in the Source column shows
+  correctly oriented rows (msedge DNS over TCP to the router, msedgewebview2 UDP DNS queries).
   (2) The owner asked how to show only the ETW rows: new hidden column **Source** (`ETW` / empty),
   so `=ETW` in its column filter, presets, color rules, export and `--column source=ETW` work.
   Verified: fmt, clippy, 166 tests (decode of receives, Source cell, visible column count),
