@@ -251,3 +251,8 @@
   the Updates window kept the spinner during the retries and then showed the message with the
   status page link; a 503 at start left `update_last_check` unchanged, a 404 updated it. 135
   tests. Port to RusTrace: MiroM73/Rustrace#60.
+- Released **v0.3.7** (`scripts/release.ps1 0.3.7 -Yes` run under Windows PowerShell 5.1, which
+  ran through the watch step – the acceptance of #25; written release notes). The local tests
+  passed (135), the workflow succeeded and the draft was published with the notes as the latest
+  release. Check of the released ZIP: checksum OK, `mmportlens.exe` has product version 0.3.7, and
+  `cargo test fetch_latest_release -- --ignored` passes with v0.3.7 as GitHub's latest release.
