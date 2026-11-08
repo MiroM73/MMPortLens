@@ -317,9 +317,11 @@
   stopped the other (`EnableTraceEx2` error 4201): the names are now `MMPortLens ETW <pid>-<n>`.
   Also found: #40 (console output garbled in an OEM code page console).
 - #4 follow-up from the owner's check as administrator: (1) a received UDP datagram showed the
-  sender as the local side – for receive events `saddr` is the remote side ("received from %4 to
-  %3" in the manifest); `etw::decode` swaps them for receives, the decode test covers it and the
-  acceptance test now checks that the client rows of its TCP connections received no bytes.
+  sender as the local side. A first fix swapped the sides of every receive event; the owner's
+  elevated run of the extended acceptance test showed the TCP receives on the client rows and the
+  GUI showed TCP rows turned around, so only **UDP** receives are swapped (`saddr` = sender there,
+  local side everywhere else). The acceptance test now checks both live: TCP received bytes 0 on
+  the client and 100 on the server rows, UDP receiver row 5 bytes in with the sender as remote.
   (2) The owner asked how to show only the ETW rows: new hidden column **Source** (`ETW` / empty),
   so `=ETW` in its column filter, presets, color rules, export and `--column source=ETW` work.
   Verified: fmt, clippy, 166 tests (decode of receives, Source cell, visible column count),

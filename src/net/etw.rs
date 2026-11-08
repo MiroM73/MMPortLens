@@ -98,10 +98,10 @@ fn port(b: &[u8], at: usize) -> Option<u16> {
 
 /// Decodes one event. Every event of the provider starts with the same fields:
 /// `PID: u32, size: u32, daddr, saddr, dport: u16, sport: u16`; the addresses are 4 bytes (IPv4)
-/// or 16 bytes (IPv6) as they go over the wire. `saddr` / `sport` is the side that sent the data:
-/// the local one for a send, connect, accept and disconnect, but the **remote** one for a
-/// receive ("received from %4:%6 to %3:%5" in the manifest; seen live as a UDP datagram from a
-/// neighbour that showed the neighbour as the local address).
+/// or 16 bytes (IPv6) as they go over the wire. `saddr` / `sport` is the local side – except for
+/// a **UDP receive**, where it is the sender of the datagram (seen live: a datagram from a
+/// neighbour showed the neighbour as the local address). A TCP receive keeps the local side in
+/// `saddr` (checked live by the acceptance test in `poller.rs`).
 pub fn decode(id: u16, time: u64, data: &[u8]) -> Option<EtwEvent> {
     let (proto, op) = kind(id)?;
     let pid = dword(data, 0)?;
@@ -117,7 +117,7 @@ pub fn decode(id: u16, time: u64, data: &[u8]) -> Option<EtwEvent> {
     };
     let source = SocketAddr::new(local_ip, port(data, ports + 2)?);
     let dest = SocketAddr::new(remote_ip, port(data, ports)?);
-    let (local, remote) = if op == Op::Recv {
+    let (local, remote) = if op == Op::Recv && !proto.is_tcp() {
         (dest, source)
     } else {
         (source, dest)
@@ -344,12 +344,17 @@ mod tests {
         );
         assert_eq!(decode(15, 0, &data).unwrap().op, Op::Accept);
         assert_eq!(decode(42, 0, &data).unwrap().proto, Protocol::Udp);
-        // A receive: the data came from saddr, so that is the remote side.
+        // A UDP receive: the datagram came from saddr, so that is the remote side.
         let r = decode(43, 0, &data).unwrap();
         assert_eq!((r.proto, r.op), (Protocol::Udp, Op::Recv));
         assert_eq!(r.local, "93.184.216.34:443".parse().unwrap());
         assert_eq!(r.remote, "192.168.1.5:50123".parse().unwrap());
-        assert_eq!(decode(11, 0, &data).unwrap().local, r.local);
+        // A TCP receive keeps the local side in saddr.
+        let t = decode(11, 0, &data).unwrap();
+        assert_eq!(
+            (t.op, t.local),
+            (Op::Recv, "192.168.1.5:50123".parse().unwrap())
+        );
         assert_eq!(decode(17, 0, &data), None);
         assert_eq!(decode(12, 0, &data[..18]), None);
 

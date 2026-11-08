@@ -288,6 +288,20 @@ mod tests {
             assert!(t.elapsed() < Duration::from_millis(50));
         }
         accept.join().unwrap();
+        // A short UDP exchange: `udp_tx` sends 5 bytes to `udp_rx`, both closed at once.
+        let (udp_tx, udp_rx) = {
+            let rx_sock = std::net::UdpSocket::bind("127.0.0.1:0").unwrap();
+            let tx_sock = std::net::UdpSocket::bind("127.0.0.1:0").unwrap();
+            tx_sock
+                .send_to(b"hello", rx_sock.local_addr().unwrap())
+                .unwrap();
+            let mut b = [0u8; 16];
+            rx_sock.recv(&mut b).unwrap();
+            (
+                tx_sock.local_addr().unwrap().port(),
+                rx_sock.local_addr().unwrap().port(),
+            )
+        };
         // ETW delivers its buffers about once a second.
         let until = Instant::now() + Duration::from_secs(4);
         while Instant::now() < until {
@@ -318,11 +332,34 @@ mod tests {
             .filter(|r| r.etw && r.conn.pid == me && r.conn.local.port() == server)
             .count();
         eprintln!("ETW rows: {etw_client} client, {etw_server} server");
+        // The UDP datagram: received by `udp_rx` from `udp_tx`, never the other way round.
+        let udp: Vec<_> = tracker
+            .rows()
+            .filter(|r| r.etw && !r.conn.proto.is_tcp())
+            .filter(|r| [udp_tx, udp_rx].contains(&r.conn.local.port()))
+            .map(|r| {
+                let s = r.conn.stats.unwrap_or_default();
+                (
+                    r.conn.local.port(),
+                    r.conn.remote.map(|a| a.port()),
+                    s.bytes_out,
+                    s.bytes_in,
+                )
+            })
+            .collect();
+        eprintln!("ETW UDP rows (local, remote, out, in): {udp:?}");
+        for &(local, remote, out, inn) in &udp {
+            if local == udp_tx {
+                assert_eq!((remote, out, inn), (Some(udp_rx), 5, 0), "sender row");
+            } else {
+                assert_eq!((remote, out, inn), (Some(udp_tx), 0, 5), "receiver row");
+            }
+        }
         // Every client sent one byte and received none: a receive belongs to the server side.
         let received = |client: bool| {
             tracker
                 .rows()
-                .filter(|r| r.etw && r.conn.pid == me)
+                .filter(|r| r.etw && r.conn.pid == me && r.conn.proto.is_tcp())
                 .filter(|r| (r.conn.local.port() == server) != client)
                 .filter_map(|r| r.conn.stats.map(|s| s.bytes_in))
                 .sum::<u64>()
@@ -333,6 +370,7 @@ mod tests {
             received(false)
         );
         assert_eq!(received(true), 0, "receives taken for the client side");
+        assert!(received(false) >= 1, "no receives on the server side");
         assert!(
             etw_client + etw_server >= 100,
             "{etw_client} + {etw_server}"
