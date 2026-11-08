@@ -3,19 +3,20 @@
 The order in which the GitHub issues are solved, agreed with the owner. The owner refers to the
 phases by number ("fáza 1" = phase 1). Keep the status column up to date: mark an issue done
 when its commit lands, add new issues to the phase where they fit. When every issue of a phase is
-done, add "(done)" to the phase heading.
+done, add "(done)" to the phase heading, and once a release ships it, name that release there
+("(done, released in vX.Y.Z)"; "(done, not released yet)" until then).
 
 Every issue follows the procedure of `CLAUDE.md`: take the code from RusTrace where it exists,
 `t!` strings in all four languages, `Config` defaults, fmt + clippy + tests, check in the running
 program, README / `docs/architecture.md` / `docs/history.md`, detailed commit with `Closes #N`
 (or `Part of #N`). Nothing is pushed or released without asking.
 
-## Phase 0 – quick fix before #15 (done)
+## Phase 0 – quick fix before #15 (done, released in v0.1.5)
 | Issue | What | Status |
 |-------|------|--------|
 | #21 parts 1, 2, 4 | Invalid TCP states: live test finds own sockets by address and PID and skips the state check for state 0 / > 12; UI shows "Invalid (0)" | done (67eb388) |
 
-## Phase 1 – chosen by the owner (done)
+## Phase 1 – chosen by the owner (done, released in v0.1.5)
 | Issue | What | Status |
 |-------|------|--------|
 | #15 | Icon (`src/icon.rs`), `build.rs` + `winresource`, update check / in-place update (`update.rs`, `http.rs` from RusTrace) | done (734d765) |
@@ -23,7 +24,7 @@ program, README / `docs/architecture.md` / `docs/history.md`, detailed commit wi
 | #15 | Acceptance: a release built by the workflow (v0.1.5) shows its notes in the update window (v0.1.0 has no update check: checked with the released v0.1.5 and `MMPORTLENS_UPDATE_AS_VERSION=0.1.0`) | done (v0.1.5) |
 | #1 | Column filters under the headers (`colfilter.rs` from RusTrace + regex, ranges, CIDR, address classes) | done (d7cf3fe) |
 
-## Phase 2 – the table and shared code (done)
+## Phase 2 – the table and shared code (done, not released yet)
 | Issue | What | Status |
 |-------|------|--------|
 | #27 | Horizontal scroll bar when the columns are wider than the window (port from RusTrace `7904f90`); before #2, which makes wide tables more common | done (b96c34c) |
