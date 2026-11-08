@@ -1,6 +1,6 @@
 [package]
 name = "mmportlens"
-version = "1.0.0"
+version = "1.0.7"
 edition = "2024"
 license = "Unlicense"
 description = "A TCPView-style viewer of network connections"
