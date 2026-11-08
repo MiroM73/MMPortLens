@@ -73,6 +73,7 @@ program, README / `docs/architecture.md` / `docs/history.md`, detailed commit wi
 | #11 | Country and ASN (offline) – least critical, depends on an offline database | |
 | #31 | Replay: the Duration column counts to now instead of the slider time (found in the #3 check) | |
 | #32 | Invalid TCP state flips of Windows flood recordings with State changed events (found in the #3 check) | |
+| #37 | Process names of system / other users' processes without administrator rights from the process snapshot instead of `<pid>` (found in the #16 check) | |
 
 ## Any time (small fixes found on the way) – all done, released in v0.3.7
 | Issue | What | Status |
