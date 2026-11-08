@@ -40,6 +40,8 @@ pub enum ColumnId {
     Duration,
     /// Owner module: the executable or the service in svchost (#14).
     Module,
+    /// `ETW` for a connection seen only by ETW (#4), empty otherwise.
+    Source,
     /// Traffic counters of TCP connections (#8).
     BytesSent,
     BytesReceived,
@@ -51,7 +53,7 @@ pub enum ColumnId {
 
 impl ColumnId {
     /// All columns in the default order (the order of TCPView, then the additional ones).
-    pub const ALL: [ColumnId; 27] = [
+    pub const ALL: [ColumnId; 28] = [
         ColumnId::Process,
         ColumnId::Pid,
         ColumnId::Protocol,
@@ -67,6 +69,7 @@ impl ColumnId {
         ColumnId::Duration,
         ColumnId::FirstSeen,
         ColumnId::Module,
+        ColumnId::Source,
         ColumnId::BytesSent,
         ColumnId::BytesReceived,
         ColumnId::RateSent,
@@ -96,6 +99,7 @@ impl ColumnId {
                 | ColumnId::FirstSeen
                 | ColumnId::Duration
                 | ColumnId::Module
+                | ColumnId::Source
         ) && !self.traffic()
     }
 
@@ -135,6 +139,7 @@ impl ColumnId {
             ColumnId::Created => "column.created",
             ColumnId::Duration => "column.duration",
             ColumnId::Module => "column.module",
+            ColumnId::Source => "column.source",
             ColumnId::BytesSent => "column.bytes_sent",
             ColumnId::BytesReceived => "column.bytes_received",
             ColumnId::RateSent => "column.rate_sent",
@@ -167,6 +172,7 @@ impl ColumnId {
             ColumnId::Created => 110.0,
             ColumnId::Duration => 100.0,
             ColumnId::Module => 150.0,
+            ColumnId::Source => 70.0,
             ColumnId::BytesSent
             | ColumnId::BytesReceived
             | ColumnId::RateSent
@@ -254,6 +260,7 @@ pub fn cell_text(row: &Row, col: ColumnId) -> String {
             .map(|t| crate::timefmt::duration(crate::model::now_ms().saturating_sub(t)))
             .unwrap_or_default(),
         ColumnId::Module => c.module.as_deref().unwrap_or_default().to_owned(),
+        ColumnId::Source => if row.etw { "ETW" } else { "" }.to_owned(),
         ColumnId::BytesSent => c.stats.map(|s| bytes(s.bytes_out)).unwrap_or_default(),
         ColumnId::BytesReceived => c.stats.map(|s| bytes(s.bytes_in)).unwrap_or_default(),
         ColumnId::RateSent => row.rate_out.map(rate).unwrap_or_default(),
@@ -345,6 +352,8 @@ pub fn compare(a: &Row, b: &Row, col: ColumnId) -> Ordering {
             host(a).cmp(&host(b))
         }
         ColumnId::Service => service(a).cmp(&service(b)),
+        // ETW rows first (ascending).
+        ColumnId::Source => b.etw.cmp(&a.etw),
         // Older first; unknown times last.
         ColumnId::Created => {
             (x.created.is_none(), x.created).cmp(&(y.created.is_none(), y.created))
@@ -581,7 +590,7 @@ mod tests {
     #[test]
     fn layout_default_and_visibility() {
         let mut l = ColumnLayout::default();
-        assert_eq!(l.visible().len(), ColumnId::ALL.len() - 16);
+        assert_eq!(l.visible().len(), ColumnId::ALL.len() - 17);
         assert!(l.visible().contains(&ColumnId::Created));
         assert!(!l.visible().contains(&ColumnId::ProcessPath));
         assert!(l.visible().contains(&ColumnId::RemoteHost));
@@ -757,6 +766,9 @@ mod tests {
         };
         assert_eq!(cell_text(&row, ColumnId::WinServices), "Dnscache");
         assert_eq!(cell_text(&row, ColumnId::Module), "dnscache");
+        assert_eq!(cell_text(&row, ColumnId::Source), "");
+        row.etw = true;
+        assert_eq!(cell_text(&row, ColumnId::Source), "ETW");
         let older = row.clone();
         // A module that is not a service: all services of the process.
         row.conn.module = Some("svchost.exe".into());

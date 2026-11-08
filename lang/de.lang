@@ -87,6 +87,7 @@ column.description = Beschreibung
 column.created = Erstellt
 column.duration = Dauer
 column.module = Modul
+column.source = Quelle
 column.bytes_sent = Gesendet
 column.bytes_received = Empfangen
 column.rate_sent = Gesendet/s

@@ -318,6 +318,21 @@ mod tests {
             .filter(|r| r.etw && r.conn.pid == me && r.conn.local.port() == server)
             .count();
         eprintln!("ETW rows: {etw_client} client, {etw_server} server");
+        // Every client sent one byte and received none: a receive belongs to the server side.
+        let received = |client: bool| {
+            tracker
+                .rows()
+                .filter(|r| r.etw && r.conn.pid == me)
+                .filter(|r| (r.conn.local.port() == server) != client)
+                .filter_map(|r| r.conn.stats.map(|s| s.bytes_in))
+                .sum::<u64>()
+        };
+        eprintln!(
+            "ETW bytes received: {} client, {} server",
+            received(true),
+            received(false)
+        );
+        assert_eq!(received(true), 0, "receives taken for the client side");
         assert!(
             etw_client + etw_server >= 100,
             "{etw_client} + {etw_server}"

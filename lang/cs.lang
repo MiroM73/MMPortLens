@@ -87,6 +87,7 @@ column.description = Popis
 column.created = Vytvořeno
 column.duration = Trvání
 column.module = Modul
+column.source = Zdroj
 column.bytes_sent = Odesláno
 column.bytes_received = Přijato
 column.rate_sent = Odesláno/s

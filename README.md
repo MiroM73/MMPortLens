@@ -76,7 +76,8 @@ Early version (0.3.7). What works now:
 - **Short connections with ETW** (View → Capture short connections, administrator): Event
   Tracing for Windows sees also the connections that open and close between two refreshes
   (beacons, failing health checks); they appear as closed rows marked ⚡, with their process and
-  bytes, and are recorded (`--record … --etw` on the command line).
+  bytes, and are recorded (`--record … --etw` on the command line); the column *Source* (`ETW`)
+  filters them.
 - **Replay** (File → Open recording…, or `mmportlens.exe file.plrec`): the table shows the
   endpoints at the moment of a time slider, with the usual filters, sorting and export; the
   event list below it can be filtered, and a click on an event jumps to it.

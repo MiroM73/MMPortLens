@@ -142,8 +142,13 @@ assertions (x64: properties 120, `EVENT_RECORD` 112, `EVENT_TRACE_LOGFILEW` 448 
 TCPv4 10 send, 11 receive, 12 connect, 13 disconnect, 14 retransmit, 15 accept, 16 reconnect,
 18 copy; TCPv6 the same + 16 (26–34); UDPv4 42 / 43, UDPv6 58 / 59 send / receive. Every payload
 starts with `PID u32, size u32, daddr, saddr, dport, sport` (addresses 4 or 16 bytes, ports in
-network byte order); `saddr:sport` is the local side for sends and receives alike. 17 / 49
-(attempt failed) carry no addresses and are ignored.
+network byte order). `saddr:sport` is the side that **sent** the data: the local side for
+send, connect, accept and disconnect, the remote side for a **receive** ("received from %4:%6 to
+%3:%5" in the manifest) – first decoded as local and seen live as a UDP row whose local address
+was a neighbour's (`192.168.50.88:44078 → <own address>:51364` for a service listening on
+`0.0.0.0:51364`). The acceptance test checks the direction for TCP (the clients only send, so the
+received bytes must land on the server rows). 17 / 49 (attempt failed) carry no addresses and are
+ignored.
 
 **Poll thread** (`poller.rs`): `PollControl::etw` switches the session on / off (a failed start is
 not retried until the switch goes off and on); the events are drained every 25 ms into the
@@ -169,7 +174,9 @@ event at the open time and a closed one at the disconnect (or snapshot) time, bo
 `Event::etw`. A later snapshot that sees the endpoint makes it a normal row (`etw = false`).
 
 **UI**: View → *Capture short connections (ETW, admin)* (`Config::etw_capture`, Windows only;
-`app/etw.rs`), ⚡ before the process name with a tooltip (`table.rs`), status bar `⚡ ETW: N` (rows
+`app/etw.rs`), ⚡ before the process name with a tooltip (`table.rs`), the hidden column
+**Source** (`ColumnId::Source`: `ETW` or empty – for column filters such as `=ETW` / `!ETW`,
+presets, color rules, export and `--column source=ETW`), status bar `⚡ ETW: N` (rows
 added since it was switched on) or the reason it does not run (*administrator only*). The rows count
 in *Last refresh +new −closed*. Recordings store `events.source` and `meta.etw` (on / off as it
 ran); `--record … --etw` (or the setting) captures without a window and prints the reason to stderr

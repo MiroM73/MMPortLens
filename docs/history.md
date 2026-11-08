@@ -316,3 +316,12 @@
   found that two sessions of one process (the two tests in parallel) shared the name, so one start
   stopped the other (`EnableTraceEx2` error 4201): the names are now `MMPortLens ETW <pid>-<n>`.
   Also found: #40 (console output garbled in an OEM code page console).
+- #4 follow-up from the owner's check as administrator: (1) a received UDP datagram showed the
+  sender as the local side – for receive events `saddr` is the remote side ("received from %4 to
+  %3" in the manifest); `etw::decode` swaps them for receives, the decode test covers it and the
+  acceptance test now checks that the client rows of its TCP connections received no bytes.
+  (2) The owner asked how to show only the ETW rows: new hidden column **Source** (`ETW` / empty),
+  so `=ETW` in its column filter, presets, color rules, export and `--column source=ETW` work.
+  Verified: fmt, clippy, 166 tests (decode of receives, Source cell, visible column count),
+  `--column source=ETW --export x.csv` in the release build (header with Source, 0 rows in a
+  single snapshot as expected).
