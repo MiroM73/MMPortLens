@@ -54,6 +54,12 @@ program, README / `docs/architecture.md` / `docs/history.md`, detailed commit wi
 |-------|------|--------|
 | #30 | Live traffic (TCP packets, ESTATS of #8) and I/O operations graph in the process properties window of #28, `egui_plot` (reusable by #19) | done (0243216); the TCP plot as administrator not yet checked by hand |
 
+## Phase 4c – asked by the owner after #3
+| Issue | What | Status |
+|-------|------|--------|
+| #33 | Process properties (#28, #30) in their own OS windows (egui viewports), several at a time, one per PID | |
+| #34 | Service name of well-known ports: tooltip over the whole port cell (with the owning Windows service of #14), `port (name)` in the details pane, optional system services file | |
+
 ## Phase 5 – recording and automation
 | Issue | What | Status |
 |-------|------|--------|
