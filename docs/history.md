@@ -329,3 +329,10 @@
   Verified: fmt, clippy, 166 tests (decode of receives, Source cell, visible column count),
   `--column source=ETW --export x.csv` in the release build (header with Source, 0 rows in a
   single snapshot as expected).
+- Released **v1.0.0** (`scripts/release.ps1 1.0.0 -Yes`; written release notes: recording and
+  replay #3, command line #16, ETW capture of short connections #4 with the Source column; known
+  issues #31, #32, #37, #40, #21). The README status line names 1.0.0 instead of "early version".
+  The local tests passed, the workflow succeeded and the draft was published with the notes as the
+  latest release. Check of the released ZIP: checksum OK, `mmportlens.exe` has product version
+  1.0.0, and `cargo test fetch_latest_release -- --ignored` passes with v1.0.0 as GitHub's latest
+  release.

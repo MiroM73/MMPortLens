@@ -62,12 +62,12 @@ program, README / `docs/architecture.md` / `docs/history.md`, detailed commit wi
 | #35 | Column filters: AND (`&`) and NOT (`!`) per term, precedence `!` > `&` > `\|`, migration of saved `!a\|b` texts (filters, presets, highlight rules); before #16, which reuses the filters. RusTrace port: MiroM73/Rustrace#61 | |
 | #36 | Filter field tooltip: examples for the column and its possible values (State, Protocol); after #35 so the examples can use `&` | |
 
-## Phase 5 – recording and automation
+## Phase 5 – recording and automation (#3, #16, #4 released in v1.0.0)
 | Issue | What | Status |
 |-------|------|--------|
-| #3 | Record connection events for a period of time | done ("Record connection events and replay them"); the command-line part is #16 |
-| #16 | Command line: filters (#1), export (#9), recording (#3) – therefore after them | done ("Command line: filters, headless export and recording") |
-| #4 | ETW for short-lived connections (extends the recording of #3) | done ("Capture short-lived connections with ETW"), checked as administrator (acceptance test 100 + 100 connections, `--record --etw`) |
+| #3 | Record connection events for a period of time | done ("Record connection events and replay them"), released in v1.0.0; the command-line part is #16 |
+| #16 | Command line: filters (#1), export (#9), recording (#3) – therefore after them | done ("Command line: filters, headless export and recording"), released in v1.0.0 |
+| #4 | ETW for short-lived connections (extends the recording of #3) | done ("Capture short-lived connections with ETW"), checked as administrator (acceptance test 100 + 100 connections, `--record --etw`); released in v1.0.0 |
 | #18 | Watch rules and alerts (builds on #10 and #3) | |
 | #19 | Statistics over time (data from the recording of #3) | |
 | #11 | Country and ASN (offline) – least critical, depends on an offline database | |
