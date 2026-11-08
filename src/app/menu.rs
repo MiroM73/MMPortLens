@@ -16,6 +16,8 @@ impl App {
                     self.open_export();
                 }
                 ui.separator();
+                self.record_menu_items(ui);
+                ui.separator();
                 if cfg!(windows) {
                     self.admin_menu(ui);
                     ui.separator();

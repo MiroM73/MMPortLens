@@ -7,6 +7,7 @@
 
 use crate::net::{ConnKey, Connection};
 use crate::process::ProcessInfo;
+use crate::recording::{Event, EventKind};
 use std::collections::{HashMap, HashSet};
 use std::sync::Arc;
 use std::time::{SystemTime, UNIX_EPOCH};
@@ -75,12 +76,41 @@ pub struct Tracker {
 
 impl Tracker {
     /// Merges a new snapshot. `hold_ms` is how long new / changed / closed rows stay marked.
+    #[cfg(test)]
     pub fn update(
         &mut self,
         snapshot: Vec<(Connection, Arc<ProcessInfo>)>,
         now: u64,
         hold_ms: u64,
     ) -> Changes {
+        self.update_with_events(snapshot, now, hold_ms, None)
+    }
+
+    /// [`Tracker::update`] that also appends what changed to `events` (a running recording,
+    /// #3): one event per counted change, in the same order. The first snapshot produces none.
+    pub fn update_with_events(
+        &mut self,
+        snapshot: Vec<(Connection, Arc<ProcessInfo>)>,
+        now: u64,
+        hold_ms: u64,
+        mut events: Option<&mut Vec<Event>>,
+    ) -> Changes {
+        let mut emit = |kind: EventKind, row: &Row, before: Option<crate::net::TcpState>| {
+            if let Some(ev) = events.as_deref_mut() {
+                let mut conn = row.conn.clone();
+                conn.stats = None;
+                if kind == EventKind::Closed {
+                    conn.state = None;
+                }
+                ev.push(Event {
+                    time: now,
+                    kind,
+                    conn,
+                    state_before: before,
+                    process: row.process.clone(),
+                });
+            }
+        };
         let mut ch = Changes::default();
         // The very first snapshot is the starting point, not a flood of "new" rows.
         let first = !self.started;
@@ -92,6 +122,14 @@ impl Tracker {
             seen.insert(key);
             match self.rows.get_mut(&key) {
                 Some(row) => {
+                    let kind = if row.mark == Mark::Closed {
+                        Some(EventKind::New)
+                    } else if row.conn.state != conn.state {
+                        Some(EventKind::Changed)
+                    } else {
+                        None
+                    };
+                    let before = row.conn.state;
                     if row.mark == Mark::Closed {
                         // Came back (same addresses and PID) – treat as a new endpoint.
                         row.mark = Mark::New;
@@ -110,27 +148,32 @@ impl Tracker {
                     row.updated = now;
                     row.conn = conn;
                     row.process = process;
+                    match kind {
+                        Some(EventKind::Changed) => emit(EventKind::Changed, row, before),
+                        Some(k) => emit(k, row, None),
+                        None => {}
+                    }
                 }
                 None => {
                     let mark = if first { Mark::None } else { Mark::New };
                     if !first {
                         ch.new += 1;
                     }
-                    self.rows.insert(
-                        key,
-                        Row {
-                            conn,
-                            process,
-                            first_seen: now,
-                            mark,
-                            mark_until: until,
-                            local_host: None,
-                            remote_host: None,
-                            rate_out: None,
-                            rate_in: None,
-                            updated: now,
-                        },
-                    );
+                    let row = self.rows.entry(key).insert_entry(Row {
+                        conn,
+                        process,
+                        first_seen: now,
+                        mark,
+                        mark_until: until,
+                        local_host: None,
+                        remote_host: None,
+                        rate_out: None,
+                        rate_in: None,
+                        updated: now,
+                    });
+                    if !first {
+                        emit(EventKind::New, row.get(), None);
+                    }
                 }
             }
         }
@@ -139,6 +182,7 @@ impl Tracker {
                 row.mark = Mark::Closed;
                 row.mark_until = until;
                 ch.closed += 1;
+                emit(EventKind::Closed, row, row.conn.state);
             }
         }
         self.expire(now);
@@ -168,6 +212,25 @@ impl Tracker {
             .filter(|r| r.mark != Mark::None)
             .map(|r| r.mark_until)
             .min()
+    }
+
+    /// The starting state of a recording (#3): a `Present` event per endpoint that is not closed.
+    pub fn present_events(&self, now: u64) -> Vec<Event> {
+        self.rows
+            .values()
+            .filter(|r| r.mark != Mark::Closed)
+            .map(|r| {
+                let mut conn = r.conn.clone();
+                conn.stats = None;
+                Event {
+                    time: now,
+                    kind: EventKind::Present,
+                    conn,
+                    state_before: None,
+                    process: r.process.clone(),
+                }
+            })
+            .collect()
     }
 
     pub fn rows(&self) -> impl Iterator<Item = &Row> {
@@ -294,6 +357,80 @@ mod tests {
         t.update(vec![conn(1, TcpState::Established)], 4000, 2000);
         assert_eq!(t.rows().next().unwrap().rate_in, None);
         assert_eq!(rate(Some(1), Some(2), 0), None);
+    }
+
+    #[test]
+    fn events_follow_the_changes() {
+        let mut t = Tracker::default();
+        let mut ev = Vec::new();
+        // The first snapshot is the starting point: no events.
+        let ch = t.update_with_events(
+            vec![
+                conn(1, TcpState::Established),
+                conn(2, TcpState::Established),
+            ],
+            0,
+            2000,
+            Some(&mut ev),
+        );
+        assert_eq!(ch, Changes::default());
+        assert!(ev.is_empty());
+        let present = t.present_events(500);
+        assert_eq!(present.len(), 2);
+        assert!(
+            present
+                .iter()
+                .all(|e| e.kind == EventKind::Present && e.time == 500)
+        );
+
+        t.update_with_events(
+            vec![conn(1, TcpState::TimeWait), conn(3, TcpState::SynSent)],
+            1000,
+            2000,
+            Some(&mut ev),
+        );
+        let find = |k: EventKind| ev.iter().find(|e| e.kind == k).unwrap();
+        assert_eq!(ev.len(), 3);
+        let changed = find(EventKind::Changed);
+        assert_eq!(changed.conn.local.port(), 1);
+        assert_eq!(changed.state_before, Some(TcpState::Established));
+        assert_eq!(changed.conn.state, Some(TcpState::TimeWait));
+        let new = find(EventKind::New);
+        assert_eq!(new.conn.local.port(), 3);
+        assert_eq!(
+            (new.state_before, new.conn.state),
+            (None, Some(TcpState::SynSent))
+        );
+        let closed = find(EventKind::Closed);
+        assert_eq!(closed.conn.local.port(), 2);
+        assert_eq!(closed.state_before, Some(TcpState::Established));
+        assert_eq!(closed.conn.state, None);
+        assert_eq!(closed.shown_state(), Some(TcpState::Established));
+        assert!(ev.iter().all(|e| e.time == 1000));
+
+        // Nothing changes: no events; the closed row is not closed again. A closed row that
+        // comes back is new; closed rows are not part of the starting state.
+        ev.clear();
+        t.update_with_events(
+            vec![conn(1, TcpState::TimeWait), conn(3, TcpState::SynSent)],
+            1500,
+            2000,
+            Some(&mut ev),
+        );
+        assert!(ev.is_empty());
+        assert_eq!(t.present_events(1500).len(), 2);
+        t.update_with_events(
+            vec![
+                conn(1, TcpState::TimeWait),
+                conn(2, TcpState::Established),
+                conn(3, TcpState::SynSent),
+            ],
+            1800,
+            2000,
+            Some(&mut ev),
+        );
+        assert_eq!(ev.len(), 1);
+        assert_eq!((ev[0].kind, ev[0].conn.local.port()), (EventKind::New, 2));
     }
 
     #[test]

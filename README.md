@@ -65,6 +65,13 @@ Early version (0.3.7). What works now:
 - **Export** (File → Export…, Ctrl+S) of the rows shown, the selected rows or all endpoints, in
   the visible or all columns, as **CSV**, **Excel** (.xlsx – numbers and times as values, frozen
   header with AutoFilter, row colors), **JSON Lines** or a self-contained **HTML** report.
+- **Recording** (File → Start recording… or the red toolbar button): records what changes –
+  new and closed endpoints, state changes – for a chosen time (until stopped, 1 – 60 min or
+  custom), optionally only the rows matching the current filters, into a `.plrec` file (a SQLite
+  database, about 10 MB for a busy hour). ● REC in the status bar shows the time and the events.
+- **Replay** (File → Open recording…, or `mmportlens.exe file.plrec`): the table shows the
+  endpoints at the moment of a time slider, with the usual filters, sorting and export; the
+  event list below it can be filtered, and a click on an event jumps to it.
 - Status bar with counts, user interface in English, Slovak, Czech and
   German (more languages without recompiling – see `lang/en.lang`), dark / light theme.
 - Settings in `%APPDATA%\MMPortLens\config.json`.

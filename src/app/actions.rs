@@ -86,6 +86,9 @@ impl App {
 
     /// Del / the context menu: asks before closing the selected connections.
     pub(in crate::app) fn request_close(&mut self) {
+        if self.replaying() {
+            return;
+        }
         let (conns, why) = self.closable();
         if conns.is_empty() {
             if let Some(b) = why {
@@ -100,6 +103,9 @@ impl App {
     }
 
     pub(in crate::app) fn request_kill(&mut self) {
+        if self.replaying() {
+            return;
+        }
         let (procs, why) = self.killable();
         if procs.is_empty() {
             if let Some(b) = why {
@@ -134,6 +140,11 @@ impl App {
     /// The items of the row context menu; the chosen one is run by [`Self::menu_action`].
     pub(in crate::app) fn action_menu_items(&self, ui: &mut egui::Ui) -> Option<MenuAction> {
         let mut chosen = None;
+        // The rows of a recording are not live (#3).
+        if self.replaying() {
+            ui.weak(t!("replay.no_actions"));
+            return None;
+        }
         let (conns, why) = self.closable();
         let close = ui
             .add_enabled(

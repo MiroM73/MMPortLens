@@ -71,6 +71,9 @@ impl App {
 
     /// Alt+Enter: the properties of the process of the cursor row.
     pub(in crate::app) fn open_properties_of_cursor(&mut self) {
+        if self.replaying() {
+            return;
+        }
         if let Some(r) = self.details_row() {
             let (pid, info) = (r.conn.pid, r.process.clone());
             self.open_properties(pid, info);

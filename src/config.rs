@@ -60,6 +60,8 @@ pub struct Config {
     pub collapsed_processes: Vec<String>,
     /// Saved filter presets (#13); examples on the first start.
     pub filter_presets: Vec<crate::presets::FilterPreset>,
+    /// File → Start recording… settings (#3).
+    pub record: crate::recording::Settings,
 }
 
 /// When MM PortLens looks for a new version at start-up.
@@ -124,6 +126,7 @@ impl Default for Config {
             group_by_process: false,
             collapsed_processes: Vec::new(),
             filter_presets: crate::presets::default_presets(),
+            record: Default::default(),
         }
     }
 }
@@ -209,6 +212,7 @@ mod tests {
         assert!(partial.marks_over_rules);
         assert_eq!(partial.filter_presets, crate::presets::default_presets());
         assert!(!partial.group_by_process && partial.collapsed_processes.is_empty());
+        assert_eq!(partial.record, crate::recording::Settings::default());
         let none = Config::parse(r#"{"color_rules": []}"#).unwrap();
         assert!(none.color_rules.is_empty());
         let daily = Config::parse(r#"{"update_when": "daily"}"#).unwrap();

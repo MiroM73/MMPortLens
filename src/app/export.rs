@@ -32,7 +32,7 @@ impl App {
             Scope::All => {
                 let cols = self.cfg.columns.visible();
                 let now = now_ms();
-                let mut rows: Vec<Row> = self.tracker.rows().cloned().collect();
+                let mut rows: Vec<Row> = self.source_rows();
                 for r in &mut rows {
                     self.fill_host_names(r, &cols, now);
                 }
@@ -47,7 +47,10 @@ impl App {
         match scope {
             Scope::Visible => self.view.len(),
             Scope::Selected => self.sel.positions(&self.view_keys()).len(),
-            Scope::All => self.tracker.len(),
+            Scope::All => match &self.replay {
+                Some(rp) => rp.rows.len(),
+                None => self.tracker.len(),
+            },
         }
     }
 
@@ -457,7 +460,7 @@ fn encoding_name(e: CsvEncoding) -> String {
 }
 
 /// Name of this computer for the heading of the HTML report.
-fn computer_name() -> String {
+pub(in crate::app) fn computer_name() -> String {
     std::env::var("COMPUTERNAME")
         .or_else(|_| std::env::var("HOSTNAME"))
         .unwrap_or_default()

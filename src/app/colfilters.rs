@@ -60,14 +60,6 @@ impl App {
         self.col_filter_text.len()
     }
 
-    /// The row passes the filters of the visible columns.
-    pub(in crate::app) fn column_filters_match(&self, r: &Row, cols: &[ColumnId]) -> bool {
-        self.col_filters
-            .iter()
-            .filter(|(id, _)| cols.contains(id))
-            .all(|(id, f)| f.matches(&cell_text(r, *id)))
-    }
-
     /// The filter field in the header cell of column `id`; returns true when its text changed.
     pub(in crate::app) fn column_filter_field(
         &self,

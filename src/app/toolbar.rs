@@ -32,6 +32,7 @@ impl App {
             {
                 self.ctl.refresh_now.store(true, Ordering::Relaxed);
             }
+            self.record_button(ui);
 
             let mut ms = self.cfg.interval_ms;
             egui::ComboBox::from_id_salt("interval")

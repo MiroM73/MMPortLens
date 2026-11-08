@@ -36,6 +36,9 @@ mod menu;
 mod presets;
 mod properties;
 mod properties_graph;
+mod record;
+mod replay;
+mod replay_events;
 mod rules;
 mod statusbar;
 mod table;
@@ -186,6 +189,56 @@ pub struct App {
     elevated: bool,
     /// The last elevated start failed or was cancelled (shown in the status bar).
     elevate_error: Option<String>,
+    /// A running recording (#3), the File → Start recording… window, the result of the last
+    /// recording (status bar).
+    recording: Option<record::Recording>,
+    show_record: bool,
+    record_result: Option<record::RecordResult>,
+    /// An opened recording (#3): the table shows its state at the slider time instead of the
+    /// live endpoints.
+    replay: Option<replay::Replay>,
+}
+
+/// What decides whether a row is shown: the protocol switches, the text filter and the column
+/// filters of the visible columns. A copy is kept by a recording "only rows matching the
+/// current filters" (#3).
+#[derive(Clone)]
+pub(in crate::app) struct RowFilter {
+    show_tcp: bool,
+    show_udp: bool,
+    show_ipv4: bool,
+    show_ipv6: bool,
+    show_listening: bool,
+    /// The text filter, lower case.
+    needle: String,
+    cols: Vec<ColumnId>,
+    col_filters: Vec<(ColumnId, ColumnFilter)>,
+}
+
+impl RowFilter {
+    pub(in crate::app) fn matches(&self, r: &Row) -> bool {
+        let p = r.conn.proto;
+        if (p.is_tcp() && !self.show_tcp) || (!p.is_tcp() && !self.show_udp) {
+            return false;
+        }
+        if (p.is_v6() && !self.show_ipv6) || (!p.is_v6() && !self.show_ipv4) {
+            return false;
+        }
+        if !self.show_listening && r.conn.remote.is_none() {
+            return false;
+        }
+        let text_ok = self.needle.is_empty()
+            || self
+                .cols
+                .iter()
+                .any(|&col| cell_text(r, col).to_lowercase().contains(&self.needle));
+        text_ok
+            && self
+                .col_filters
+                .iter()
+                .filter(|(id, _)| self.cols.contains(id))
+                .all(|(id, f)| f.matches(&cell_text(r, *id)))
+    }
 }
 
 impl App {
@@ -194,6 +247,7 @@ impl App {
         restore: Option<SessionState>,
         elevate_error: Option<ElevateError>,
         preset: Option<String>,
+        recording: Option<PathBuf>,
     ) -> Self {
         let cfg = Config::load();
         i18n::set_language(&cfg.language);
@@ -262,6 +316,10 @@ impl App {
             update_available: None,
             elevated: elevation::is_elevated(),
             elevate_error: elevate_error.as_ref().map(admin::elevate_error_text),
+            recording: None,
+            show_record: false,
+            record_result: None,
+            replay: None,
         };
         app.apply_theme(&cc.egui_ctx);
         app.recompile_rules();
@@ -273,6 +331,9 @@ impl App {
             app.restore_session(state);
         } else if let Some(name) = preset {
             app.apply_preset_by_name(&name);
+        }
+        if let Some(path) = recording {
+            app.open_recording(path);
         }
         let now = chrono::Local::now().timestamp();
         if app.cfg.update_when.due(app.cfg.update_last_check, now) {
@@ -304,9 +365,16 @@ impl App {
         while let Ok(res) = self.rx.try_recv() {
             match res {
                 Ok(snap) => {
-                    self.last_changes =
-                        self.tracker
-                            .update(snap.rows, snap.taken, self.cfg.highlight_ms);
+                    let mut events = self.recording.as_ref().map(|_| Vec::new());
+                    self.last_changes = self.tracker.update_with_events(
+                        snap.rows,
+                        snap.taken,
+                        self.cfg.highlight_ms,
+                        events.as_mut(),
+                    );
+                    if let Some(events) = events {
+                        self.record_events(events);
+                    }
                     self.last_took = snap.took;
                     self.last_poll = Some(snap.taken);
                     self.stats_denied = snap.stats_denied;
@@ -323,31 +391,45 @@ impl App {
         if self.resolver.receive(now_ms()) {
             self.view_dirty = true;
         }
+        self.receive_replay();
         if self.view_dirty {
-            // Rows removed from the tracker cannot stay selected.
-            let tracker = &self.tracker;
-            self.sel.retain(|k| tracker.contains(k));
+            // Rows removed from the tracker (or from the replayed state) cannot stay selected.
+            match &self.replay {
+                Some(rp) => {
+                    let keys: std::collections::HashSet<ConnKey> =
+                        rp.rows.iter().map(|r| r.conn.key()).collect();
+                    self.sel.retain(|k| keys.contains(k));
+                }
+                None => {
+                    let tracker = &self.tracker;
+                    self.sel.retain(|k| tracker.contains(k));
+                }
+            }
         }
     }
 
-    /// Does a row pass the protocol switches, the text filter and the column filters?
-    fn row_shown(&self, r: &Row, cols: &[ColumnId], needle: &str) -> bool {
-        let p = r.conn.proto;
+    /// The filters of the table right now.
+    pub(in crate::app) fn row_filter(&self) -> RowFilter {
         let c = &self.cfg;
-        if (p.is_tcp() && !c.show_tcp) || (!p.is_tcp() && !c.show_udp) {
-            return false;
+        RowFilter {
+            show_tcp: c.show_tcp,
+            show_udp: c.show_udp,
+            show_ipv4: c.show_ipv4,
+            show_ipv6: c.show_ipv6,
+            show_listening: c.show_listening,
+            needle: self.filter.trim().to_lowercase(),
+            cols: c.columns.visible(),
+            col_filters: self.col_filters.clone(),
         }
-        if (p.is_v6() && !c.show_ipv6) || (!p.is_v6() && !c.show_ipv4) {
-            return false;
+    }
+
+    /// The rows the table is built from: the live endpoints, or the state of an opened
+    /// recording at the slider time (#3).
+    pub(in crate::app) fn source_rows(&self) -> Vec<Row> {
+        match &self.replay {
+            Some(rp) => rp.rows.clone(),
+            None => self.tracker.rows().cloned().collect(),
         }
-        if !c.show_listening && r.conn.remote.is_none() {
-            return false;
-        }
-        let text_ok = needle.is_empty()
-            || cols
-                .iter()
-                .any(|&col| cell_text(r, col).to_lowercase().contains(needle));
-        text_ok && self.column_filters_match(r, cols)
     }
 
     /// Host names of a row from the reverse DNS cache (the local one only while its column is
@@ -373,7 +455,7 @@ impl App {
             cols.iter().any(|c| c.traffic()) || self.properties.is_some(),
             Ordering::Relaxed,
         );
-        let needle = self.filter.trim().to_lowercase();
+        let filter = self.row_filter();
         let mut counts = Counts::default();
         let mut view = Vec::with_capacity(self.tracker.len());
         // Host names only while a host column is shown (the filters search the shown columns).
@@ -382,8 +464,7 @@ impl App {
                 .iter()
                 .any(|c| matches!(c, ColumnId::RemoteHost | ColumnId::LocalHost));
         let now = now_ms();
-        let rows: Vec<Row> = self.tracker.rows().cloned().collect();
-        for mut r in rows {
+        for mut r in self.source_rows() {
             counts.total += 1;
             if r.conn.proto.is_tcp() {
                 counts.tcp += 1;
@@ -400,7 +481,7 @@ impl App {
             if resolve {
                 self.fill_host_names(&mut r, &cols, now);
             }
-            if self.row_shown(&r, &cols, &needle) {
+            if filter.matches(&r) {
                 view.push(r);
             }
         }
@@ -478,7 +559,9 @@ impl eframe::App for App {
 
         egui::Panel::top("menu").show(ui, |ui| self.menu_bar(ui));
         egui::Panel::top("toolbar").show(ui, |ui| self.toolbar(ui));
+        self.replay_bar(ui);
         egui::Panel::bottom("status").show(ui, |ui| self.status_bar(ui));
+        self.replay_events_panel(ui);
         self.details_pane(ui);
         egui::CentralPanel::default().show(ui, |ui| self.table(ui));
         self.about_window(&ctx);
@@ -487,6 +570,8 @@ impl eframe::App for App {
         self.confirm_window(&ctx);
         self.rules_window(&ctx);
         self.preset_windows(&ctx);
+        self.record_window(&ctx);
+        self.check_recording(&ctx);
         self.check_export();
         self.export_window(&ctx);
         self.poll_update(&ctx);
@@ -511,6 +596,10 @@ impl eframe::App for App {
         }
         if closing {
             self.ctl.stop.store(true, Ordering::Relaxed);
+            // The recording is finished into a complete file before the program ends.
+            if let Some(rec) = self.recording.take() {
+                let _ = rec.recorder.wait();
+            }
         }
     }
 }

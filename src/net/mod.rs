@@ -90,6 +90,25 @@ impl TcpState {
         }
     }
 
+    /// The `MIB_TCP_STATE` value (inverse of [`TcpState::from_mib`]; stored in recordings, #3).
+    pub fn to_mib(self) -> u32 {
+        match self {
+            TcpState::Closed => 1,
+            TcpState::Listen => 2,
+            TcpState::SynSent => 3,
+            TcpState::SynReceived => 4,
+            TcpState::Established => 5,
+            TcpState::FinWait1 => 6,
+            TcpState::FinWait2 => 7,
+            TcpState::CloseWait => 8,
+            TcpState::Closing => 9,
+            TcpState::LastAck => 10,
+            TcpState::TimeWait => 11,
+            TcpState::DeleteTcb => 12,
+            TcpState::Unknown(v) => v,
+        }
+    }
+
     /// From the `st` column of `/proc/net/tcp` (Linux `TCP_*` constants).
     pub fn from_linux(v: u32) -> Self {
         match v {
@@ -233,6 +252,9 @@ mod tests {
         assert_eq!(TcpState::from_mib(0), TcpState::Unknown(0));
         assert_eq!(TcpState::from_mib(12), TcpState::DeleteTcb);
         assert_eq!(TcpState::from_mib(13), TcpState::Unknown(13));
+        for v in 0..20 {
+            assert_eq!(TcpState::from_mib(v).to_mib(), v);
+        }
     }
 
     /// What the live test does with a state the OS reported for one of its own sockets.

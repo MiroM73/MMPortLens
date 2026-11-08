@@ -256,3 +256,23 @@
   passed (135), the workflow succeeded and the draft was published with the notes as the latest
   release. Check of the released ZIP: checksum OK, `mmportlens.exe` has product version 0.3.7, and
   `cargo test fetch_latest_release -- --ignored` passes with v0.3.7 as GitHub's latest release.
+- #3: recording of connection events and their replay. `Tracker::update_with_events` produces the
+  events of every refresh (new, closed, state changed) and `present_events` the starting state;
+  `src/recording/` holds the SQLite format (`rusqlite` bundled; `meta`, `processes`, `events` with
+  `conn_id`, indexes on `time_ms` and `(conn_id, time_ms, kind)`, view `events_readable`, schema
+  version 1, WAL + one transaction per refresh, finished into a single file), the writer thread
+  and the replay worker. UI: File → Start recording… / red toolbar button (duration, kinds, frozen
+  filter as `RowFilter`), ● REC with time and events in the status bar, automatic stop, result
+  with *Open*; File → Open recording… or `mmportlens.exe file.plrec` shows the state at a slider
+  time in the normal table (filters, sorting, export work; close / end / properties disabled),
+  step buttons, *Back to live*, and a paged event list (text and kind filter, time order, click =
+  jump). Verified: 13 new unit tests (event generation, write → read round trip, replay state and
+  marks, event pages and filter escaping, schema version / format check, single file after
+  finish, writer and replay threads); the ignored `busy_hour` test: 110 000 events in 11.1 MB,
+  state at the end of the hour in 32 ms. In the release build: recorded 14 s with local test
+  connections (start window, save dialog, ● REC, stop from the toolbar and from the status bar,
+  one file left), opened it with *Open* and from the command line, filtered the event list to the
+  test port and jumped to an event, back to live. Found on the way: a modal save dialog let
+  queued snapshots be recorded before the starting state (fixed: the start state takes the time of
+  the last snapshot); #31 (Duration in the replay) and #32 (invalid-state flips flood a
+  recording). Headless recording from the command line stays with #16. 148 tests.

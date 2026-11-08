@@ -227,7 +227,7 @@ impl App {
                     // The process of the right-clicked row, not of the selection (#28).
                     if ui
                         .add_enabled(
-                            r.conn.pid != 0,
+                            r.conn.pid != 0 && !self.replaying(),
                             egui::Button::new(t!("table.properties"))
                                 .shortcut_text(help::kb("Alt+Enter")),
                         )
@@ -336,7 +336,11 @@ pub(in crate::app) fn sort_arrow_width(ui: &egui::Ui) -> f32 {
 /// A header title, truncated to the cell, followed by a painted sort arrow when the column is
 /// sorted (`Some(ascending)`). The arrow is painted: ⏶ / ⏷ and ▲ / ▼ are not in egui's built-in
 /// fonts and were drawn as empty boxes (#22). Returns the response of the title label.
-fn header_title(ui: &mut egui::Ui, title: &str, arrow: Option<bool>) -> egui::Response {
+pub(in crate::app) fn header_title(
+    ui: &mut egui::Ui,
+    title: &str,
+    arrow: Option<bool>,
+) -> egui::Response {
     ui.horizontal(|ui| {
         let arrow_w = if arrow.is_some() {
             sort_arrow_width(ui)

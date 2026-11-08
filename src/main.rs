@@ -21,6 +21,7 @@ mod poller;
 mod presets;
 mod process;
 mod rates;
+mod recording;
 mod rules;
 mod selection;
 mod services;
@@ -65,6 +66,7 @@ fn main() -> eframe::Result {
 
     let restore = restore_arg(&args);
     let preset = presets::preset_arg(&args);
+    let recording = recording::file_arg(&args);
     update::cleanup_old();
 
     let mut viewport = egui::ViewportBuilder::default().with_inner_size([1300.0, 750.0]);
@@ -91,6 +93,14 @@ fn main() -> eframe::Result {
     eframe::run_native(
         "MMPortLens",
         options,
-        Box::new(|cc| Ok(Box::new(app::App::new(cc, restore, elevate_error, preset)))),
+        Box::new(|cc| {
+            Ok(Box::new(app::App::new(
+                cc,
+                restore,
+                elevate_error,
+                preset,
+                recording,
+            )))
+        }),
     )
 }

@@ -21,6 +21,7 @@ crc32fast = "1"
 rfd = "0.17"
 open = "5"
 egui_plot = "0.38"
+rusqlite = { version = "0.41.1", features = ["bundled"] }
 
 [profile.release]
 opt-level = 3

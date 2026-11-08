@@ -22,7 +22,8 @@ with the change.
 | `src/winproc.rs` | Windows process details: image path, start time, user (token), command line (`NtQueryInformationProcess`), version strings, icon (`ExtractIconExW` → RGBA), services per PID (`EnumServicesStatusExW`) (#7), I/O counters (`GetProcessIoCounters`, #30). |
 | `src/rates.rs` | `Sampler`: per-second TCP and I/O rates of one process from cumulative counters, ring buffer of the last two minutes – pure, tested (#30). |
 | `src/poller.rs` | Background thread: snapshot + process names every interval, sent over a channel. |
-| `src/model.rs` | `Tracker`: merges snapshots into rows, marks new / changed / closed rows and expires the marks. |
+| `src/model.rs` | `Tracker`: merges snapshots into rows, marks new / changed / closed rows and expires the marks; `update_with_events` / `present_events` for a recording (#3). |
+| `src/recording/` | Recording (#3): `mod.rs` (`Event`, `EventKind`, `EventKinds`, start-window `Settings`, `parse_duration`, `file_arg`), `db.rs` (all SQL: `RecordingWriter`, `RecordingReader`, `EventQuery`; tests in `db_tests.rs`), `threads.rs` (writer thread `Recorder`, `ReplayWorker`). |
 | `src/colfilter.rs` | Column filter syntax: parsing and matching (`ColumnFilter`, `FilterKind`, `FilterError`) – core from RusTrace. |
 | `src/selection.rs` | `Selection` (cursor, anchor, selected `ConnKey`s) and `Nav` (arrow / page targets) – pure, tested (#17). |
 | `src/dns.rs` | Reverse DNS (#5): `DnsCache` (TTL, negative results, pending – pure), `Resolver` (cache + worker pool), `system_lookup` (`GetNameInfoW` / `getnameinfo`). |
@@ -33,7 +34,7 @@ with the change.
 | `src/config.rs` | `Config` (JSON, every field has a default). |
 | `src/i18n.rs` | `t!()` and the language files – the same module as in RusTrace. |
 | `src/timefmt.rs` | Clock times for the table. |
-| `src/app/` | The UI, split by area like RusTrace: `mod.rs` (state, frame loop), `menu.rs`, `toolbar.rs`, `table.rs`, `statusbar.rs`, `colfilters.rs` (column filter state and field), `admin.rs` (restart as administrator), `update_window.rs` (Help → Check for updates), `input.rs` (keyboard shortcuts, copying the selection), `help.rs` (Help → Keyboard shortcuts), `actions.rs` (context menu items, confirmation window and result of #6), `details.rs` (details pane, process icons and tooltip of #7), `properties.rs` (process properties window of #28), `properties_graph.rs` (its live traffic / I/O graph, #30), `rules.rs` (color rules window and row colors of #10), `presets.rs` (filter preset combo box and windows of #13), `groups.rs` (group lines of #12), `columnlayout.rs` (header drag and drop, remembered widths, fit on a border double click – #2), `export.rs` (File → Export… window, export thread, status – #9). |
+| `src/app/` | The UI, split by area like RusTrace: `mod.rs` (state, frame loop), `menu.rs`, `toolbar.rs`, `table.rs`, `statusbar.rs`, `colfilters.rs` (column filter state and field), `admin.rs` (restart as administrator), `update_window.rs` (Help → Check for updates), `input.rs` (keyboard shortcuts, copying the selection), `help.rs` (Help → Keyboard shortcuts), `actions.rs` (context menu items, confirmation window and result of #6), `details.rs` (details pane, process icons and tooltip of #7), `properties.rs` (process properties window of #28), `properties_graph.rs` (its live traffic / I/O graph, #30), `rules.rs` (color rules window and row colors of #10), `presets.rs` (filter preset combo box and windows of #13), `groups.rs` (group lines of #12), `columnlayout.rs` (header drag and drop, remembered widths, fit on a border double click – #2), `export.rs` (File → Export… window, export thread, status – #9), `record.rs` (start window, events to the writer, ● REC – #3), `replay.rs` (opened recording, replay bar with the time slider – #3), `replay_events.rs` (event list of a recording – #3). |
 | `lang/*.lang` | Built-in translations (en, sk, cs, de), embedded with `include_str!`. |
 
 ## Reading the connections
@@ -386,6 +387,74 @@ file, no scripts). Ctrl+C uses the CSV quoting with a tab separator.
 
 `cargo test xlsx_sample -- --ignored` with `MMPORTLENS_XLSX_OUT=<file>` writes 5 000 rows with
 every column for a check in Excel.
+
+## Recording and replay (#3)
+
+**Events.** `Tracker::update_with_events` appends one `recording::Event` per counted change
+(new, closed, state changed – the same rules as the marks; the first snapshot produces none).
+A closed event has `conn.state = None` and the last state in `state_before`; traffic counters are
+not recorded. `Tracker::present_events` gives the starting state (`EventKind::Present`), timed at
+the tracker's last snapshot (`App::last_poll`): snapshots taken while the save dialog was open are
+still queued and are processed later with later times, so the file stays in time order.
+
+**Start** (`app/record.rs`, File → Start recording… or the red toolbar button): duration (until
+stopped, 1 / 5 / 15 / 60 min, custom `10m` / `1h30m` / `90s`), event kinds, "only rows matching the
+current filters". The filter is frozen at the start: `App::row_filter()` returns a `RowFilter`
+(switches, text filter, column filters, visible columns) – the same struct `rebuild_view` uses –
+and the recording keeps a copy. Every refresh `receive` passes the events of the chosen kinds and
+endpoints to the writer; the duration ends in `check_recording`, the program waits for the writer
+when it closes. The status bar shows `● REC 01:23 / 05:00 · 812 events` and Stop; afterwards the
+result with an *Open* button (30 s).
+
+**File** (`recording/db.rs`, the only SQL in the program; `rusqlite` with the bundled SQLite):
+
+- `meta(key, value)`: `format = mmportlens-recording`, `computer`, `start_ms`, `end_ms`,
+  `interval_ms`, `app_version`, `events` (recorded kinds), `duration_ms`, `filter`;
+  `PRAGMA user_version = 1` (a newer file is refused, a SQLite file without `format` is "not a
+  recording").
+- `processes(id, pid, name, path, create_time)` – interned by PID + start time + name + path.
+- `events(id, time_ms, kind, proto, local_addr, local_port, remote_addr, remote_port,
+  state_before, state_after, created, process_id, conn_id)`; kind 0 present / 1 new / 2 closed /
+  3 changed, proto 1 TCP / 2 TCPv6 / 3 UDP / 4 UDPv6, states as `MIB_TCP_STATE` numbers
+  (`TcpState::to_mib`), addresses as text (readable in DB Browser for SQLite; the view
+  `events_readable` spells everything out). `conn_id` numbers the endpoints in the writer.
+- Indexes `events_time(time_ms)` and `events_conn(conn_id, time_ms, kind)`.
+- WAL journal with `synchronous = NORMAL`, one transaction per refresh; `finish` writes `end_ms`,
+  checkpoints (`wal_checkpoint(TRUNCATE)`) and switches to `journal_mode = DELETE`, so a finished
+  recording is one file. An existing target file and its journals are replaced.
+
+**Replay** (`RecordingReader::state_at(at, hold)`): for every `conn_id` the last event with
+`time_ms <= at` (`max(id) … GROUP BY conn_id`, served by `events_conn`), without endpoints closed
+more than `hold` ago; rows whose event is younger than `hold` (`Config::highlight_ms`) are marked
+new / changed / closed like in the live table, `first_seen` is its last present / new event.
+`neighbours(at)` gives the previous / next event time for the step buttons. Measured with the
+ignored test `busy_hour` (release build; 2000 endpoints at the start, 30 events per second for an
+hour = 110 000 events): 11.1 MB (101 B per event; 8.7 MB without `events_conn`), the state at the
+end of the hour in 32 ms (66 ms without the index, 136 ms grouping by the address columns), a
+filtered count + page in 95 ms.
+
+**Threads** (`recording/threads.rs`): `Recorder` owns the `RecordingWriter` in the writer thread
+and receives `Vec<Event>` per refresh over a channel; `stop` drops the sender, `finished` joins
+once the thread ended (also after a write error, which ends the recording with a message).
+`ReplayWorker` owns the `RecordingReader`; requests are coalesced – of the queued ones only the
+newest `State` is answered (a dragged slider) and only the pages of the newest event query
+(`generation`); the count of a query is computed once per generation.
+
+**UI** (`app/replay.rs`, `app/replay_events.rs`): File → Open recording…, the *Open* button after a
+recording, or `mmportlens.exe file.plrec` (`recording::file_arg`, also a double-clicked file) set
+`App::replay`. `App::source_rows()` then returns the replayed rows instead of the tracker's, so the
+table, column / text filters, sorting, color rules, grouping, details pane and export work
+unchanged; the selection is kept within the replayed keys. Close connection, End process and
+Properties are disabled (the rows are not live). The replay bar shows the file (tooltip: the meta
+data), step buttons, the slider time and *Back to live*. The event list under the table asks the
+worker only for the pages (200 events) of the rows on screen (`EventList::missing`, keeping four
+pages around them), filters by text (`LIKE` over process, path, addresses, ports, PID; `%` / `_`
+escaped) and kinds, sorts by time (header click); a click moves the slider to the event. The live
+refresh and a running recording go on in the background.
+
+Not done here: headless recording from the command line (`--record`, `--duration` – #16),
+the *Duration* column in the replay counts to now (#31), invalid-state flips of Windows produce
+many *State changed* events (#32).
 
 ## Column filters (#1)
 

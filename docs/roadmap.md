@@ -57,12 +57,14 @@ program, README / `docs/architecture.md` / `docs/history.md`, detailed commit wi
 ## Phase 5 – recording and automation
 | Issue | What | Status |
 |-------|------|--------|
-| #3 | Record connection events for a period of time | |
+| #3 | Record connection events for a period of time | done ("Record connection events and replay them"); the command-line part is #16 |
 | #16 | Command line: filters (#1), export (#9), recording (#3) – therefore after them | |
 | #4 | ETW for short-lived connections (extends the recording of #3) | |
 | #18 | Watch rules and alerts (builds on #10 and #3) | |
 | #19 | Statistics over time (data from the recording of #3) | |
 | #11 | Country and ASN (offline) – least critical, depends on an offline database | |
+| #31 | Replay: the Duration column counts to now instead of the slider time (found in the #3 check) | |
+| #32 | Invalid TCP state flips of Windows flood recordings with State changed events (found in the #3 check) | |
 
 ## Any time (small fixes found on the way) – all done, released in v0.3.7
 | Issue | What | Status |
