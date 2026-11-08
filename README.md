@@ -35,8 +35,10 @@ Version 1.0.0. What works now:
   (Shift + mouse wheel scrolls as well).
 - Switches TCP / UDP / IPv4 / IPv6 / Listening and a text filter over the visible columns.
 - **Host names** of the addresses (reverse DNS in the background, cached) in the columns *Remote
-  host* and *Local host*, and the **service** of well-known ports (443 → https) – switch with
-  **View → Resolve addresses** or the *DNS* toolbar button.
+  host* and *Local host* – switch with **View → Resolve addresses** or the *DNS* toolbar button –
+  and the **service** of well-known ports (443 → https; built-in table plus the system `services`
+  file): in the *Service* column, as `443 (https)` in the details pane and as a tooltip over the
+  port cells, with the Windows service that owns the endpoint.
 - **Column filters** under the headers: text, `=exact`, `/regex/`, `a|b`, `!not`; ports and PID
   `>1024`, `1000-2000`; addresses `10.0.0.0/8`, `fe80::/10`, `loopback`, `private`, `public`
   (hover a field for the syntax).

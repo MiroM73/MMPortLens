@@ -34,7 +34,7 @@ with the change.
 | `src/colfilter.rs` | Column filter syntax: parsing and matching (`ColumnFilter`, `FilterKind`, `FilterError`) – core from RusTrace. |
 | `src/selection.rs` | `Selection` (cursor, anchor, selected `ConnKey`s) and `Nav` (arrow / page targets) – pure, tested (#17). |
 | `src/dns.rs` | Reverse DNS (#5): `DnsCache` (TTL, negative results, pending – pure), `Resolver` (cache + worker pool), `system_lookup` (`GetNameInfoW` / `getnameinfo`). |
-| `src/services.rs` | Built-in table of well-known port names (#5). |
+| `src/services.rs` | Well-known port names (#5): built-in table plus the system services file read in the background (#34). |
 | `src/actions.rs` | Close connection (`SetTcpEntry` + DELETE_TCB) and End process (`TerminateProcess` / `kill`), with the pure checks `can_close` / `can_kill` and `tcp_row` (#6). |
 | `src/columns.rs` | `ColumnId`, cell texts, value-based sorting (`SortSpec`), `ColumnLayout` (visibility, order, widths), `drop_slot`. |
 | `src/tabexport/` | Table export (#9): `mod.rs` (scope, column set, typed `Cell` of a row, `write_table`, `run`), writers `csv.rs`, `xlsx.rs` + `zip.rs`, `jsonl.rs`, `html.rs` – the writers from RusTrace. |
@@ -305,8 +305,22 @@ localize Ctrl / Shift / Space and matches `docs/keyboard-shortcuts.md`.
 
 Columns **Remote host** and **Local host** (hidden by default) show the name of the address from
 reverse DNS, **Service** the name of the well-known port (the remote port; for listeners and UDP the
-local port) from the built-in table in `services.rs` – no `services` file. The port cells have the
-service name as a tooltip.
+local port) from `services.rs`.
+
+**Port names (#34).** `services::name` looks in the built-in table first (tuned for Windows: e.g.
+`443/udp` = quic, 5040 = cdpsvc), then in the system services database
+(`%SystemRoot%\System32\drivers\etc\services`, `/etc/services`). `services::load_system`
+(called in `main` right after the settings are read) parses that file on a `services` thread into a
+`OnceLock<HashMap<(port, tcp), name>>` (`parse`: `name port/proto [aliases] [# comment]`, only
+tcp / udp, the first name wins); until it is set, or without the file, only the built-in names are
+used – nothing waits for it. The **port cells** (Local / Remote port) of a known port have the
+tooltip `columns::port_tip`: `443 – https` and, when the owner module of the endpoint (#14) is one
+of the services of its process (`columns::exact_win_service`, also used by the *Windows services*
+column), `Used by: Dnscache (DNS Client)`; the tooltip is on the label and on the cell response of
+the table row (`TableRow::col`), so it also shows over the empty part of the right-aligned cell –
+in the replay of a recording too (same table code). The **details pane** shows `135 (msrpc)` for
+known local and remote ports (`columns::port_with_name`, key `details.port_named`); unknown ports
+stay bare numbers, and the port filters keep matching the number.
 
 - `dns::DnsCache` keeps per address the last result, when it came and whether a lookup is pending.
   A name lives 10 minutes (`TTL_MS`), "no name" 5 minutes (`NEGATIVE_TTL_MS`); an expired name is

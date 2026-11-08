@@ -139,6 +139,7 @@ filter.clear.tip = Zrušiť všetky filtre stĺpcov
 table.header.tip = Klik: zoradiť podľa stĺpca. Ťahanie: presunúť stĺpec. Dvojklik na okraj: prispôsobiť šírku. Pravý klik: stĺpce.
 table.copy_rows = Kopírovať vybraté riadky
 table.properties = Vlastnosti…
+table.port_used_by = Používa: {service}
 
 # --- Zatvoriť spojenie / Ukončiť proces ---
 action.close = Zatvoriť spojenie
@@ -164,6 +165,7 @@ action.kill.own = MM PortLens neukončí sám seba – použi Súbor → Koniec.
 # --- Panel detailov ---
 details.started = Proces spustený
 details.services_line = Služby: {services}
+details.port_named = {port} ({name})
 details.no_access = Windows bez administrátorských práv neposkytne podrobnosti o tomto procese (Súbor → Reštartovať ako administrátor).
 properties.title = Vlastnosti procesu
 properties.exited = (proces skončil)

@@ -382,3 +382,16 @@
   cascaded by 28 px; × on one left the other in place; with the setting off Alt+Enter opened the
   embedded window. The graphs were not checked with traffic of two processes at once (the checked
   processes deny access without administrator rights).
+- #34: service names of well-known ports. `services::name` also uses the system services database
+  (`drivers\etc\services` / `/etc/services`, parsed once at start-up on its own thread, built-in
+  names win); the built-in table got 3478 stun, 5222 xmpp-client, 8000 / 8008 http-alt, 9100
+  jetdirect and 47001 winrm (the dynamic RPC ports 49664–49669 were left out: they are not reserved
+  for RPC). The tooltip of the port cells covers the whole cell and says `443 – https` plus the
+  owning Windows service (`Used by: …`) when the owner module names one service; the details pane
+  shows `443 (https)` for known local and remote ports. Verified: fmt, clippy, 175 tests (new:
+  services file parser, port tooltip with / without one exact service, details text); release
+  build: hovering the empty left part of a Remote port cell with 443 showed `443 – https`, the
+  details pane showed `Remote port 443 (https)`; a temporary PowerShell listener on 1270 (only in
+  the Windows services file) showed `1270 – opsmgr` in the tooltip, `1270 (opsmgr)` in the details
+  and `opsmgr` in the Service column. The `Used by` line was checked by the unit test only (the
+  owner module of service endpoints needs administrator rights).

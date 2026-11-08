@@ -150,6 +150,7 @@ filter.clear.tip = Clear all column filters
 table.header.tip = Click: sort by this column. Drag: move the column. Double click on the border: fit the width. Right click: columns.
 table.copy_rows = Copy selected rows
 table.properties = Properties…
+table.port_used_by = Used by: {service}
 
 # --- Close connection / End process ---
 action.close = Close connection
@@ -175,6 +176,7 @@ action.kill.own = MM PortLens does not end itself – use File → Exit.
 # --- Details pane ---
 details.started = Process started
 details.services_line = Services: {services}
+details.port_named = {port} ({name})
 details.no_access = Windows does not give details of this process without administrator rights (File → Restart as administrator).
 properties.title = Process properties
 properties.exited = (process has exited)

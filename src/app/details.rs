@@ -163,7 +163,12 @@ fn connection_grid(ui: &mut egui::Ui, r: &Row) {
                 ColumnId::RateSent,
                 ColumnId::RateReceived,
             ] {
-                detail_row(ui, &c.title(), &cell_text(r, c));
+                // Known ports with their name: `443 (https)` (#34).
+                let value = match crate::columns::cell_port(r, c) {
+                    Some(p) => crate::columns::port_with_name(p, r.conn.proto),
+                    None => cell_text(r, c),
+                };
+                detail_row(ui, &c.title(), &value);
             }
         });
 }

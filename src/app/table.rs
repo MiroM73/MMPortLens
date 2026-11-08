@@ -157,7 +157,10 @@ impl App {
                 row.set_selected(self.sel.contains(&key));
                 let (fg, bg) = self.row_colors(i, r, dark);
                 for &c in &cols {
-                    row.col(|ui| {
+                    // The service name of a well-known port over the whole cell (#34).
+                    let port_tip = crate::columns::cell_port(r, c)
+                        .and_then(|p| crate::columns::port_tip(r, p));
+                    let (_, cell) = row.col(|ui| {
                         if let Some(bg) = bg {
                             ui.painter()
                                 .rect_filled(ui.max_rect().expand2(gap), 0.0, bg);
@@ -172,16 +175,8 @@ impl App {
                                 egui::Layout::right_to_left(egui::Align::Center),
                                 |ui| ui.add(label),
                             );
-                            // The service name of a well-known port (#5).
-                            let port = match c {
-                                ColumnId::LocalPort => Some(r.conn.local.port()),
-                                ColumnId::RemotePort => r.conn.remote.map(|a| a.port()),
-                                _ => None,
-                            };
-                            if let Some(name) =
-                                port.and_then(|p| crate::services::name(p, r.conn.proto))
-                            {
-                                resp.inner.on_hover_text(name);
+                            if let Some(tip) = &port_tip {
+                                resp.inner.on_hover_text(tip);
                             }
                         } else if c == ColumnId::Process {
                             // Seen only by ETW: shorter than a refresh (#4).
@@ -210,6 +205,10 @@ impl App {
                             }
                         }
                     });
+                    // Also over the empty part of the cell (the label is short and right-aligned).
+                    if let Some(tip) = port_tip {
+                        cell.on_hover_text(tip);
+                    }
                 }
                 let resp = row.response();
                 if resp.clicked() {

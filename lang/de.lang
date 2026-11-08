@@ -139,6 +139,7 @@ filter.clear.tip = Alle Spaltenfilter löschen
 table.header.tip = Klick: nach dieser Spalte sortieren. Ziehen: Spalte verschieben. Doppelklick auf den Rand: Breite anpassen. Rechtsklick: Spalten.
 table.copy_rows = Ausgewählte Zeilen kopieren
 table.properties = Eigenschaften…
+table.port_used_by = Verwendet von: {service}
 
 # --- Verbindung schließen / Prozess beenden ---
 action.close = Verbindung schließen
@@ -164,6 +165,7 @@ action.kill.own = MM PortLens beendet sich nicht selbst – Datei → Beenden ve
 # --- Detailbereich ---
 details.started = Prozess gestartet
 details.services_line = Dienste: {services}
+details.port_named = {port} ({name})
 details.no_access = Ohne Administratorrechte liefert Windows keine Details zu diesem Prozess (Datei → Als Administrator neu starten).
 properties.title = Prozesseigenschaften
 properties.exited = (Prozess beendet)

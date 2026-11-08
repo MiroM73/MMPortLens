@@ -172,6 +172,8 @@ fn main() -> eframe::Result {
         .collect();
     let cfg = config::Config::load();
     i18n::set_language(&cfg.language);
+    // Port names of the system services database (#34), read while the program starts.
+    services::load_system();
     let (mut startup, restore_file) = command_line(&cfg, &args);
 
     // "Always start as administrator": start again through UAC and end this one. The elevated

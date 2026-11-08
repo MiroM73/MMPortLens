@@ -297,16 +297,54 @@ pub fn rate(per_s: f64) -> String {
 /// Windows services of a row: the exact service when the owner module of the endpoint is one of
 /// the services of its process (#14), otherwise all services of the process (#7).
 pub fn win_services(row: &Row) -> String {
-    if let Some(m) = &row.conn.module
-        && let Some((name, _)) = row
-            .process
-            .services
-            .iter()
-            .find(|(n, _)| n.eq_ignore_ascii_case(m))
-    {
-        return name.clone();
+    match exact_win_service(row) {
+        Some((name, _)) => name.clone(),
+        None => row.process.service_list(),
     }
-    row.process.service_list()
+}
+
+/// The one Windows service that owns the endpoint – (name, display name) – when the owner module
+/// of the endpoint (#14) is one of the services of its process (#7).
+pub fn exact_win_service(row: &Row) -> Option<&(String, String)> {
+    let m = row.conn.module.as_ref()?;
+    row.process
+        .services
+        .iter()
+        .find(|(n, _)| n.eq_ignore_ascii_case(m))
+}
+
+/// The port of a Local port / Remote port cell.
+pub fn cell_port(row: &Row, col: ColumnId) -> Option<u16> {
+    match col {
+        ColumnId::LocalPort => Some(row.conn.local.port()),
+        ColumnId::RemotePort => row.conn.remote.map(|a| a.port()),
+        _ => None,
+    }
+}
+
+/// Tooltip of a port cell of a well-known port (#34): `443 – https`, and the Windows service that
+/// owns the endpoint when it is one specific service. `None` for an unknown port.
+pub fn port_tip(row: &Row, port: u16) -> Option<String> {
+    let name = crate::services::name(port, row.conn.proto)?;
+    let mut tip = format!("{port} – {name}");
+    if let Some((service, display)) = exact_win_service(row) {
+        let who = if display.is_empty() || display == service {
+            service.clone()
+        } else {
+            format!("{service} ({display})")
+        };
+        tip.push('\n');
+        tip.push_str(&t!("table.port_used_by", service = who));
+    }
+    Some(tip)
+}
+
+/// A port with its service name when it is known: `135 (msrpc)`; otherwise the bare number.
+pub fn port_with_name(port: u16, proto: crate::net::Protocol) -> String {
+    match crate::services::name(port, proto) {
+        Some(name) => t!("details.port_named", port = port, name = name),
+        None => port.to_string(),
+    }
 }
 
 /// Service of a row: the name of the remote port, for endpoints without a remote side (listeners,
@@ -766,6 +804,15 @@ mod tests {
         };
         assert_eq!(cell_text(&row, ColumnId::WinServices), "Dnscache");
         assert_eq!(cell_text(&row, ColumnId::Module), "dnscache");
+        // Port tooltip and details text of a known port (#34): name and owning service.
+        assert_eq!(cell_port(&row, ColumnId::LocalPort), Some(5353));
+        assert_eq!(cell_port(&row, ColumnId::RemotePort), None);
+        let tip = port_tip(&row, 5353).unwrap();
+        assert!(tip.starts_with("5353 – mdns\n"), "{tip}");
+        assert!(tip.contains("Dnscache (DNS Client)"), "{tip}");
+        assert_eq!(port_tip(&row, 49_999), None);
+        assert_eq!(port_with_name(5353, Protocol::Udp), "5353 (mdns)");
+        assert_eq!(port_with_name(49_999, Protocol::Udp), "49999");
         assert_eq!(cell_text(&row, ColumnId::Source), "");
         row.etw = true;
         assert_eq!(cell_text(&row, ColumnId::Source), "ETW");
@@ -774,6 +821,8 @@ mod tests {
         row.conn.module = Some("svchost.exe".into());
         row.conn.created = Some(2_000);
         assert_eq!(cell_text(&row, ColumnId::WinServices), "Dnscache, NlaSvc");
+        // Not one specific service: only the port name.
+        assert_eq!(port_tip(&row, 5353).as_deref(), Some("5353 – mdns"));
         // Created: older first; Duration: shorter (created later) first.
         assert_eq!(compare(&older, &row, ColumnId::Created), Ordering::Less);
         assert_eq!(compare(&row, &older, ColumnId::Duration), Ordering::Less);
