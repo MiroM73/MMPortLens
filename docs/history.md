@@ -431,3 +431,11 @@
   pasted into State left the 34 rows the status bar counted as invalid; `/(/` replaced the tooltip
   with the error and its reason (also the check of #41); the Process rule pattern in the color
   rules window showed the Process examples.
+- Released **v1.0.7** (`scripts/release.ps1 1.0.7 -Yes`; written release notes: new – AND / NOT
+  in column filters #35, filter tooltip examples #36, process properties in own windows #33, port
+  service names #34, Help → Command line #38, `--help` window #39; changed – automatic conversion
+  of saved `!a|b` filters #35, quoted `|` example #38; fixed – multi-line language values #41;
+  known issues #31, #32, #37, #40, #21). The README status line names 1.0.7. The local tests
+  passed, the workflow succeeded and the draft was published with the notes as the latest release.
+  Check of the released ZIP: checksum OK, `mmportlens.exe` has product version 1.0.7, and
+  `cargo test fetch_latest_release -- --ignored` passes with v1.0.7 as GitHub's latest release.

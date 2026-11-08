@@ -54,16 +54,16 @@ program, README / `docs/architecture.md` / `docs/history.md`, detailed commit wi
 |-------|------|--------|
 | #30 | Live traffic (TCP packets, ESTATS of #8) and I/O operations graph in the process properties window of #28, `egui_plot` (reusable by #19) | done (0243216); the TCP plot as administrator not yet checked by hand |
 
-## Phase 4c – asked by the owner after #3
+## Phase 4c – asked by the owner after #3 (#33–#36 released in v1.0.7; #42 open)
 | Issue | What | Status |
 |-------|------|--------|
-| #33 | Process properties (#28, #30) in their own OS windows (egui viewports), several at a time, one per PID | done ("Process properties in their own OS windows") |
-| #34 | Service name of well-known ports: tooltip over the whole port cell (with the owning Windows service of #14), `port (name)` in the details pane, optional system services file | done ("Port service names: whole-cell tooltip, details, system services file") |
-| #35 | Column filters: AND (`&`) and NOT (`!`) per term, precedence `!` > `&` > `\|`, migration of saved `!a\|b` texts (filters, presets, highlight rules); before #16, which reuses the filters. RusTrace port: MiroM73/Rustrace#61 | done ("Column filters: AND and per-term NOT"); the RusTrace port is still open |
-| #36 | Filter field tooltip: examples for the column and its possible values (State, Protocol); after #35 so the examples can use `&` | done ("Column filter tooltip: examples and values per column") |
+| #33 | Process properties (#28, #30) in their own OS windows (egui viewports), several at a time, one per PID | done ("Process properties in their own OS windows"), released in v1.0.7 |
+| #34 | Service name of well-known ports: tooltip over the whole port cell (with the owning Windows service of #14), `port (name)` in the details pane, optional system services file | done ("Port service names: whole-cell tooltip, details, system services file"), released in v1.0.7 |
+| #35 | Column filters: AND (`&`) and NOT (`!`) per term, precedence `!` > `&` > `\|`, migration of saved `!a\|b` texts (filters, presets, highlight rules); before #16, which reuses the filters. RusTrace port: MiroM73/Rustrace#61 | done ("Column filters: AND and per-term NOT"), released in v1.0.7; the RusTrace port is still open |
+| #36 | Filter field tooltip: examples for the column and its possible values (State, Protocol); after #35 so the examples can use `&` | done ("Column filter tooltip: examples and values per column"), released in v1.0.7 |
 | #42 | Help → Command line window (#38) in its own OS window like the process properties of #33 (focus when open, Esc / ×, remembered position and size, embedded fallback), zoom as in the `--help` window of #39, the #33 setting becomes a general View → *Open windows separately* (old value kept) | |
 
-## Phase 5 – recording and automation (#3, #16, #4 released in v1.0.0)
+## Phase 5 – recording and automation (#3, #16, #4 released in v1.0.0; #38, #39 in v1.0.7)
 | Issue | What | Status |
 |-------|------|--------|
 | #3 | Record connection events for a period of time | done ("Record connection events and replay them"), released in v1.0.0; the command-line part is #16 |
@@ -75,11 +75,11 @@ program, README / `docs/architecture.md` / `docs/history.md`, detailed commit wi
 | #31 | Replay: the Duration column counts to now instead of the slider time (found in the #3 check) | |
 | #32 | Invalid TCP state flips of Windows flood recordings with State changed events (found in the #3 check) | |
 | #37 | Process names of system / other users' processes without administrator rights from the process snapshot instead of `<pid>` (found in the #16 check) | |
-| #38 | Help → Command line window: options, column names, exit codes and examples with copy buttons, from the same structured data as `--help` (extends #16) | done ("Help → Command line window") |
+| #38 | Help → Command line window: options, column names, exit codes and examples with copy buttons, from the same structured data as `--help` (extends #16) | done ("Help → Command line window"), released in v1.0.7 |
 | #40 | Console output of the command line garbled in an OEM code page console (`–` → `ÔÇô`; found in the #4 check) | |
-| #39 | `--help` / `-h` / `-?` / `/?` in a styled egui window instead of the message box: resizable by the bottom-right corner, text zoom (Ctrl + wheel, Ctrl + `+` / `-` / `0`); reuses the renderer of #38, so after it | done ("--help in a styled, resizable window") |
+| #39 | `--help` / `-h` / `-?` / `/?` in a styled egui window instead of the message box: resizable by the bottom-right corner, text zoom (Ctrl + wheel, Ctrl + `+` / `-` / `0`); reuses the renderer of #38, so after it | done ("--help in a styled, resizable window"), released in v1.0.7 |
 
-## Any time (small fixes found on the way) – done up to #29 released in v0.3.7
+## Any time (small fixes found on the way) – done up to #29 released in v0.3.7, #41 in v1.0.7
 | Issue | What | Status |
 |-------|------|--------|
 | #21 part 3 | Status bar hint when Windows reports invalid TCP states | done (df3a539) |
@@ -89,7 +89,7 @@ program, README / `docs/architecture.md` / `docs/history.md`, detailed commit wi
 | #25 | `release.ps1` loses the jq quotes under Windows PowerShell 5.1 while waiting for the workflow | done (16d6136) |
 | #26 | Update check: retry transient GitHub errors (HTTP 502/503/504, timeouts) and explain them; port the change back to RusTrace (copied `update`/`http` code, see #20) | done (739a9c4); RusTrace port is MiroM73/Rustrace#60 |
 | #29 | Status bar texts overlap in a narrow window (found in the #27 check) | done (10e1140) |
-| #41 | Multi-line values in the language files cut after the first line: filter tooltip, regex error (found in #35) | done ("Language files: one line per value") |
+| #41 | Multi-line values in the language files cut after the first line: filter tooltip, regex error (found in #35) | done ("Language files: one line per value"), released in v1.0.7 |
 
 ## Deferred indefinitely (owner's decision)
 | Issue | What | Status |
