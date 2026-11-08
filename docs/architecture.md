@@ -143,6 +143,12 @@ columns), `TableBuilder::reset` drops that state and the columns start with
 cell widths back into the layout once no mouse button is down (a resize does not write the
 settings every frame); the last column fills the rest of the window and keeps its stored width.
 
+The title of the sorted column is followed by a painted triangle (▲ ascending, ▼ descending):
+the characters ⏶ / ⏷, ▲ / ▼ and ⏴ / ⏵ are not in egui's built-in fonts and were drawn as empty
+boxes (#22). `table::paint_triangle` draws it; the title label is truncated to the cell width
+minus the space reserved for it (`sort_arrow_width`). The ◀ / ▶ move buttons of the column window
+(`table::arrow_button`) and the triangle of a group line use the same function.
+
 A header title line senses click and drag over the whole cell width: a click sorts, a drag starts
 `App::header_drag` (`src/app/columnlayout.rs`). While dragging, the cell under the pointer and its
 half give the drop place (`columns::drop_slot`, pure and tested), drawn as a line in a foreground
@@ -154,7 +160,7 @@ Columns, right click on a header) has a ≡ handle per row with the same drag lo
 vertical, next to the ⏴ ⏵ buttons.
 
 A double click on a header border (within the resize grab radius) fits the column:
-`fit_column` measures the title with the sort arrow and the cell texts of the first 5 000 rows
+`fit_column` measures the title plus the space of the sort arrow and the cell texts of the first 5 000 rows
 shown (plus the icon for Process). It is detected by `App` itself, because `egui_extras` 0.37
 reads the double click of its resize handle under a different id than it creates it with, so its
 own auto-size never triggers.
@@ -461,7 +467,7 @@ UDP endpoints and the sum of the traffic counters (#8), when any row has them.
   icon and the tooltip of the group line (also of a collapsed group; `load_icon_textures` includes
   them). Without grouping `ungrouped` gives one line per row.
 - The group line (`src/app/groups.rs`) paints an opaque tint over every cell, a painted triangle
-  (▶ / ▼ are empty boxes in egui's fonts, #22) and the process icon in the first cell, and the
+  (`table::paint_triangle`; ▶ / ▼ are empty boxes in egui's fonts, #22) and the process icon in the first cell, and the
   text in the last cell with the clip rect of the whole visible line – painted, not a label,
   so it never widens the first column (whose width is remembered, #2), and after every cell's
   background. A click toggles the group.

@@ -142,16 +142,14 @@ impl App {
                     changed = true;
                 }
                 ui.with_layout(egui::Layout::right_to_left(egui::Align::Center), |ui| {
-                    if ui
-                        .add_enabled(i < last, egui::Button::new("⏵").small())
+                    if crate::app::table::arrow_button(ui, i < last, true)
                         .on_hover_text(t!("columns.move_right"))
                         .clicked()
                     {
                         self.cfg.columns.move_by(c.id, 1);
                         changed = true;
                     }
-                    if ui
-                        .add_enabled(i > 0, egui::Button::new("⏴").small())
+                    if crate::app::table::arrow_button(ui, i > 0, false)
                         .on_hover_text(t!("columns.move_left"))
                         .clicked()
                     {

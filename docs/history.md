@@ -206,3 +206,9 @@
   both notes, ending the PowerShell froze the graph with "(process has exited)". The TCP plot as
   administrator was not checked by hand (no elevated session). Also fixed a misplaced doc comment
   of `process::start_time`.
+- #22: the sort arrow in the header is a painted triangle (`table::paint_triangle`) instead of
+  ⏶ / ⏷, which egui's fonts do not contain; the ⏴ / ⏵ move buttons of the column window (same
+  problem, comment on #22) are buttons with a painted triangle, and the group line triangle of #12
+  uses the same function. Verified in the release build: ▲ after Process (ascending), ▼ after PID
+  (descending) with grouping on, the column window shows ◀ / ▶ with the disabled first / last
+  button faded; fmt, clippy, 129 tests.

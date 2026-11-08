@@ -77,24 +77,12 @@ impl App {
         let rect = ui.max_rect();
         let c = egui::pos2(rect.left() + row_h * 0.3, rect.center().y);
         let s = row_h * 0.2;
-        let points = if group.collapsed {
-            vec![
-                c + egui::vec2(-s * 0.6, -s),
-                c + egui::vec2(s, 0.0),
-                c + egui::vec2(-s * 0.6, s),
-            ]
+        let dir = if group.collapsed {
+            egui::Vec2::X
         } else {
-            vec![
-                c + egui::vec2(-s, -s * 0.6),
-                c + egui::vec2(s, -s * 0.6),
-                c + egui::vec2(0.0, s),
-            ]
+            egui::Vec2::Y
         };
-        ui.painter().add(egui::Shape::convex_polygon(
-            points,
-            color,
-            egui::Stroke::NONE,
-        ));
+        crate::app::table::paint_triangle(ui.painter(), c, s, dir, color);
         let mut x = rect.left() + row_h * 0.7;
         if let Some(tex) = sample.and_then(|r| self.icon_texture(&r.process)) {
             let size = row_h - 6.0;

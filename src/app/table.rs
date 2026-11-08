@@ -109,18 +109,8 @@ impl App {
                 h.col(|ui| {
                     cells[i] = ui.max_rect();
                     ui.vertical(|ui| {
-                        let arrow = match (sort.column == c, sort.ascending) {
-                            (true, true) => " ⏶",
-                            (true, false) => " ⏷",
-                            _ => "",
-                        };
-                        let label = ui.add(
-                            egui::Label::new(
-                                RichText::new(format!("{}{arrow}", c.title())).strong(),
-                            )
-                            .truncate()
-                            .selectable(false),
-                        );
+                        let arrow = (sort.column == c).then_some(sort.ascending);
+                        let label = header_title(ui, &c.title(), arrow);
                         // The whole width of the title line: a click sorts, a drag moves the
                         // column (#2).
                         let title = egui::Rect::from_x_y_ranges(
@@ -336,4 +326,95 @@ impl App {
             .show(ctx, |ui| self.columns_menu(ui));
         self.show_columns_popup = open;
     }
+}
+
+/// The width reserved after a column title for the painted sort arrow.
+pub(in crate::app) fn sort_arrow_width(ui: &egui::Ui) -> f32 {
+    ui.text_style_height(&egui::TextStyle::Body) * 0.9
+}
+
+/// A header title, truncated to the cell, followed by a painted sort arrow when the column is
+/// sorted (`Some(ascending)`). The arrow is painted: ⏶ / ⏷ and ▲ / ▼ are not in egui's built-in
+/// fonts and were drawn as empty boxes (#22). Returns the response of the title label.
+fn header_title(ui: &mut egui::Ui, title: &str, arrow: Option<bool>) -> egui::Response {
+    ui.horizontal(|ui| {
+        let arrow_w = if arrow.is_some() {
+            sort_arrow_width(ui)
+        } else {
+            0.0
+        };
+        let label = ui
+            .scope(|ui| {
+                ui.set_max_width((ui.available_width() - arrow_w).max(0.0));
+                ui.add(
+                    egui::Label::new(RichText::new(title).strong())
+                        .truncate()
+                        .selectable(false),
+                )
+            })
+            .inner;
+        if let Some(ascending) = arrow {
+            let (rect, _) =
+                ui.allocate_exact_size(egui::vec2(arrow_w, label.rect.height()), Sense::hover());
+            let dir = if ascending {
+                -egui::Vec2::Y
+            } else {
+                egui::Vec2::Y
+            };
+            let color = ui.visuals().strong_text_color();
+            paint_triangle(
+                ui.painter(),
+                rect.center(),
+                rect.height() * 0.22,
+                dir,
+                color,
+            );
+        }
+        label
+    })
+    .inner
+}
+
+/// Paints a filled triangle around `center` pointing in the unit direction `dir`; `s` is half of
+/// its size. Arrow characters are mostly missing from egui's built-in fonts (#22).
+pub(in crate::app) fn paint_triangle(
+    painter: &egui::Painter,
+    center: egui::Pos2,
+    s: f32,
+    dir: egui::Vec2,
+    color: Color32,
+) {
+    let side = dir.rot90();
+    let base = center - dir * s * 0.8;
+    painter.add(egui::Shape::convex_polygon(
+        vec![center + dir * s, base + side * s, base - side * s],
+        color,
+        egui::Stroke::NONE,
+    ));
+}
+
+/// A small button with a painted left / right triangle (⏴ / ⏵ are empty boxes, #22).
+pub(in crate::app) fn arrow_button(
+    ui: &mut egui::Ui,
+    enabled: bool,
+    right: bool,
+) -> egui::Response {
+    let h = ui.text_style_height(&egui::TextStyle::Body);
+    let resp = ui.add_enabled(
+        enabled,
+        egui::Button::new("").small().min_size(egui::vec2(h, h)),
+    );
+    let color = if enabled {
+        ui.style().interact(&resp).fg_stroke.color
+    } else {
+        ui.visuals()
+            .widgets
+            .noninteractive
+            .fg_stroke
+            .color
+            .gamma_multiply(0.5)
+    };
+    let dir = if right { egui::Vec2::X } else { -egui::Vec2::X };
+    paint_triangle(ui.painter(), resp.rect.center(), h * 0.25, dir, color);
+    resp
 }

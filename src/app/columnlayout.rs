@@ -180,7 +180,9 @@ impl App {
                 .size()
                 .x
         };
-        let mut w = width(format!("{} ⏷", c.title()), egui::TextStyle::Body);
+        let mut w = width(c.title().to_string(), egui::TextStyle::Body)
+            + ui.spacing().item_spacing.x
+            + crate::app::table::sort_arrow_width(ui);
         for r in self.view.iter().take(FIT_ROWS) {
             w = w.max(width(cell_text(r, c), egui::TextStyle::Body));
         }
