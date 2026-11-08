@@ -131,6 +131,15 @@ Unix epoch – passed in, so tests need no waiting):
 The UI repaints when the poll thread delivers a snapshot (it calls `request_repaint`) and at the
 next mark expiry (`Tracker::next_expiry`).
 
+## Status bar
+
+`src/app/statusbar.rs`: the refresh time (or "Paused") is measured first and placed at the right
+end of the first line; the other items (counts, hints, admin badge, action / export messages,
+errors, a newer version) get only the width left of it, in a left-to-right layout with main-axis
+wrapping, one line high like `horizontal_wrapped` and with `TextWrapMode::Extend`. In a narrow
+window an item that does not fit starts a new line and the panel grows, instead of the right part
+painting over the left one (#29); in a wide window it is one line as before.
+
 ## Table
 
 `App::view` is a filtered and sorted copy of the tracker rows, rebuilt only when `view_dirty` is

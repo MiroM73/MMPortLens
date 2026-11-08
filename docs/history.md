@@ -230,3 +230,7 @@
   TCPView) while any TCP row has an invalid state; new keys in all four languages. Verified in
   the release build on the affected PC: "Invalid TCP states: 39" after the state counts; 130
   tests (including the language completeness test).
+- #29: the status bar reserves the width of the refresh time at the right and lets the other items
+  wrap onto more lines (one-line-high wrapping layout, labels not wrapped inside) instead of
+  painting the refresh time over them. Verified in the release build at 1500, 800 and 600 px: one
+  line as before when wide, two / three lines without overlap when narrow; 130 tests.
