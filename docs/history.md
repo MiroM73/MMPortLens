@@ -448,3 +448,18 @@
   `created = at - 5000` shows `5.000 s`, the export gives 5 s); release build with a recording
   from 19:41: at the slider time 19:41:11.746 a connection created at 19:06:45.746 showed
   *34 min 26 s* (before: the age until now, ~2 h 50 min).
+- #40: console messages of the runs without a window are right when PowerShell reads them through
+  a pipe. Checked first in real consoles (conhost cmd, conhost and Windows Terminal PowerShell 5.1,
+  code page 852): written directly to the console the text was already right (Rust's stdout uses
+  `WriteConsoleW`); garbled were only pipes read by PowerShell (`| Out-Host`, `2>&1`), which decodes
+  native output with `[Console]::OutputEncoding`. New `src/console.rs` (`attach_console` moved
+  there from `cli.rs`, `out` / `err`): console → unchanged, pipe + attached non-UTF-8 console +
+  PowerShell parent → the console's code page (`WideCharToMultiByte`), else UTF-8. A first version
+  without the parent check gave bash pipes 852 bytes (the bash of the Claude tool has a hidden
+  console), so the parent check was added. Verified: fmt, clippy, tests (decision table, parent
+  names, 852 / 437 bytes of `á č ž – ô ü`); release build in a conhost PowerShell 5.1: `| Out-Host`
+  in Slovak, `2>&1` in Czech, direct output and a PowerShell switched to UTF-8 all show the
+  letters, the code page is 852 before and after; from bash `> file` and `| od` are UTF-8.
+  Found on the way: #44 (cmd `>` and PowerShell `$x = …` lose the output of the GUI exe, the
+  shells do not wait), #43 (wgpu panic with a window higher than 8192 px), RusTrace port
+  MiroM73/Rustrace#62.

@@ -6,8 +6,8 @@
 //! filter syntax). Messages go through `t!()`; the version and the errors of a start with a window
 //! are shown with [`show_message`] (a message box on Windows, where the release build has no
 //! console, and stdout / stderr), the runs without a window (`--export`, `--record`) write to the
-//! console they were started from ([`attach_console`]). The help is `clihelp` (#38), shown in the
-//! window of `helpwindow` (#39).
+//! console they were started from (`console::attach_console`, `console::out`, #40). The help is
+//! `clihelp` (#38), shown in the window of `helpwindow` (#39).
 //!
 //! Compatibility: a plain `mmportlens.exe "C:\path\capture.plrec"` (a double-clicked recording)
 //! is the RECORDING; `--preset <name>` keeps the form and the behaviour it had since #13; the
@@ -406,9 +406,9 @@ pub fn filters(
 /// has no console), `boxed` in a message box.
 pub fn show_message(title: &str, console: &str, boxed: &str, error: bool) {
     if error {
-        eprintln!("{console}");
+        crate::console::err(console);
     } else {
-        println!("{console}");
+        crate::console::out(console);
     }
     #[cfg(windows)]
     message_box(title, boxed, error);
@@ -434,23 +434,6 @@ fn message_box(title: &str, text: &str, error: bool) {
     // SAFETY: both strings are NUL-terminated UTF-16 and live until the call returns.
     unsafe {
         MessageBoxW(0, text.as_ptr(), title.as_ptr(), icon);
-    }
-}
-
-/// Lets a program without a console (the release build) print to the console it was started
-/// from (`cmd`, PowerShell) and receive its Ctrl+C; does nothing when there is none.
-pub fn attach_console() {
-    #[cfg(windows)]
-    {
-        #[link(name = "kernel32")]
-        unsafe extern "system" {
-            fn AttachConsole(process: u32) -> i32;
-        }
-        const ATTACH_PARENT_PROCESS: u32 = u32::MAX;
-        // SAFETY: no pointers; failing (no parent console, or a console already) is fine.
-        unsafe {
-            AttachConsole(ATTACH_PARENT_PROCESS);
-        }
     }
 }
 

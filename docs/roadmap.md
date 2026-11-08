@@ -76,7 +76,8 @@ program, README / `docs/architecture.md` / `docs/history.md`, detailed commit wi
 | #32 | Invalid TCP state flips of Windows flood recordings with State changed events (found in the #3 check) | |
 | #37 | Process names of system / other users' processes without administrator rights from the process snapshot instead of `<pid>` (found in the #16 check) | |
 | #38 | Help → Command line window: options, column names, exit codes and examples with copy buttons, from the same structured data as `--help` (extends #16) | done ("Help → Command line window"), released in v1.0.7 |
-| #40 | Console output of the command line garbled in an OEM code page console (`–` → `ÔÇô`; found in the #4 check) | |
+| #40 | Console output of the command line garbled in an OEM code page console (`–` → `ÔÇô`; found in the #4 check) | done ("Console messages in the code page PowerShell decodes with"); RusTrace port is MiroM73/Rustrace#62 |
+| #44 | Shells do not wait for the GUI exe; cmd `>` and PowerShell `$x = …` lose the messages and the exit code (found in the #40 check) | |
 | #39 | `--help` / `-h` / `-?` / `/?` in a styled egui window instead of the message box: resizable by the bottom-right corner, text zoom (Ctrl + wheel, Ctrl + `+` / `-` / `0`); reuses the renderer of #38, so after it | done ("--help in a styled, resizable window"), released in v1.0.7 |
 
 ## Any time (small fixes found on the way) – done up to #29 released in v0.3.7, #41 in v1.0.7
@@ -90,6 +91,7 @@ program, README / `docs/architecture.md` / `docs/history.md`, detailed commit wi
 | #26 | Update check: retry transient GitHub errors (HTTP 502/503/504, timeouts) and explain them; port the change back to RusTrace (copied `update`/`http` code, see #20) | done (739a9c4); RusTrace port is MiroM73/Rustrace#60 |
 | #29 | Status bar texts overlap in a narrow window (found in the #27 check) | done (10e1140) |
 | #41 | Multi-line values in the language files cut after the first line: filter tooltip, regex error (found in #35) | done ("Language files: one line per value"), released in v1.0.7 |
+| #43 | wgpu validation error (panic) when a window is larger than the maximum texture size, 8192 px (found in the #31 check) | |
 
 ## Deferred indefinitely (owner's decision)
 | Issue | What | Status |

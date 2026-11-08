@@ -11,6 +11,7 @@ mod clihelp;
 mod colfilter;
 mod columns;
 mod config;
+mod console;
 mod dns;
 mod elevation;
 mod filterhelp;
@@ -53,12 +54,12 @@ fn command_line(cfg: &config::Config, raw: &[String]) -> (app::Startup, Option<P
             .any(|o| a == o || a.starts_with(&format!("{o}=")))
     });
     if headless_args {
-        cli::attach_console();
+        console::attach_console();
     }
     let fail = |e: cli::CliError| -> ! {
         let msg = e.message();
         if headless_args {
-            eprintln!("{msg}");
+            console::err(&msg);
         } else {
             cli::show_message(&t!("cli.title.error"), &msg, &msg, true);
         }
@@ -79,10 +80,10 @@ fn command_line(cfg: &config::Config, raw: &[String]) -> (app::Startup, Option<P
         // The aligned text for the console it was started from (scripts, `| more`), then the
         // help window (#39); closing it ends the program with exit code 0.
         let help = clihelp::build(&languages.join(", "));
-        cli::attach_console();
-        println!("{}", help.text(false));
+        console::attach_console();
+        console::out(&help.text(false));
         if let Err(e) = helpwindow::run(cfg, help, app::icon_data()) {
-            eprintln!("{e}");
+            console::err(&e.to_string());
         }
         std::process::exit(0)
     }
@@ -116,11 +117,11 @@ fn command_line(cfg: &config::Config, raw: &[String]) -> (app::Startup, Option<P
         };
         match res {
             Ok(msg) => {
-                println!("{msg}");
+                console::out(&msg);
                 std::process::exit(0)
             }
             Err(e) => {
-                eprintln!("{e}");
+                console::err(&e.to_string());
                 std::process::exit(1)
             }
         }

@@ -8,7 +8,8 @@ with the change.
 | File | What it does |
 |------|--------------|
 | `src/main.rs` | Start-up: the command line (`cli`), help / version / errors, the runs without a window (`headless`), always start as administrator, `--restore <file>` after an update, the window. |
-| `src/cli.rs` | Command-line parser (#16): `Options` / `ViewOptions`, `CliError` with translated messages, `filters` (preset + text + column filters checked against the settings), `PUBLIC_OPTIONS` (the documented options, shared with the help), message box, `attach_console` – the style of RusTrace `src/cli.rs`. |
+| `src/cli.rs` | Command-line parser (#16): `Options` / `ViewOptions`, `CliError` with translated messages, `filters` (preset + text + column filters checked against the settings), `PUBLIC_OPTIONS` (the documented options, shared with the help), message box – the style of RusTrace `src/cli.rs`. |
+| `src/console.rs` | Console messages of the runs without a window (#40): `attach_console`, `out` / `err` (instead of `println!` / `eprintln!`) with the encoding chosen per handle (`target`: console → WriteConsoleW, pipe read by PowerShell → the console's code page, else UTF-8). |
 | `src/clihelp.rs` | The command-line help as data (#38): `CliHelp` (usage, options, column names, exit codes, examples) built from `cli::PUBLIC_OPTIONS` and the `cli.*` keys; `text()` for the console / message box. |
 | `src/helpwindow.rs` | The `--help` window (#39): a small eframe app around `app::cli_help::cli_help_ui`, zoom (Ctrl + wheel / `+` / `-` / `0`, bottom bar), resize grip, `HelpWindowState` (zoom and size in `Config::help_window`). |
 | `src/headless.rs` | `--export` (one snapshot) and `--record` (until `--duration` or Ctrl+C) without a window (#16). |
@@ -746,7 +747,7 @@ menu or an interval in the toolbar (then that one is saved). The toolbar shows a
 invalid command line. A start with a window shows errors and the version in a message box
 (`cli::show_message`, `MessageBoxW`; the release build has no console) and on stdout / stderr.
 
-**`--help` window (#39)**: `main` attaches to the parent console (`cli::attach_console`), prints
+**`--help` window (#39)**: `main` attaches to the parent console (`console::attach_console`), prints
 `CliHelp::text(false)` there (scripts, `| more`) and runs `helpwindow::run` – a second, small
 `eframe::run_native` (app id `MMPortLens-help`) instead of the message box, titled `cli.title.help`,
 with the program icon (`app::icon_data`) and the theme of the settings (`app::theme_preference`);
@@ -760,11 +761,24 @@ counts too – on the Slovak layout the 0 key types "é") and Ctrl + wheel throu
 `InputState::zoom_delta`. Esc, Close or the × save `HelpWindowState` (zoom, inner size in
 unzoomed logical pixels = points × zoom) into a freshly loaded `Config` (`help_window`) and close;
 `main` then exits with 0. The same window on Linux (there was no message box).
-When the arguments contain `--export` / `--record`, `cli::attach_console`
+When the arguments contain `--export` / `--record`, `console::attach_console`
 (`AttachConsole(ATTACH_PARENT_PROCESS)`) runs first and every message (also an invalid line) goes
 only to the console – an unattended task never waits for a click. Because the exe is a GUI
 program, PowerShell does not wait for it on its own: `mmportlens --export x.csv | Out-Null` (or
-`Start-Process -Wait`, `start /wait` in cmd) waits and sets `$LASTEXITCODE`.
+`Start-Process -Wait`, `start /wait` in cmd) waits and sets `$LASTEXITCODE`; cmd does not pass
+redirected handles to a GUI program at all (`> out.txt` stays empty) – #44.
+
+**Encoding of the console messages (#40)**: every message of these runs goes through
+`console::out` / `console::err`, which pick the encoding by where the standard handle points
+(`console::target`, pure and tested): a **console** (`GetConsoleMode` succeeds) – the standard
+library writes UTF-16 with `WriteConsoleW`, right in any code page; a **pipe read by PowerShell**
+(`GetFileType` = pipe, a console is attached with an output code page other than 65001, and the
+parent process from a Toolhelp snapshot is `powershell.exe` / `pwsh.exe`) – PowerShell decodes a
+native program's bytes with `[Console]::OutputEncoding` = the console's code page, so the line is
+encoded in `GetConsoleOutputCP()` with `WideCharToMultiByte` (best fit: `–` → `-` in 852);
+anything else (a file, a pipe to bash / grep – bash in Windows Terminal also has an OEM console –
+or no console) – UTF-8. The console code page is never changed (`SetConsoleOutputCP` would not
+help: PowerShell fixes its decoder when it starts the process), so nothing is restored on exit.
 
 Combinations refused: `--export` with `--record`, either of them with a RECORDING or `--paused`,
 `--export` with `--interval`, `--duration` without `--record`, an export extension other than

@@ -336,17 +336,14 @@ pub fn record(
             return Err(t!("record.error", error = e));
         }
     };
-    println!(
-        "{}",
-        match duration {
-            Some(d) => t!(
-                "cli.record.started_for",
-                path = path.display(),
-                duration = duration_text(d)
-            ),
-            None => t!("cli.record.started", path = path.display()),
-        }
-    );
+    crate::console::out(&match duration {
+        Some(d) => t!(
+            "cli.record.started_for",
+            path = path.display(),
+            duration = duration_text(d)
+        ),
+        None => t!("cli.record.started", path = path.display()),
+    });
     let until = duration.map(|d| start + d);
     let mut failed = None;
     let mut etw_warned = false;
@@ -369,7 +366,7 @@ pub fn record(
                 if let EtwStatus::Error(e) = &snap.etw_status
                     && !etw_warned
                 {
-                    eprintln!("{}", etw_error_text(e));
+                    crate::console::err(&etw_error_text(e));
                     etw_warned = true;
                 }
                 let events: Vec<Event> = events
@@ -381,7 +378,7 @@ pub fn record(
                 }
             }
             // A failed refresh is skipped, like in the window.
-            Ok(Err(e)) => eprintln!("{}", t!("error.poll", error = e)),
+            Ok(Err(e)) => crate::console::err(&t!("error.poll", error = e)),
             Err(mpsc::RecvTimeoutError::Timeout) => {}
             Err(mpsc::RecvTimeoutError::Disconnected) => {
                 failed = Some("the poll thread ended".into());
