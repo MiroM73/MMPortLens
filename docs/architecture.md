@@ -79,9 +79,12 @@ others. It is an OS problem, not a decoding one. Consequences in the code:
   `Listen`, and deciding by the state gave the same socket two `ConnKey`s, so the row flickered
   as closed + new, lost its selection and "First seen" (#24). Now only the state changes (marked
   *Changed*).
-- The live test finds its own sockets by protocol, local address and PID and skips only the state
-  assertion when Windows reports an invalid state (`state_checkable`, prints a message); on a clean
-  Windows (CI) the full check runs.
+- The live test finds its own sockets by protocol, local address and PID, retries the snapshot up
+  to five times (50 ms apart) until both have the expected state, and prints the rows of its own
+  PID when it fails (#23). `check_state` (pure, tested) skips the state assertion with a message
+  when Windows reports an invalid state, or a valid but wrong one (the own client as Listen,
+  FinWait1 or Closed – seen in about 15 of 100 runs on the affected PC) in a snapshot that also
+  contains invalid states; on a clean Windows (CI) and on Linux a wrong state fails.
 
 Limit of polling: a connection that opens and closes between two refreshes is never seen. ETW
 (Microsoft-Windows-Kernel-Network) would catch those – see the issues.

@@ -219,3 +219,9 @@
   same key), `can_close` test for both forms, the live test finds its listener by
   `remote == None`; in the release build the listeners with "Invalid (0)" and the alternating
   `:5040` show no remote side and the last refresh stayed at +0 −0 ~0. 130 tests.
+- #23: the live snapshot test retries the snapshot (5 × 50 ms) before checking the states, its
+  failure messages list the observed rows of the own PID, and a valid but wrong state of the own
+  sockets is skipped with a message when the same snapshot contains invalid states (#21),
+  decided by the pure `check_state`. Verified: 100 consecutive runs of the test passed on the
+  development PC; every run skipped the listener (state 0) and 15 skipped the client (reported as
+  Listen, FinWait1 or Closed despite the retries); unit test of `check_state`; 130 tests.

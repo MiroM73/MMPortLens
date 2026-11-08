@@ -235,28 +235,57 @@ mod tests {
         assert_eq!(TcpState::from_mib(13), TcpState::Unknown(13));
     }
 
-    /// Whether the live test can check the state the OS reported. Windows sometimes reports an
-    /// invalid TCP state (0) even for a socket that is certainly listening (issue #21); that is
-    /// an OS problem, not a decoding one, so the state check is skipped there with a message.
-    fn state_checkable(what: &str, state: Option<TcpState>) -> bool {
-        match state {
-            Some(s @ TcpState::Unknown(_)) if cfg!(windows) => {
-                eprintln!(
-                    "{what}: Windows reported an invalid TCP state {s:?}, state check skipped (issue #21)"
-                );
-                false
+    /// What the live test does with a state the OS reported for one of its own sockets.
+    #[derive(Debug, PartialEq)]
+    enum StateCheck {
+        Ok,
+        /// Not checked: Windows reports broken states on this machine (#21, #23).
+        Skip(String),
+        Fail,
+    }
+
+    /// Windows sometimes reports an invalid TCP state (0) even for a socket that is certainly
+    /// listening, and on such a machine also valid but wrong states (the own client as Listen or
+    /// FinWait1). That is an OS problem, not a decoding one (#21, #23): an invalid state, or a
+    /// wrong state in a snapshot that contains invalid states (`unreliable`), is skipped with a
+    /// message. Elsewhere (CI) a wrong state fails.
+    fn check_state(expected: TcpState, observed: Option<TcpState>, unreliable: bool) -> StateCheck {
+        if observed == Some(expected) {
+            return StateCheck::Ok;
+        }
+        if !cfg!(windows) {
+            return StateCheck::Fail;
+        }
+        match observed {
+            Some(s @ TcpState::Unknown(_)) => {
+                StateCheck::Skip(format!("Windows reported an invalid TCP state {s:?}"))
             }
-            _ => true,
+            Some(s) if unreliable => StateCheck::Skip(format!(
+                "Windows reported {s:?} instead of {expected:?} on a machine that also reports invalid states"
+            )),
+            _ => StateCheck::Fail,
         }
     }
 
     #[test]
-    fn state_check_is_skipped_only_for_invalid_states_on_windows() {
-        assert!(state_checkable("t", Some(TcpState::Listen)));
-        assert!(state_checkable("t", None));
+    fn state_check_skips_only_broken_states_on_windows() {
+        use TcpState::*;
+        assert_eq!(check_state(Listen, Some(Listen), false), StateCheck::Ok);
+        assert_eq!(check_state(Listen, Some(Listen), true), StateCheck::Ok);
+        assert_eq!(check_state(Established, None, true), StateCheck::Fail);
+        let skipped = |c: StateCheck| matches!(c, StateCheck::Skip(_));
         assert_eq!(
-            state_checkable("t", Some(TcpState::Unknown(0))),
-            !cfg!(windows)
+            skipped(check_state(Listen, Some(Unknown(0)), false)),
+            cfg!(windows)
+        );
+        // A wrong valid state is skipped only where invalid states were seen.
+        assert_eq!(
+            skipped(check_state(Established, Some(FinWait1), true)),
+            cfg!(windows)
+        );
+        assert_eq!(
+            check_state(Established, Some(FinWait1), false),
+            StateCheck::Fail
         );
     }
 
@@ -268,38 +297,87 @@ mod tests {
     }
 
     /// The real backend of the platform finds a listener and a connection of this process
-    /// (on the Windows CI this checks the iphlpapi decoding against the real API).
+    /// (on the Windows CI this checks the iphlpapi decoding against the real API). The snapshot
+    /// is retried a few times before the states are checked, and a failure prints the observed
+    /// rows of this process (#23).
     #[cfg(any(windows, target_os = "linux"))]
     #[test]
     fn live_snapshot_sees_own_sockets() {
         let listener = std::net::TcpListener::bind("127.0.0.1:0").unwrap();
         let addr = listener.local_addr().unwrap();
         let client = std::net::TcpStream::connect(addr).unwrap();
+        let client_addr = client.local_addr().unwrap();
         let (_server, _) = listener.accept().unwrap();
-        let conns = snapshot().unwrap();
         let me = std::process::id();
         // Found by protocol, local address and PID; the remote side is none whatever state
         // Windows reports (#21, #24).
-        let lis = conns
-            .iter()
-            .find(|c| {
-                c.proto == Protocol::Tcp && c.local == addr && c.pid == me && c.remote.is_none()
-            })
-            .expect("own listener");
-        if state_checkable("own listener", lis.state) {
-            assert_eq!(lis.state, Some(TcpState::Listen));
+        let find = |conns: &[Connection]| {
+            let lis = conns
+                .iter()
+                .find(|c| {
+                    c.proto == Protocol::Tcp && c.local == addr && c.pid == me && c.remote.is_none()
+                })
+                .cloned();
+            let out = conns
+                .iter()
+                .find(|c| {
+                    c.proto == Protocol::Tcp && c.local == client_addr && c.remote == Some(addr)
+                })
+                .cloned();
+            (lis, out)
+        };
+        let mut conns = Vec::new();
+        for attempt in 0..5 {
+            if attempt > 0 {
+                std::thread::sleep(std::time::Duration::from_millis(50));
+            }
+            conns = snapshot().unwrap();
+            if let (Some(l), Some(o)) = find(&conns)
+                && l.state == Some(TcpState::Listen)
+                && o.state == Some(TcpState::Established)
+            {
+                break;
+            }
         }
-        let out = conns
+        let own: Vec<String> = conns
             .iter()
-            .find(|c| {
-                c.proto == Protocol::Tcp
-                    && c.local == client.local_addr().unwrap()
-                    && c.remote == Some(addr)
+            .filter(|c| c.pid == me)
+            .map(|c| {
+                format!(
+                    "  {:?} {} -> {:?} {:?}",
+                    c.proto, c.local, c.remote, c.state
+                )
             })
-            .expect("own outgoing connection");
-        assert_eq!(out.pid, me);
-        if state_checkable("own outgoing connection", out.state) {
-            assert_eq!(out.state, Some(TcpState::Established));
+            .collect();
+        let rows = format!(
+            "rows of this process (PID {me}):
+{}",
+            own.join(
+                "
+"
+            )
+        );
+        let (lis, out) = find(&conns);
+        let lis = lis.unwrap_or_else(|| panic!("own listener {addr} not found; {rows}"));
+        let out = out
+            .unwrap_or_else(|| panic!("own outgoing connection {client_addr} not found; {rows}"));
+        assert_eq!(out.pid, me, "{rows}");
+        let unreliable = conns
+            .iter()
+            .any(|c| matches!(c.state, Some(TcpState::Unknown(_))));
+        for (what, expected, observed) in [
+            ("own listener", TcpState::Listen, lis.state),
+            ("own outgoing connection", TcpState::Established, out.state),
+        ] {
+            match check_state(expected, observed, unreliable) {
+                StateCheck::Ok => {}
+                StateCheck::Skip(why) => {
+                    eprintln!("{what}: {why}, state check skipped (issues #21, #23)")
+                }
+                StateCheck::Fail => {
+                    panic!("{what}: state {observed:?}, expected {expected:?}; {rows}")
+                }
+            }
         }
         // Windows knows when the connection was created and which module owns it (#14).
         if cfg!(windows) {
