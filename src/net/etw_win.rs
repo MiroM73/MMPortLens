@@ -1,5 +1,5 @@
 //! The real-time ETW session of [`super::etw`] (#4): `StartTraceW` creates a session named
-//! `MMPortLens ETW <pid>`, `EnableTraceEx2` adds the kernel network provider, `OpenTraceW` +
+//! `MMPortLens ETW <pid>-<n>`, `EnableTraceEx2` adds the kernel network provider, `OpenTraceW` +
 //! `ProcessTrace` deliver its events to [`callback`] in a thread of its own, which decodes them
 //! and sends them to the poll thread.
 //!
@@ -16,8 +16,11 @@ use std::ffi::c_void;
 use std::sync::mpsc::Sender;
 use std::thread::JoinHandle;
 
-/// Start of the session names.
+/// Start of the session names: `MMPortLens ETW <pid>-<n>`, `n` counting the sessions of the
+/// process (two at a time in the tests; the same name would make one start stop the other).
 const NAME_PREFIX: &str = "MMPortLens ETW ";
+/// The number of the next session of this process.
+static NEXT_SESSION: std::sync::atomic::AtomicU32 = std::sync::atomic::AtomicU32::new(1);
 
 const ERROR_SUCCESS: u32 = 0;
 const ERROR_ACCESS_DENIED: u32 = 5;
@@ -246,7 +249,9 @@ fn process_alive(pid: u32) -> bool {
 
 /// The PID in a session name of MM PortLens.
 fn session_pid(name: &str) -> Option<u32> {
-    name.strip_prefix(NAME_PREFIX)?.parse().ok()
+    let rest = name.strip_prefix(NAME_PREFIX)?;
+    let pid = rest.split_once('-').map_or(rest, |(pid, _)| pid);
+    pid.parse().ok()
 }
 
 /// Stops the sessions of MM PortLens processes that no longer run.
@@ -325,7 +330,8 @@ struct TraceHandle(u64);
 impl Session {
     pub fn start(tx: Sender<EtwEvent>) -> Result<Self, EtwError> {
         stop_orphans();
-        let name = format!("{NAME_PREFIX}{}", std::process::id());
+        let n = NEXT_SESSION.fetch_add(1, std::sync::atomic::Ordering::Relaxed);
+        let name = format!("{NAME_PREFIX}{}-{n}", std::process::id());
         let wname = wide(&name);
         let mut props = properties();
         let mut handle = 0u64;
@@ -346,7 +352,7 @@ impl Session {
         };
         let mut rc = start(&mut props, &mut handle);
         if rc == ERROR_ALREADY_EXISTS {
-            // Left from an earlier run with the same PID.
+            // Left from an earlier process with the same PID.
             stop_by_name(&name);
             props = properties();
             rc = start(&mut props, &mut handle);
@@ -450,6 +456,7 @@ mod tests {
     #[test]
     fn session_names() {
         assert_eq!(session_pid("MMPortLens ETW 1234"), Some(1234));
+        assert_eq!(session_pid("MMPortLens ETW 1234-2"), Some(1234));
         assert_eq!(session_pid("MMPortLens ETW x"), None);
         assert_eq!(session_pid("NT Kernel Logger"), None);
     }

@@ -67,7 +67,7 @@ program, README / `docs/architecture.md` / `docs/history.md`, detailed commit wi
 |-------|------|--------|
 | #3 | Record connection events for a period of time | done ("Record connection events and replay them"); the command-line part is #16 |
 | #16 | Command line: filters (#1), export (#9), recording (#3) – therefore after them | done ("Command line: filters, headless export and recording") |
-| #4 | ETW for short-lived connections (extends the recording of #3) | done ("Capture short-lived connections with ETW"); the capture as administrator not yet checked by hand (the acceptance test runs on the elevated CI) |
+| #4 | ETW for short-lived connections (extends the recording of #3) | done ("Capture short-lived connections with ETW"), checked as administrator (acceptance test 100 + 100 connections, `--record --etw`) |
 | #18 | Watch rules and alerts (builds on #10 and #3) | |
 | #19 | Statistics over time (data from the recording of #3) | |
 | #11 | Country and ASN (offline) – least critical, depends on an offline database | |
@@ -75,6 +75,7 @@ program, README / `docs/architecture.md` / `docs/history.md`, detailed commit wi
 | #32 | Invalid TCP state flips of Windows flood recordings with State changed events (found in the #3 check) | |
 | #37 | Process names of system / other users' processes without administrator rights from the process snapshot instead of `<pid>` (found in the #16 check) | |
 | #38 | Help → Command line window: options, column names, exit codes and examples with copy buttons, from the same structured data as `--help` (extends #16) | |
+| #40 | Console output of the command line garbled in an OEM code page console (`–` → `ÔÇô`; found in the #4 check) | |
 | #39 | `--help` / `-h` / `-?` / `/?` in a styled egui window instead of the message box: resizable by the bottom-right corner, text zoom (Ctrl + wheel, Ctrl + `+` / `-` / `0`); reuses the renderer of #38, so after it | |
 
 ## Any time (small fixes found on the way) – all done, released in v0.3.7

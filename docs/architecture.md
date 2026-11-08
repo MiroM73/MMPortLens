@@ -126,14 +126,14 @@ The properties window also switches the collection on for its graph (#30).
 
 ### Short connections with ETW (#4)
 
-**Session** (`src/net/etw_win.rs`): a real-time session `MMPortLens ETW <pid>` (64 KB buffers,
+**Session** (`src/net/etw_win.rs`): a real-time session `MMPortLens ETW <pid>-<n>` (`n` counts the sessions of the process – two tests run one each at the same time, and one name would make one start stop the other) (64 KB buffers,
 4–64 of them, flushed every second) with the provider *Microsoft-Windows-Kernel-Network*
 `{7DD42A49-5329-4832-8DFD-43D979153A88}`, keywords IPv4 | IPv6. `ProcessTrace` runs in the thread
 `etw` and calls `callback` per event, which decodes it (`etw::decode`) and sends an `EtwEvent` over
 a channel. The time stamp is a FILETIME (no raw time stamps requested). A standard user may create
 the session, but `EnableTraceEx2` answers `ERROR_ACCESS_DENIED` → `EtwError::Denied` (the session
 is stopped again by `Drop`). A trace session outlives its process: `Session::start` first stops
-sessions named `MMPortLens ETW <pid>` whose process no longer runs (`QueryAllTracesW`), an existing
+sessions named `MMPortLens ETW <pid>-…` whose process no longer runs (`QueryAllTracesW`), an existing
 session of the own PID is stopped and created again, and `Drop` stops the session and joins the
 thread before freeing the callback's `Sender`. The structure layouts are checked by `const` size
 assertions (x64: properties 120, `EVENT_RECORD` 112, `EVENT_TRACE_LOGFILEW` 448 bytes).

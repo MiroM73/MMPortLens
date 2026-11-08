@@ -308,5 +308,11 @@
   total, clippy; without administrator: the session is refused and none is left behind
   (`logman query -ets`), the status bar shows "ETW: administrator only", the menu item, `--record
   --duration 2s --etw` warns on stderr and writes `etw = off`, `--etw` alone → "needs --record".
-  Not checked by hand as administrator; the acceptance test `etw_sees_short_connections` (100
-  connections < 50 ms) runs on the elevated Windows CI.
+  As administrator (owner's elevated PowerShell): the acceptance test `etw_sees_short_connections`
+  saw all 100 connections (each < 50 ms) on both sides – 100 client and 100 server rows from ETW;
+  `--record --duration 8s --etw` with 20 connections of 100 ms to example.com:80 wrote schema 2,
+  `etw = on` and 38 ETW events (19 connections of `pwsh.exe` as new + closed ~20 ms apart, the
+  20th was caught by a refresh); `logman query -ets` empty afterwards. The first elevated run
+  found that two sessions of one process (the two tests in parallel) shared the name, so one start
+  stopped the other (`EnableTraceEx2` error 4201): the names are now `MMPortLens ETW <pid>-<n>`.
+  Also found: #40 (console output garbled in an OEM code page console).
