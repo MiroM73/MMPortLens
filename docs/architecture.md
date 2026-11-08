@@ -604,7 +604,10 @@ Taken over from RusTrace, same procedure and file names (with `MMPortLens` in pl
   commits `Release v<version>`, pushes `master`, creates and pushes the annotated tag `v<version>`,
   waits for the workflow and with `-Publish` publishes the draft as the latest release.
   `-SkipTests` skips the local tests when they cannot pass for a reason outside the code (#21) and
-  runs `cargo update --workspace` instead, so `Cargo.lock` still gets the new version.
+  runs `cargo update --workspace` instead, so `Cargo.lock` still gets the new version. The run of
+  the tag is found with `gh run list --json` filtered by `ConvertFrom-Json` / `Where-Object`, not
+  with `--jq`: Windows PowerShell 5.1 drops double quotes inside native arguments (#25), so the
+  script must not pass quoted strings to native programs.
 - `.github/workflows/release.yml` – on a `v*` tag: `cargo test --locked`, `cargo build --release
   --locked`, `scripts/package.ps1 -Version <tag>`, then a **draft** release titled
   `MM PortLens v<version>` with generated notes and the four files from `dist/`. A manual run only

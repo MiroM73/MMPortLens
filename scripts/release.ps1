@@ -204,9 +204,13 @@ Write-Step 'Waiting for the GitHub workflow to start'
 $runId = $null
 for ($i = 0; $i -lt 30 -and -not $runId; $i++) {
     Start-Sleep -Seconds 4
-    $runId = Get-NativeOutput gh @('run', 'list', '--workflow', 'release.yml', '--limit', '10',
-        '--json', 'databaseId,headBranch', '--jq', ".[] | select(.headBranch == `"$tag`") | .databaseId")
-    $runId = ($runId -split "`n" | Select-Object -First 1)
+    # Filtered in PowerShell, not with --jq: Windows PowerShell 5.1 drops the double quotes inside
+    # a native argument, so a jq string literal like "v0.2.0" reached gh without quotes (#25).
+    $runs = Get-NativeOutput gh @('run', 'list', '--workflow', 'release.yml', '--limit', '10',
+        '--json', 'databaseId,headBranch')
+    $runId = @($runs | ConvertFrom-Json) | ForEach-Object { $_ } |
+        Where-Object { $_.headBranch -eq $tag } |
+        Select-Object -First 1 -ExpandProperty databaseId
 }
 if (-not $runId) { throw "The workflow run for $tag did not appear - check the Actions tab on GitHub." }
 

@@ -234,3 +234,8 @@
   wrap onto more lines (one-line-high wrapping layout, labels not wrapped inside) instead of
   painting the refresh time over them. Verified in the release build at 1500, 800 and 600 px: one
   line as before when wide, two / three lines without overlap when narrow; 130 tests.
+- #25: `release.ps1` finds the workflow run of the tag by filtering the JSON of `gh run list` in
+  PowerShell instead of a `--jq` expression with a quoted tag, which Windows PowerShell 5.1 passed
+  without the quotes. Verified: the new filter returns the run of v0.2.9 and nothing for a missing
+  tag under both `powershell.exe` 5.1 and `pwsh` 7.6; the release of v0.3.7 runs the watch step
+  under 5.1. The same bug in RusTrace is MiroM73/Rustrace#59.

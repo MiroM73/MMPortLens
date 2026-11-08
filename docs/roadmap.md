@@ -71,7 +71,7 @@ program, README / `docs/architecture.md` / `docs/history.md`, detailed commit wi
 | #22 | Sort arrow in the header drawn as an empty box | done |
 | #23 | Live snapshot test failed once (flaky) – better message, retry; reproduced: own connection reported as Listen (#21) | done |
 | #24 | Listener rows flicker between two keys when Windows alternates state 0 and Listen | done |
-| #25 | `release.ps1` loses the jq quotes under Windows PowerShell 5.1 while waiting for the workflow | |
+| #25 | `release.ps1` loses the jq quotes under Windows PowerShell 5.1 while waiting for the workflow | done |
 | #26 | Update check: retry transient GitHub errors (HTTP 502/503/504, timeouts) and explain them; port the change back to RusTrace (copied `update`/`http` code, see #20) | |
 | #29 | Status bar texts overlap in a narrow window (found in the #27 check) | done |
 
