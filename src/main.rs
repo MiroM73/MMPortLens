@@ -32,6 +32,7 @@ mod rowfilter;
 mod rules;
 mod selection;
 mod services;
+mod stats;
 mod tabexport;
 mod timefmt;
 mod update;

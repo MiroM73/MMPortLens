@@ -45,6 +45,7 @@ mod record;
 mod replay;
 mod replay_events;
 mod rules;
+mod stats;
 mod statusbar;
 mod table;
 mod toolbar;
@@ -187,6 +188,11 @@ pub struct App {
     preset_windows: presets::PresetWindows,
     /// The process properties windows (#28), one per PID, in the order they were opened (#33).
     properties: Vec<properties::Properties>,
+    /// View → Statistics (#19): the window, the chart history (fed on every refresh) and the
+    /// data shown, recomputed per refresh while the window is open.
+    stats_win: native_window::ToolWindow,
+    stats_history: crate::stats::History,
+    stats_data: stats::StatsData,
     /// Result of the last action (status bar).
     action_result: Option<actions::ActionResult>,
     /// The traffic counters were refused by Windows (not elevated, #8).
@@ -332,6 +338,9 @@ impl App {
             pending_action: None,
             action_result: None,
             properties: Vec::new(),
+            stats_win: native_window::ToolWindow::new("stats"),
+            stats_history: Default::default(),
+            stats_data: Default::default(),
             active_preset: String::new(),
             preset_windows: Default::default(),
             icons: HashMap::new(),
@@ -449,6 +458,7 @@ impl App {
                     self.stats_denied = snap.stats_denied;
                     self.error = None;
                     self.sample_properties(snap.taken);
+                    self.sample_stats(snap.taken);
                 }
                 Err(e) => self.error = Some(t!("error.poll", error = e)),
             }
@@ -637,6 +647,7 @@ impl eframe::App for App {
         self.shortcuts_window(&ctx);
         self.cli_help_window(&ctx);
         self.properties_windows(&ctx);
+        self.stats_window(&ctx);
         self.confirm_window(&ctx);
         self.rules_window(&ctx);
         self.preset_windows(&ctx);

@@ -20,6 +20,8 @@ menu.file.always_admin.tip = Ein ohne Administratorrechte gestartetes Programm s
 menu.file.exit = Beenden
 menu.view = Ansicht
 menu.view.columns = Spalten
+menu.view.stats = Statistik…
+menu.view.stats.tip = Verbindungen der letzten zehn Minuten, häufigste Prozesse, Remote-Hosts und -Ports; ein Klick auf einen Eintrag filtert die Tabelle.
 menu.view.details = Detailbereich
 menu.view.column_filters = Spaltenfilter anzeigen
 menu.view.remember_column_filters = Spaltenfilter merken
@@ -32,7 +34,7 @@ menu.view.collapse_all = Alle Gruppen zuklappen
 menu.view.resolve_addresses = Adressen auflösen
 menu.view.resolve_addresses.tip = Hostnamen der Adressen nachschlagen (Reverse-DNS) für die Spalten Remote-Host und Lokaler Host. Aus: die Spalten zeigen die Adressen.
 menu.view.separate_windows = Fenster separat öffnen
-menu.view.separate_windows.tip = Prozesseigenschaften und Hilfe → Befehlszeile öffnen sich in eigenen Fenstern, die sich aus dem Hauptfenster heraus und auf einen anderen Monitor verschieben lassen; aus = im Hauptfenster.
+menu.view.separate_windows.tip = Prozesseigenschaften, Ansicht → Statistik und Hilfe → Befehlszeile öffnen sich in eigenen Fenstern, die sich aus dem Hauptfenster heraus und auf einen anderen Monitor verschieben lassen; aus = im Hauptfenster.
 menu.view.etw = Kurze Verbindungen erfassen (ETW, Admin)
 menu.view.etw.tip = Event Tracing for Windows sieht jede Verbindung, auch die, die zwischen zwei Aktualisierungen geöffnet und geschlossen werden (Beacons, fehlschlagende Health-Checks, DNS über TCP). Sie erscheinen als geschlossene, mit ⚡ markierte Zeilen und werden aufgezeichnet. Benötigt Administratorrechte; ohne sie füllt nur die Aktualisierung die Tabelle.
 menu.view.language = Sprache
@@ -547,3 +549,23 @@ cli.error.hint = mmportlens --help listet die Optionen auf.
 cli.record.started = Aufzeichnung nach {path} – Strg+C beendet sie.
 cli.record.started_for = Aufzeichnung nach {path} für {duration} – Strg+C beendet sie früher.
 cli.record.cancelled = Die Aufzeichnung wurde abgebrochen, bevor sie begann.
+
+# --- Statistics (#19) ---
+stats.title = Statistik
+stats.chart = Verbindungen der letzten {minutes} Minuten
+stats.now = Jetzt: {established} hergestellt, {listening} lauschend, {time_wait} in TimeWait, insgesamt {total} Endpunkte
+stats.live_note = Live-Daten dieses Computers – die geöffnete Aufzeichnung ist nicht enthalten.
+stats.waiting = Das Diagramm beginnt mit den nächsten Aktualisierungen…
+stats.series.established = Hergestellt
+stats.series.listening = Lauschend
+stats.series.time_wait = TimeWait
+stats.axis.minutes = {value} min
+stats.top.processes = Prozesse – Endpunkte
+stats.top.traffic = Prozesse – Datenverkehr
+stats.top.hosts = Remote-Hosts – Verbindungen
+stats.top.ports = Remote-Ports – Verbindungen
+stats.traffic.off = Wird angezeigt, solange eine Verkehrsspalte (Gesendet/s, Empfangen/s) sichtbar ist; erfordert Administratorrechte.
+stats.none = Keine
+stats.filter.tip = Klick: Tabelle auf {value} filtern (Spalte {column}: {filter})
+stats.count.tip = {count} Endpunkte
+stats.click_hint = Ein Klick auf einen Eintrag setzt den Spaltenfilter der Haupttabelle; die anderen Filter bleiben. Geschlossene Verbindungen, die noch hervorgehoben sind, werden nicht gezählt.

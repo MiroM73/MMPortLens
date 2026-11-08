@@ -479,3 +479,17 @@
   embedded with 133 %, Ctrl + wheel over it gave 92 %; `--help` zoomed to 120 % kept its own value
   (`help_window` 1.2, `cli_help_window` 0.92). Found: `Ui::ui_contains_pointer` is false at the
   start of a window's content (empty `min_rect`) – the embedded zoom first ignored the wheel.
+- #19: View → Statistics…: chart of established / listening / time-wait over the last ten
+  minutes, top processes by endpoints and by traffic, top remote hosts and remote ports; a click on
+  an entry sets `=value` as the column filter of the main table. New `src/stats.rs` (history ring
+  buffer fed on every refresh, top lists, filters – unit-tested) and `src/app/stats.rs` (the window
+  as a zoomable tool window of #42: own OS window, own text zoom, vertical and horizontal scroll
+  bars); `Config::stats_window`; 20 new keys in all four languages; the *Open windows separately*
+  tooltip names the window. Verified: fmt, clippy, tests (counts without closed rows, ten-minute
+  window and sample limit, list order and cuts, each filter matches exactly its rows); release
+  build: after 20 s the chart showed the three lines, the lists showed DDPM.Subagent.User.exe 46,
+  a2-19-217-216.deploy.static.akamai… 45, 443 (https) 96 and a note for the traffic list (no traffic
+  column); clicking 443 (https) and System set `=443` and `=System` in the filter row; Ctrl +
+  numpad `+` ×4 gave 140 % with both scroll bars while the main window stayed at 100 %; Esc closed
+  it and `stats_window` was saved (60,60, 884 × 561, 1.4). Charts for an opened recording (the
+  idea in the issue comment) are not part of it.

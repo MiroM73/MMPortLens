@@ -70,7 +70,7 @@ program, README / `docs/architecture.md` / `docs/history.md`, detailed commit wi
 | #16 | Command line: filters (#1), export (#9), recording (#3) – therefore after them | done ("Command line: filters, headless export and recording"), released in v1.0.0 |
 | #4 | ETW for short-lived connections (extends the recording of #3) | done ("Capture short-lived connections with ETW"), checked as administrator (acceptance test 100 + 100 connections, `--record --etw`); released in v1.0.0 |
 | #18 | Watch rules and alerts (builds on #10 and #3) | |
-| #19 | Statistics over time (data from the recording of #3) | |
+| #19 | Statistics over time (data from the recording of #3) | done ("Statistics window: connections over time, top processes, hosts and ports"); charts for an opened recording are not part of it |
 | #11 | Country and ASN (offline) – least critical, depends on an offline database | |
 | #31 | Replay: the Duration column counts to now instead of the slider time (found in the #3 check) | done ("Replay: Duration counts to the slider time") |
 | #32 | Invalid TCP state flips of Windows flood recordings with State changed events (found in the #3 check) | |

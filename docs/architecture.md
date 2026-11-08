@@ -36,6 +36,7 @@ with the change.
 | `src/colfilter.rs` | Column filter syntax: parsing and matching (`ColumnFilter`, `FilterKind`, `FilterError`) – core from RusTrace. |
 | `src/selection.rs` | `Selection` (cursor, anchor, selected `ConnKey`s) and `Nav` (arrow / page targets) – pure, tested (#17). |
 | `src/dns.rs` | Reverse DNS (#5): `DnsCache` (TTL, negative results, pending – pure), `Resolver` (cache + worker pool), `system_lookup` (`GetNameInfoW` / `getnameinfo`). |
+| `src/stats.rs` | Statistics (#19): `Sample` / `History` (state counts per refresh, ten minutes), `top` lists (processes by endpoints and traffic, remote hosts, remote ports) and their `=value` column filters – pure, tested. |
 | `src/services.rs` | Well-known port names (#5): built-in table plus the system services file read in the background (#34). |
 | `src/actions.rs` | Close connection (`SetTcpEntry` + DELETE_TCB) and End process (`TerminateProcess` / `kill`), with the pure checks `can_close` / `can_kill` and `tcp_row` (#6). |
 | `src/columns.rs` | `ColumnId`, cell texts, value-based sorting (`SortSpec`), `ColumnLayout` (visibility, order, widths), `drop_slot`. |
@@ -43,7 +44,7 @@ with the change.
 | `src/config.rs` | `Config` (JSON, every field has a default). |
 | `src/i18n.rs` | `t!()` and the language files – the same module as in RusTrace. |
 | `src/timefmt.rs` | Clock times for the table. |
-| `src/app/` | The UI, split by area like RusTrace: `mod.rs` (state, frame loop), `menu.rs`, `toolbar.rs`, `table.rs`, `statusbar.rs`, `colfilters.rs` (column filter state and field), `admin.rs` (restart as administrator), `update_window.rs` (Help → Check for updates), `input.rs` (keyboard shortcuts, copying the selection), `help.rs` (Help → Keyboard shortcuts), `cli_help.rs` (Help → Command line and the shared help renderer `cli_help_ui`, #38), `actions.rs` (context menu items, confirmation window and result of #6), `details.rs` (details pane, process icons and tooltip of #7), `properties.rs` (process properties window of #28), `properties_windows.rs` (several of them in native windows, #33), `native_window.rs` (zoomable tool window: native or embedded, own zoom, remembered geometry – #42), `properties_graph.rs` (its live traffic / I/O graph, #30), `rules.rs` (color rules window and row colors of #10), `presets.rs` (filter preset combo box and windows of #13), `groups.rs` (group lines of #12), `columnlayout.rs` (header drag and drop, remembered widths, fit on a border double click – #2), `export.rs` (File → Export… window, export thread, status – #9), `record.rs` (start window, events to the writer, ● REC – #3), `replay.rs` (opened recording, replay bar with the time slider – #3), `replay_events.rs` (event list of a recording – #3), `etw.rs` (View menu switch and status bar item of the ETW capture – #4). |
+| `src/app/` | The UI, split by area like RusTrace: `mod.rs` (state, frame loop), `menu.rs`, `toolbar.rs`, `table.rs`, `statusbar.rs`, `colfilters.rs` (column filter state and field), `admin.rs` (restart as administrator), `update_window.rs` (Help → Check for updates), `input.rs` (keyboard shortcuts, copying the selection), `help.rs` (Help → Keyboard shortcuts), `cli_help.rs` (Help → Command line and the shared help renderer `cli_help_ui`, #38), `actions.rs` (context menu items, confirmation window and result of #6), `details.rs` (details pane, process icons and tooltip of #7), `properties.rs` (process properties window of #28), `properties_windows.rs` (several of them in native windows, #33), `native_window.rs` (zoomable tool window: native or embedded, own zoom, remembered geometry – #42), `stats.rs` (View → Statistics, #19), `properties_graph.rs` (its live traffic / I/O graph, #30), `rules.rs` (color rules window and row colors of #10), `presets.rs` (filter preset combo box and windows of #13), `groups.rs` (group lines of #12), `columnlayout.rs` (header drag and drop, remembered widths, fit on a border double click – #2), `export.rs` (File → Export… window, export thread, status – #9), `record.rs` (start window, events to the writer, ● REC – #3), `replay.rs` (opened recording, replay bar with the time slider – #3), `replay_events.rs` (event list of a recording – #3), `etw.rs` (View menu switch and status bar item of the ETW capture – #4). |
 | `lang/*.lang` | Built-in translations (en, sk, cs, de), embedded with `include_str!`. |
 
 ## Reading the connections
@@ -445,6 +446,30 @@ whose collection has just been switched on) is only a baseline, so neither makes
 or a spike; I/O needs two readable polls; an equal or older snapshot time adds nothing. Samples
 older than the window (or beyond 2 000) are dropped. After the process exits the sampling stops and
 the last curves stay. The Copy text adds the latest rates.
+
+## Statistics (#19)
+
+View → Statistics… opens a zoomable tool window (`native_window.rs`, state in
+`Config::stats_window`, default 1120 × 640). **History**: `App::receive` calls `sample_stats` after
+every snapshot merged into the tracker – `stats::sample` counts established / listening / time-wait
+and all endpoints of the live rows (rows marked closed excluded) into `stats::History`, a ring
+buffer of the last ten minutes (at most 8000 samples). This runs also while the window is closed,
+so the chart has data when it opens; it is one counting pass per refresh, nothing next to
+`rebuild_view`. **Top lists** are computed only while the window is open and only once per refresh
+(`StatsData::computed_for` = `last_poll`): `stats::top` groups the live rows by process name,
+remote address (no listeners / unspecified / no remote side) or remote port (not 0), sorts by count
+(traffic: by the summed `rate_in + rate_out` of #8, entries with traffic only; the rates exist only
+while a traffic column is shown, otherwise the list explains it) and keeps ten. Host labels use the
+reverse DNS cache (`name (address)`), ports `port_with_name`. The window always shows live data –
+during a replay a note says the recording is not included. **Content**: a `ScrollArea::both`
+(vertical and horizontal scroll bars when the zoomed content does not fit) with the heading, the
+current counts, an `egui_plot` chart (x = minutes before the newest sample, −10…0, three lines,
+legend top left; drag / zoom / scroll of the plot off so Ctrl + wheel zooms the window text; height
+and list widths scale with the window zoom) and the four lists side by side as striped grids.
+**Click = filter**: an entry is a link; `filter_from_stats` sets `=value` as the column filter of
+Process, Remote address or Remote port (the other filters stay), shows that column and the filter
+row (filters of hidden columns do not apply). The test `filters_of_entries_match_exactly_their_rows`
+checks that each filter matches exactly the counted rows (`=80` not `8080`).
 
 ## Close connection, End process (#6)
 

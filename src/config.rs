@@ -95,6 +95,8 @@ pub struct Config {
     pub help_window: crate::helpwindow::HelpWindowState,
     /// Position, size and zoom of the Help → Command line window (#42).
     pub cli_help_window: ToolWindowState,
+    /// Position, size and zoom of the View → Statistics window (#19).
+    pub stats_window: ToolWindowState,
     /// Version of the filter syntax of the saved filters (#35). A file without it (0) is from
     /// before #35: its filters are rewritten once by `colfilter::migrate_v1`. The field default
     /// is 0 (an old file), `Config::default()` has the current version.
@@ -169,6 +171,7 @@ impl Default for Config {
             help_window: Default::default(),
             separate_windows: true,
             cli_help_window: Default::default(),
+            stats_window: Default::default(),
             properties_window: None,
             filter_syntax: crate::colfilter::SYNTAX_VERSION,
         }
@@ -278,6 +281,7 @@ mod tests {
         assert!(partial.marks_over_rules);
         assert!(partial.separate_windows && partial.properties_window.is_none());
         assert_eq!(partial.cli_help_window, ToolWindowState::default());
+        assert_eq!(partial.stats_window, ToolWindowState::default());
         // The switch of #33 is taken over by the general setting (#42).
         let off = Config::parse(r#"{"properties_separate": false}"#).unwrap();
         assert!(!off.separate_windows);

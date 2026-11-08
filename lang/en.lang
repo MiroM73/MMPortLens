@@ -31,6 +31,8 @@ menu.file.always_admin.tip = A program started without administrator rights star
 menu.file.exit = Exit
 menu.view = View
 menu.view.columns = Columns
+menu.view.stats = Statistics…
+menu.view.stats.tip = Connections over the last ten minutes, top processes, remote hosts and ports; a click on an entry filters the table.
 menu.view.details = Details pane
 menu.view.column_filters = Show column filters
 menu.view.remember_column_filters = Remember column filters
@@ -43,7 +45,7 @@ menu.view.collapse_all = Collapse all groups
 menu.view.resolve_addresses = Resolve addresses
 menu.view.resolve_addresses.tip = Look up the host names of the addresses (reverse DNS) for the Remote host and Local host columns. Off: the columns show the addresses.
 menu.view.separate_windows = Open windows separately
-menu.view.separate_windows.tip = The process properties and Help → Command line open in their own windows that can be moved outside the main window and onto another monitor; off = inside the main window.
+menu.view.separate_windows.tip = The process properties, View → Statistics and Help → Command line open in their own windows that can be moved outside the main window and onto another monitor; off = inside the main window.
 menu.view.etw = Capture short connections (ETW, admin)
 menu.view.etw.tip = Event Tracing for Windows sees every connection, also the ones that open and close between two refreshes (beacons, failing health checks, DNS over TCP). They appear as closed rows marked ⚡ and are recorded. Needs administrator rights; without them the table is filled by the refresh alone.
 menu.view.language = Language
@@ -558,3 +560,23 @@ cli.error.hint = mmportlens --help lists the options.
 cli.record.started = Recording to {path} – Ctrl+C stops it.
 cli.record.started_for = Recording to {path} for {duration} – Ctrl+C stops it earlier.
 cli.record.cancelled = The recording was cancelled before it started.
+
+# --- Statistics (#19) ---
+stats.title = Statistics
+stats.chart = Connections in the last {minutes} minutes
+stats.now = Now: {established} established, {listening} listening, {time_wait} time-wait, {total} endpoints in total
+stats.live_note = Live data of this computer – the opened recording is not included.
+stats.waiting = The chart starts with the next refreshes…
+stats.series.established = Established
+stats.series.listening = Listening
+stats.series.time_wait = TimeWait
+stats.axis.minutes = {value} min
+stats.top.processes = Processes – endpoints
+stats.top.traffic = Processes – traffic
+stats.top.hosts = Remote hosts – connections
+stats.top.ports = Remote ports – connections
+stats.traffic.off = Shown while a traffic column (Sent/s, Received/s) is visible; needs administrator rights.
+stats.none = None
+stats.filter.tip = Click: filter the table to {value} (column {column}: {filter})
+stats.count.tip = {count} endpoints
+stats.click_hint = A click on an entry sets the column filter of the main table; the other filters stay. Closed connections that are still highlighted are not counted.

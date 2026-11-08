@@ -20,6 +20,8 @@ menu.file.always_admin.tip = Program spuštěný bez práv správce se sám znov
 menu.file.exit = Konec
 menu.view = Zobrazit
 menu.view.columns = Sloupce
+menu.view.stats = Statistiky…
+menu.view.stats.tip = Spojení za posledních deset minut, nejčastější procesy, vzdálení hostitelé a porty; kliknutí na položku filtruje tabulku.
 menu.view.details = Panel podrobností
 menu.view.column_filters = Zobrazit filtry sloupců
 menu.view.remember_column_filters = Pamatovat si filtry sloupců
@@ -32,7 +34,7 @@ menu.view.collapse_all = Sbalit všechny skupiny
 menu.view.resolve_addresses = Překládat adresy
 menu.view.resolve_addresses.tip = Zjišťovat názvy hostitelů k adresám (reverzní DNS) pro sloupce Vzdálený hostitel a Místní hostitel. Vypnuto: sloupce zobrazují adresy.
 menu.view.separate_windows = Otevírat okna samostatně
-menu.view.separate_windows.tip = Vlastnosti procesu a Nápověda → Příkazový řádek se otevírají v samostatných oknech, která lze přesunout mimo hlavní okno i na jiný monitor; vypnuto = uvnitř hlavního okna.
+menu.view.separate_windows.tip = Vlastnosti procesu, Zobrazit → Statistiky a Nápověda → Příkazový řádek se otevírají v samostatných oknech, která lze přesunout mimo hlavní okno i na jiný monitor; vypnuto = uvnitř hlavního okna.
 menu.view.etw = Zachytávat krátká spojení (ETW, admin)
 menu.view.etw.tip = Event Tracing for Windows vidí každé spojení, i ta, která se otevřou a zavřou mezi dvěma obnoveními (beacony, selhávající health checky, DNS přes TCP). Zobrazí se jako zavřené řádky označené ⚡ a nahrávají se. Potřebuje práva správce; bez nich tabulku plní jen obnovování.
 menu.view.language = Jazyk
@@ -547,3 +549,23 @@ cli.error.hint = mmportlens --help vypíše volby.
 cli.record.started = Nahrávám do {path} – Ctrl+C nahrávání zastaví.
 cli.record.started_for = Nahrávám do {path} po dobu {duration} – Ctrl+C ho zastaví dříve.
 cli.record.cancelled = Nahrávání bylo zrušeno dřív, než začalo.
+
+# --- Statistics (#19) ---
+stats.title = Statistiky
+stats.chart = Spojení za posledních {minutes} minut
+stats.now = Nyní: {established} navázaných, {listening} naslouchajících, {time_wait} v TimeWait, celkem {total} koncových bodů
+stats.live_note = Živá data tohoto počítače – otevřený záznam v nich není.
+stats.waiting = Graf začne při dalších obnoveních…
+stats.series.established = Navázaná
+stats.series.listening = Naslouchající
+stats.series.time_wait = TimeWait
+stats.axis.minutes = {value} min
+stats.top.processes = Procesy – koncové body
+stats.top.traffic = Procesy – přenos
+stats.top.hosts = Vzdálení hostitelé – spojení
+stats.top.ports = Vzdálené porty – spojení
+stats.traffic.off = Zobrazí se, když je viditelný sloupec přenosu (Odesláno/s, Přijato/s); vyžaduje práva správce.
+stats.none = Žádné
+stats.filter.tip = Kliknutí: vyfiltrovat tabulku na {value} (sloupec {column}: {filter})
+stats.count.tip = {count} koncových bodů
+stats.click_hint = Kliknutí na položku nastaví filtr sloupce v hlavní tabulce; ostatní filtry zůstanou. Zavřená spojení, která jsou ještě zvýrazněná, se nepočítají.

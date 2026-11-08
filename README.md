@@ -51,9 +51,12 @@ Version 1.0.7. What works now:
 - **Process properties** windows (row context menu → Properties…, Alt+Enter) with Copy, Open file
   location, File properties and End process; each stays on its process and shows when it exits.
   One window per process, several at a time, each in its own OS window that can be moved onto
-  another monitor (View → *Open windows separately*, which covers Help → Command line too).
+  another monitor (View → *Open windows separately*, which covers Statistics and Help → Command line too).
   A live graph of the last two minutes shows the TCP packets per second of the process
   (administrator) and its I/O operations per second.
+- **Statistics** (View → Statistics…): a chart of the established / listening / time-wait
+  connections of the last ten minutes and the top processes (endpoints, traffic), remote hosts
+  and remote ports; a click on an entry filters the table. Own window with its own text zoom.
 - **Color rules** (View → Color rules…, Ctrl+H): color rows whose column matches a pattern in the
   column filter syntax, e.g. remote port `3389` red or `10.0.0.0/8` blue; colors per theme, order
   decides, import / export, also in the Excel / HTML export.

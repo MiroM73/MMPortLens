@@ -29,6 +29,14 @@ impl App {
             });
             ui.menu_button(t!("menu.view"), |ui| {
                 ui.menu_button(t!("menu.view.columns"), |ui| self.columns_menu(ui));
+                if ui
+                    .button(t!("menu.view.stats"))
+                    .on_hover_text(t!("menu.view.stats.tip"))
+                    .clicked()
+                {
+                    ui.close();
+                    self.open_stats();
+                }
                 ui.separator();
                 if ui
                     .checkbox(&mut self.cfg.show_details, t!("menu.view.details"))
