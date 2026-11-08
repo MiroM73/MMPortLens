@@ -56,15 +56,14 @@ pub fn run(cfg: &Config, help: CliHelp, icon: egui::IconData) -> eframe::Result 
         .size
         .map(|[w, h]| [w.max(MIN_SIZE[0]), h.max(MIN_SIZE[1])])
         .unwrap_or(DEFAULT_SIZE);
-    let options = eframe::NativeOptions {
-        viewport: egui::ViewportBuilder::default()
+    let options = crate::gpu::native_options(
+        egui::ViewportBuilder::default()
             .with_inner_size(size)
             .with_min_inner_size(MIN_SIZE)
             .with_resizable(true)
             .with_title(t!("cli.title.help"))
             .with_icon(std::sync::Arc::new(icon)),
-        ..Default::default()
-    };
+    );
     let theme = crate::app::theme_preference(&cfg.theme);
     eframe::run_native(
         "MMPortLens-help",
@@ -107,8 +106,10 @@ impl HelpWindow {
 }
 
 impl eframe::App for HelpWindow {
-    fn ui(&mut self, ui: &mut egui::Ui, _frame: &mut eframe::Frame) {
+    fn ui(&mut self, ui: &mut egui::Ui, frame: &mut eframe::Frame) {
         let ctx = ui.ctx().clone();
+        crate::gpu::keep_running_on_gpu_errors(frame);
+        crate::gpu::limit_window_size(&ctx);
         let mut zoom = self.state.zoom;
         zoom_input(&ctx, &mut zoom, true);
         let mut close = ctx.input(|i| i.key_pressed(Key::Escape));

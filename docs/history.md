@@ -505,3 +505,12 @@
   called only on Windows. The test module is now `cfg(all(test, windows))`, the console items carry
   `cfg_attr(not(windows), allow(dead_code))`. Verified with Linux clippy run locally (10 errors
   before, none after), Windows clippy, fmt and `cargo test`.
+- #43: a window larger than the GPU's maximum texture size no longer ends the program. New
+  `src/gpu.rs`: the wgpu device asks for the adapter's maximum texture size (16384 instead of
+  egui-wgpu's 8192), every viewport gets that as its maximum inner size and is shrunk back when
+  another program makes it larger (`MoveWindow` is not clamped by Windows – the first attempt with
+  only the maximum size still panicked), and wgpu errors are logged instead of panicking. Found:
+  eframe 0.37 uses wgpu although `Cargo.toml` enables `glow` (the default features win).
+  Verified: fmt, clippy (Windows, Linux), tests (size in points per scale, shrinking); release
+  build: `MoveWindow` 1500 × 32728 → still running, 16383 px inner, normal close; the `--help`
+  window at 20000 px width → 16399 px.

@@ -15,6 +15,7 @@ mod console;
 mod dns;
 mod elevation;
 mod filterhelp;
+mod gpu;
 mod grouping;
 mod headless;
 mod helpwindow;
@@ -208,13 +209,12 @@ fn main() -> eframe::Result {
         }
         viewport = viewport.with_maximized(w.maximized);
     }
-    let options = eframe::NativeOptions {
-        viewport: viewport
+    let options = gpu::native_options(
+        viewport
             .with_min_inner_size([700.0, 350.0])
             .with_title(app::base_title())
             .with_icon(Arc::new(app::icon_data())),
-        ..Default::default()
-    };
+    );
     eframe::run_native(
         "MMPortLens",
         options,

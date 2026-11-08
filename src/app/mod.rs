@@ -624,8 +624,10 @@ fn mark_color(mark: Mark, dark: bool) -> Option<Color32> {
 }
 
 impl eframe::App for App {
-    fn ui(&mut self, ui: &mut egui::Ui, _frame: &mut eframe::Frame) {
+    fn ui(&mut self, ui: &mut egui::Ui, frame: &mut eframe::Frame) {
         let ctx = ui.ctx().clone();
+        crate::gpu::keep_running_on_gpu_errors(frame);
+        crate::gpu::limit_window_size(&ctx);
         self.receive();
         if self.view_dirty {
             self.rebuild_view();

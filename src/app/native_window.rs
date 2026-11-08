@@ -115,6 +115,7 @@ impl ToolWindow {
         let mut content = Some(content);
         ctx.show_viewport_immediate(viewport, builder, |ui, _class| {
             let ctx = ui.ctx().clone();
+            crate::gpu::limit_window_size(&ctx);
             let mut zoom = state.zoom;
             zoom_input(&ctx, &mut zoom, true);
             scale_text(ui.style_mut(), zoom);

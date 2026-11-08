@@ -191,6 +191,7 @@ impl App {
         let viewport = p.viewport;
         ctx.show_viewport_immediate(viewport, builder, |ui, _class| {
             let ctx = ui.ctx().clone();
+            crate::gpu::limit_window_size(&ctx);
             let mut act = ContentAction::default();
             egui::CentralPanel::default().show(ui, |ui| {
                 egui::ScrollArea::vertical()

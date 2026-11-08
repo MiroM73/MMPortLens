@@ -12,6 +12,7 @@ with the change.
 | `src/console.rs` | Console messages of the runs without a window (#40): `attach_console`, `out` / `err` (instead of `println!` / `eprintln!`) with the encoding chosen per handle (`target`: console → WriteConsoleW, pipe read by PowerShell → the console's code page, else UTF-8). |
 | `src/clihelp.rs` | The command-line help as data (#38): `CliHelp` (usage, options, column names, exit codes, examples) built from `cli::PUBLIC_OPTIONS` and the `cli.*` keys; `text()` for the console / message box. |
 | `src/helpwindow.rs` | The `--help` window (#39): a small eframe app around `app::cli_help::cli_help_ui`, zoom (Ctrl + wheel / `+` / `-` / `0`, bottom bar), resize grip, `HelpWindowState` (zoom and size in `Config::help_window`); the shared zoom bar (`zoom_bar`), zoom input (`zoom_input`) and per-window text scaling (`scale_text`) of the zoomable windows (#42). |
+| `src/gpu.rs` | Window size limit of the wgpu renderer (#43): device with the adapter's maximum texture size, maximum inner size / shrinking of every viewport, wgpu errors logged instead of a panic. |
 | `src/headless.rs` | `--export` (one snapshot) and `--record` (until `--duration` or Ctrl+C) without a window (#16). |
 | `src/rowfilter.rs` | `RowFilter` (switches, text filter, column filters of the visible columns), `compile` – used by the table, a recording and the command line. |
 | `build.rs` | Windows: icon (from `src/icon.rs`) and version information as a resource of the exe (`winresource`). |
@@ -972,6 +973,32 @@ names changed; the logic is the same.
   `https://httpbin.org/status/503` shows the failure handling); `cargo test real_http_errors --
   --ignored` checks the error kinds, the retries and the header reading against httpbin.org and
   GitHub.
+
+## Renderer and window size (#43)
+
+eframe 0.37 draws with **wgpu**: its default features include `wgpu`, which wins over the `glow`
+feature listed in `Cargo.toml`. A wgpu surface (and the depth / MSAA textures egui-wgpu creates
+with it) cannot be larger than the device's `max_texture_dimension_2d`, and egui-wgpu asks for a
+device with 8192. A window taller or wider than that in physical pixels (three 4K monitors side by
+side, a tool that moves windows) ended the program in `Surface::configure` with a validation error
+(wgpu's default error handler panics). `src/gpu.rs`:
+
+- `native_options` / `wgpu_options` (main window, `--help` window): the device descriptor of
+  egui-wgpu, but with `max_texture_dimension_2d` = what the adapter supports (16384 on the
+  development PC);
+- `limit_window_size` at the start of every frame of every viewport (main window, `--help`
+  window, the tool windows of #42 and the properties windows of #33): `ViewportCommand::MaxInnerSize`
+  of the limit in points (`max_inner_points`: (limit − 1) / pixels per point, sent again only when
+  it changes, remembered per viewport in the context data) – Windows stops a resize by the user
+  there; and `InnerSize` back to the limit when the window is larger anyway (`shrink_to`), because
+  `MoveWindow` / `SetWindowPos` of another program are **not** clamped by Windows;
+- `keep_running_on_gpu_errors` (first frame, through `Frame::wgpu_render_state`) replaces the
+  panicking handler with `Device::on_uncaptured_error` printing to stderr: the frame between the
+  oversized resize and the shrink produces validation errors, which are now only logged.
+
+Checked with the release build: `MoveWindow` to 1500 × 32728 px left the program running, the
+window was 16383 px high inner a moment later and closed normally (before: panic, exit code 101);
+the `--help` window moved to 20000 px width shrank to 16399 px outer.
 
 ## Tests
 
