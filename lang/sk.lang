@@ -202,6 +202,29 @@ rules.restore_defaults = Obnoviť ukážkové pravidlá
 rules.default.rdp = Vzdialená plocha (RDP)
 rules.default.powershell = PowerShell
 rules.default.vpn = Sieť VPN 10.0.0.0/8
+preset.none = Predvoľby
+preset.tip = Predvoľby filtrov: prepínače protokolov, textový filter a filtre stĺpcov uložené pod názvom
+preset.modified.tip = * = filtre sa po výbere predvoľby zmenili (Uložiť aktuálne ako… ich zachová)
+preset.save_as = Uložiť aktuálne ako…
+preset.save_as.title = Uložiť predvoľbu filtrov
+preset.save_as.text = Prepínače protokolov, textový filter a filtre stĺpcov sa uložia pod týmto názvom:
+preset.name.hint = Názov predvoľby
+preset.overwrite = Predvoľba „{name}“ sa nahradí.
+preset.save = Uložiť
+preset.manage = Spravovať predvoľby…
+preset.manage.title = Predvoľby filtrov
+preset.manage.text = Predvoľbu premenujete v jej poli, poradie zmeníte šípkami; 💾 nahradí jej filtre aktuálnymi.
+preset.overwrite.tip = Nahradiť filtre tejto predvoľby aktuálnymi filtrami
+preset.delete = Odstrániť predvoľbu
+preset.restore_defaults = Obnoviť ukážkové predvoľby
+preset.no_listening = bez načúvajúcich
+preset.everything = všetko, bez filtra
+preset.unknown = Neznáma predvoľba filtrov: {name}
+preset.default.all = Všetky koncové body
+preset.default.established = Iba Established
+preset.default.listening = Načúvajúce porty
+preset.default.no_loopback = Bez loopbacku
+preset.default.teams = Teams
 
 # --- Stavový riadok ---
 status.endpoints = Koncové body: {shown} z {total}

@@ -32,6 +32,7 @@ mod export;
 mod help;
 mod input;
 mod menu;
+mod presets;
 mod properties;
 mod rules;
 mod statusbar;
@@ -140,6 +141,10 @@ pub struct App {
     show_shortcuts: bool,
     /// Close connection / End process waiting for confirmation (#6).
     pending_action: Option<actions::Pending>,
+    /// The name of the filter preset chosen last (#13; runtime only, empty = none).
+    active_preset: String,
+    /// "Save current as…" / "Manage presets…" (#13).
+    preset_windows: presets::PresetWindows,
     /// The process properties window (#28).
     properties: Option<properties::Properties>,
     /// Result of the last action (status bar).
@@ -177,6 +182,7 @@ impl App {
         cc: &eframe::CreationContext<'_>,
         restore: Option<SessionState>,
         elevate_error: Option<ElevateError>,
+        preset: Option<String>,
     ) -> Self {
         let cfg = Config::load();
         i18n::set_language(&cfg.language);
@@ -221,6 +227,8 @@ impl App {
             pending_action: None,
             action_result: None,
             properties: None,
+            active_preset: String::new(),
+            preset_windows: Default::default(),
             icons: HashMap::new(),
             stats_denied: false,
             last_changes: Changes::default(),
@@ -248,6 +256,8 @@ impl App {
         }
         if let Some(state) = restore {
             app.restore_session(state);
+        } else if let Some(name) = preset {
+            app.apply_preset_by_name(&name);
         }
         let now = chrono::Local::now().timestamp();
         if app.cfg.update_when.due(app.cfg.update_last_check, now) {
@@ -445,6 +455,7 @@ impl eframe::App for App {
         self.properties_window(&ctx);
         self.confirm_window(&ctx);
         self.rules_window(&ctx);
+        self.preset_windows(&ctx);
         self.check_export();
         self.export_window(&ctx);
         self.poll_update(&ctx);

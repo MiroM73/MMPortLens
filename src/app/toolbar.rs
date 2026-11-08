@@ -51,6 +51,7 @@ impl App {
             }
 
             ui.separator();
+            self.preset_combo(ui);
             let mut changed = false;
             changed |= ui.toggle_value(&mut self.cfg.show_tcp, "TCP").changed();
             changed |= ui.toggle_value(&mut self.cfg.show_udp, "UDP").changed();

@@ -202,6 +202,29 @@ rules.restore_defaults = Beispielregeln wiederherstellen
 rules.default.rdp = Remotedesktop (RDP)
 rules.default.powershell = PowerShell
 rules.default.vpn = VPN-Netz 10.0.0.0/8
+preset.none = Vorlagen
+preset.tip = Filtervorlagen: Protokollschalter, Textfilter und Spaltenfilter unter einem Namen gespeichert
+preset.modified.tip = * = die Filter wurden nach der Wahl der Vorlage geändert (Aktuelle speichern als… behält sie)
+preset.save_as = Aktuelle speichern als…
+preset.save_as.title = Filtervorlage speichern
+preset.save_as.text = Die Protokollschalter, der Textfilter und die Spaltenfilter werden unter diesem Namen gespeichert:
+preset.name.hint = Name der Vorlage
+preset.overwrite = Die Vorlage „{name}“ wird ersetzt.
+preset.save = Speichern
+preset.manage = Vorlagen verwalten…
+preset.manage.title = Filtervorlagen
+preset.manage.text = Eine Vorlage im Feld umbenennen, die Reihenfolge mit den Pfeilen ändern; 💾 ersetzt ihre Filter durch die aktuellen.
+preset.overwrite.tip = Die Filter dieser Vorlage durch die aktuellen Filter ersetzen
+preset.delete = Vorlage löschen
+preset.restore_defaults = Beispielvorlagen wiederherstellen
+preset.no_listening = ohne lauschende
+preset.everything = alles, kein Filter
+preset.unknown = Unbekannte Filtervorlage: {name}
+preset.default.all = Alle Endpunkte
+preset.default.established = Nur Established
+preset.default.listening = Lauschende Ports
+preset.default.no_loopback = Ohne Loopback
+preset.default.teams = Teams
 
 # --- Statusleiste ---
 status.endpoints = Endpunkte: {shown} von {total}

@@ -32,7 +32,7 @@ with the change.
 | `src/config.rs` | `Config` (JSON, every field has a default). |
 | `src/i18n.rs` | `t!()` and the language files – the same module as in RusTrace. |
 | `src/timefmt.rs` | Clock times for the table. |
-| `src/app/` | The UI, split by area like RusTrace: `mod.rs` (state, frame loop), `menu.rs`, `toolbar.rs`, `table.rs`, `statusbar.rs`, `colfilters.rs` (column filter state and field), `admin.rs` (restart as administrator), `update_window.rs` (Help → Check for updates), `input.rs` (keyboard shortcuts, copying the selection), `help.rs` (Help → Keyboard shortcuts), `actions.rs` (context menu items, confirmation window and result of #6), `details.rs` (details pane, process icons and tooltip of #7), `properties.rs` (process properties window of #28), `rules.rs` (color rules window and row colors of #10), `columnlayout.rs` (header drag and drop, remembered widths, fit on a border double click – #2), `export.rs` (File → Export… window, export thread, status – #9). |
+| `src/app/` | The UI, split by area like RusTrace: `mod.rs` (state, frame loop), `menu.rs`, `toolbar.rs`, `table.rs`, `statusbar.rs`, `colfilters.rs` (column filter state and field), `admin.rs` (restart as administrator), `update_window.rs` (Help → Check for updates), `input.rs` (keyboard shortcuts, copying the selection), `help.rs` (Help → Keyboard shortcuts), `actions.rs` (context menu items, confirmation window and result of #6), `details.rs` (details pane, process icons and tooltip of #7), `properties.rs` (process properties window of #28), `rules.rs` (color rules window and row colors of #10), `presets.rs` (filter preset combo box and windows of #13), `columnlayout.rs` (header drag and drop, remembered widths, fit on a border double click – #2), `export.rs` (File → Export… window, export thread, status – #9). |
 | `lang/*.lang` | Built-in translations (en, sk, cs, de), embedded with `include_str!`. |
 
 ## Reading the connections
@@ -390,6 +390,29 @@ columns.
   keep their color", Add, Import (merged without duplicates by name + pattern, `import_rules`),
   Export of ticked rules to JSON, Restore example rules. Every change recompiles and rebuilds the
   view, so the table is the live preview.
+
+## Filter presets (#13)
+
+`src/presets.rs` (pure): a `FilterPreset` is a name plus the protocol switches (TCP, UDP, IPv4,
+IPv6, Listening), the toolbar text filter and the column filter texts of #1. Without the name it
+is also the snapshot of the current filters (`App::current_filters`); `same_filters` compares
+two of them ignoring the name, blank texts and the order of the column filters. `Config::
+filter_presets` defaults to examples (All endpoints, Only Established `State =Established`,
+Listening ports `State =Listen`, No loopback `Local address !loopback`, Teams `Process teams`; the
+state names are the netstat names, not translated, so the filters work in every language).
+
+- Toolbar combo box (`src/app/presets.rs`) before the protocol switches: choosing a preset sets
+  everything at once (`apply_preset`: switches, text, `set_column_filters`; a column with a filter
+  is made visible, because filters of hidden columns do not apply). The chosen preset
+  (`App::active_preset`, runtime only – the text filter is not kept over a restart either) is
+  shown with `*` when the current filters differ from it.
+- "Save current as…" (name field; an existing name is replaced in place, `presets::save`) and
+  "Manage presets…" (rename in place, up / down, 💾 = replace with the current filters, delete,
+  restore the examples).
+- Command line `--preset <name>` or `--preset=<name>` (`presets::preset_arg`, the first piece of
+  #16): applied after start (exact name first, then ignoring case); an unknown name is reported
+  in the status bar. The settings of a restart after an update (`--restore`) win over it; an
+  elevated restart keeps the argument.
 ## Settings and languages
 
 `Config` is saved debounced (0.8 s after the last change, and on close) through a temporary file.

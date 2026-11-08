@@ -213,6 +213,29 @@ rules.restore_defaults = Restore example rules
 rules.default.rdp = Remote desktop (RDP)
 rules.default.powershell = PowerShell
 rules.default.vpn = VPN network 10.0.0.0/8
+preset.none = Presets
+preset.tip = Filter presets: protocol switches, text filter and column filters saved under a name
+preset.modified.tip = * = the filters were changed after the preset was chosen (Save current as… keeps them)
+preset.save_as = Save current as…
+preset.save_as.title = Save filter preset
+preset.save_as.text = The protocol switches, the text filter and the column filters are saved under this name:
+preset.name.hint = Name of the preset
+preset.overwrite = The preset "{name}" is replaced.
+preset.save = Save
+preset.manage = Manage presets…
+preset.manage.title = Filter presets
+preset.manage.text = Rename a preset in its field, change the order with the arrows; 💾 replaces its filters with the current ones.
+preset.overwrite.tip = Replace the filters of this preset with the current filters
+preset.delete = Delete the preset
+preset.restore_defaults = Restore example presets
+preset.no_listening = no listeners
+preset.everything = everything, no filter
+preset.unknown = Unknown filter preset: {name}
+preset.default.all = All endpoints
+preset.default.established = Only Established
+preset.default.listening = Listening ports
+preset.default.no_loopback = No loopback
+preset.default.teams = Teams
 
 # --- Status bar ---
 status.endpoints = Endpoints: {shown} of {total}

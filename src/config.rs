@@ -54,6 +54,8 @@ pub struct Config {
     pub color_rules: Vec<crate::rules::ColorRule>,
     /// The new / changed / closed marks have priority over the color rules.
     pub marks_over_rules: bool,
+    /// Saved filter presets (#13); examples on the first start.
+    pub filter_presets: Vec<crate::presets::FilterPreset>,
 }
 
 /// When MM PortLens looks for a new version at start-up.
@@ -115,6 +117,7 @@ impl Default for Config {
             export: Default::default(),
             color_rules: crate::rules::default_rules(),
             marks_over_rules: true,
+            filter_presets: crate::presets::default_presets(),
         }
     }
 }
@@ -198,6 +201,7 @@ mod tests {
         // Older settings get the example color rules; an emptied list stays empty (#10).
         assert_eq!(partial.color_rules, crate::rules::default_rules());
         assert!(partial.marks_over_rules);
+        assert_eq!(partial.filter_presets, crate::presets::default_presets());
         let none = Config::parse(r#"{"color_rules": []}"#).unwrap();
         assert!(none.color_rules.is_empty());
         let daily = Config::parse(r#"{"update_when": "daily"}"#).unwrap();

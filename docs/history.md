@@ -166,3 +166,12 @@
   row was blue with white text, the window showed the rule, changing the pattern to 9999 removed
   the color at once and was saved to the settings file. The ⚠ of an invalid pattern was not
   checked by hand (unit tests only).
+- #13: saved filter presets (`src/presets.rs`, `src/app/presets.rs`): toolbar combo box with the
+  presets (switches, text filter, column filters at once; `*` when changed afterwards), Save current
+  as…, Manage presets… (rename, order, replace, delete, restore examples), example presets,
+  `--preset <name>` on the command line. Verified: 4 unit tests (comparison, defaults / find /
+  save, command line, JSON) and the settings test; in the release build: `--preset "Listening
+  ports"` started with `State =Listen`, typing `msedge` showed "Listening ports *", Save current as
+  "Edge" stored it (and made it the chosen one), after a restart `--preset edge` set both filters
+  again, Manage presets listed all six with their filters. Found on the way: the ★ character is an
+  empty box in egui's fonts (like #22), ⭐ is used instead.
