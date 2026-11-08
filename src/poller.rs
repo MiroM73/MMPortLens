@@ -230,7 +230,7 @@ fn poll_once(
     })
 }
 
-#[cfg(test)]
+#[cfg(all(test, windows))]
 mod tests {
     use super::*;
     use crate::model::Tracker;
@@ -240,7 +240,6 @@ mod tests {
     /// The acceptance test of #4: 100 connections, each opened and closed within 50 ms, all show
     /// up in the tracker – most only through ETW. Needs an administrator (the Windows CI runs
     /// elevated); skipped otherwise.
-    #[cfg(windows)]
     #[test]
     fn etw_sees_short_connections() {
         if !crate::elevation::is_elevated() {

@@ -19,7 +19,11 @@
 
 use std::io::Write;
 
+// `Target`, `target` and `decodes_with_console_cp` are used only by the Windows branch of
+// `handle_target` (and the tests), hence the `allow(dead_code)` on other platforms.
+
 /// Where a standard handle writes, as far as the encoding is concerned.
+#[cfg_attr(not(windows), allow(dead_code))]
 #[derive(Clone, Copy, PartialEq, Eq, Debug)]
 pub enum Target {
     /// A console window: the standard library writes UTF-16.
@@ -30,11 +34,13 @@ pub enum Target {
     Utf8,
 }
 
+#[cfg_attr(not(windows), allow(dead_code))]
 const CP_UTF8: u32 = 65001;
 
 /// The encoding of a handle: `console` = the handle is a console, `pipe` = it is a pipe,
 /// `console_cp` = the output code page of the attached console (0 without one), `powershell` =
 /// the parent process decodes with that code page ([`decodes_with_console_cp`]).
+#[cfg_attr(not(windows), allow(dead_code))]
 pub fn target(
     console: bool,
     pipe: bool,
@@ -52,6 +58,7 @@ pub fn target(
 
 /// Whether a parent process of this name decodes the bytes of a pipe with the console's code
 /// page: Windows PowerShell and PowerShell 7 (`[Console]::OutputEncoding`).
+#[cfg_attr(not(windows), allow(dead_code))]
 pub fn decodes_with_console_cp(parent_exe: &str) -> bool {
     let name = parent_exe.rsplit(['\\', '/']).next().unwrap_or(parent_exe);
     ["powershell.exe", "pwsh.exe", "powershell_ise.exe"]

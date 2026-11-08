@@ -56,6 +56,7 @@ updates, CLI), take its code and adapt it rather than writing it again.
 ## Commands
 - `cargo build --release` → `target\release\mmportlens.exe`; `cargo test`.
 - `cargo fmt` + `cargo clippy --all-targets --locked -- -D warnings` – CI fails otherwise.
+  CI also runs clippy on **Linux**: run the Linux clippy too (command in `docs/architecture.md` → Tests).
 - Do not leave test runs touching `%APPDATA%\MMPortLens\config.json`.
 - Line endings: `.gitattributes` forces LF (`* text=auto eol=lf`).
 - **Heredocs in the Bash tool break often**: a longer `python - <<'EOF' … EOF` (or `cat <<'EOF'`)

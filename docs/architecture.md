@@ -999,6 +999,12 @@ speed), the icon / `.ico` layout, update logic (versions, GitHub JSON, missed re
 release notes, SHA-256 files, ZIP reading, installation into a temporary folder, session state)
 and the live snapshot test.
 
+CI runs clippy on Windows **and Linux**; code used only under `#[cfg(windows)]` (and its test
+imports) fails the Linux job as unused (#45). Linux clippy can be run on the Windows PC with
+`rustup target add x86_64-unknown-linux-gnu` and a dummy C compiler for the bundled SQLite
+(clippy does not link), in Git Bash:
+`T=$(cygpath -m /usr/bin/true.exe); CC_x86_64_unknown_linux_gnu=$T AR_x86_64_unknown_linux_gnu=$T cargo clippy --all-targets --locked --target x86_64-unknown-linux-gnu -- -D warnings`.
+
 ## Release
 
 Taken over from RusTrace, same procedure and file names (with `MMPortLens` in place of `RusTrace`).

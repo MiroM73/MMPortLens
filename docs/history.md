@@ -500,3 +500,8 @@
   passed, the workflow succeeded and the draft was published with the notes as the latest release.
   Check of the released ZIP: checksum OK, `mmportlens.exe` has product version 1.1.1, and
   `cargo test fetch_latest_release -- --ignored` passes with v1.1.1 as GitHub's latest release.
+- #45: the Linux CI job failed since v1.0.7 (badge *CI failing*): the `poller` test module had
+  imports only its Windows-only ETW test uses, and the encoding decision of `console.rs` (#40) is
+  called only on Windows. The test module is now `cfg(all(test, windows))`, the console items carry
+  `cfg_attr(not(windows), allow(dead_code))`. Verified with Linux clippy run locally (10 errors
+  before, none after), Windows clippy, fmt and `cargo test`.
