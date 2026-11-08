@@ -25,6 +25,7 @@ program, README / `docs/architecture.md` / `docs/history.md`, detailed commit wi
 ## Phase 2 – the table and shared code
 | Issue | What | Status |
 |-------|------|--------|
+| #27 | Horizontal scroll bar when the columns are wider than the window (port from RusTrace `7904f90`); before #2, which makes wide tables more common | |
 | #2 | Column order by drag and drop, remembered column widths (same table code as #1) | |
 | #9 | Export CSV / Excel / JSON (`tabexport/` from RusTrace; exports the filtered view of #1) | |
 | #20 | Shared crate with RusTrace – decide after the filters and the export are ported (i18n, colfilter, update/http, tabexport are then copied) | |
@@ -64,3 +65,4 @@ program, README / `docs/architecture.md` / `docs/history.md`, detailed commit wi
 | #23 | Live snapshot test failed once (flaky) – better message, retry; reproduced: own connection reported as Listen (#21) | |
 | #24 | Listener rows flicker between two keys when Windows alternates state 0 and Listen | |
 | #25 | `release.ps1` loses the jq quotes under Windows PowerShell 5.1 while waiting for the workflow | |
+| #26 | Update check: retry transient GitHub errors (HTTP 502/503/504, timeouts) and explain them; port the change back to RusTrace (copied `update`/`http` code, see #20) | |
