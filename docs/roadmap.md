@@ -74,6 +74,8 @@ program, README / `docs/architecture.md` / `docs/history.md`, detailed commit wi
 | #31 | Replay: the Duration column counts to now instead of the slider time (found in the #3 check) | |
 | #32 | Invalid TCP state flips of Windows flood recordings with State changed events (found in the #3 check) | |
 | #37 | Process names of system / other users' processes without administrator rights from the process snapshot instead of `<pid>` (found in the #16 check) | |
+| #38 | Help → Command line window: options, column names, exit codes and examples with copy buttons, from the same structured data as `--help` (extends #16) | |
+| #39 | `--help` / `-h` / `-?` / `/?` in a styled egui window instead of the message box: resizable by the bottom-right corner, text zoom (Ctrl + wheel, Ctrl + `+` / `-` / `0`); reuses the renderer of #38, so after it | |
 
 ## Any time (small fixes found on the way) – all done, released in v0.3.7
 | Issue | What | Status |
