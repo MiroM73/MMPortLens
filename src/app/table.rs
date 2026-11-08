@@ -1,8 +1,10 @@
 //! The connection table: visible columns in the user's order, sorting by a header click,
 //! the column menu on a header right click, the column filter row (#1), highlighted new / changed /
-//! closed rows, horizontal scrolling when the columns do not fit (#27).
+//! closed rows, horizontal scrolling when the columns do not fit (#27), headers dragged to a new
+//! place and remembered widths (#2, in `columnlayout.rs`).
 
 use crate::app::*;
+use crate::columns::{MAX_WIDTH, MIN_WIDTH};
 use egui_extras::{Column, TableBuilder};
 
 impl App {
@@ -47,9 +49,15 @@ impl App {
         } else {
             22.0
         };
+        // The widths come from the settings (#2): applied when the visible columns change (the
+        // table would otherwise keep the widths by position) or after a fit / reset; in between
+        // the table keeps the widths the user drags, which are written back after drawing.
+        let apply_widths = std::mem::take(&mut self.apply_widths) || self.table_cols != cols;
+        if apply_widths {
+            self.table_cols = cols.clone();
+        }
         let mut tb = TableBuilder::new(ui)
-            // A new column set gets fresh widths instead of shifted old ones.
-            .id_salt(("conn_table", &cols))
+            .id_salt("conn_table")
             .striped(true)
             .resizable(true)
             .sense(Sense::click())
@@ -62,7 +70,7 @@ impl App {
             let col = if i + 1 == cols.len() {
                 Column::remainder().at_least(LAST_COLUMN_MIN)
             } else {
-                Column::initial(c.width()).at_least(40.0)
+                Column::initial(self.cfg.columns.width(*c)).range(MIN_WIDTH..=MAX_WIDTH)
             };
             // No clipping: labels truncate themselves, and the row color must reach into the gap
             // between the cells.
@@ -85,29 +93,46 @@ impl App {
             .map(|c| self.col_filter_text.get(c).cloned().unwrap_or_default())
             .collect();
         let mut filters_changed = false;
-        // Left edges of the first and the last header cell → natural width of the table.
-        let last_col = cols.len().saturating_sub(1);
-        let mut edges = (0.0f32, 0.0f32);
+        // The header cell rects: natural table width (#27), widths, drop places (#2).
+        let mut cells = vec![egui::Rect::NOTHING; cols.len()];
+        let mut drag_started: Option<ColumnId> = None;
+        if apply_widths {
+            tb.reset();
+        }
 
         tb.header(header_h, |mut h| {
             for (i, &c) in cols.iter().enumerate() {
-                let (cell, _) = h.col(|ui| {
+                h.col(|ui| {
+                    cells[i] = ui.max_rect();
                     ui.vertical(|ui| {
                         let arrow = match (sort.column == c, sort.ascending) {
                             (true, true) => " ⏶",
                             (true, false) => " ⏷",
                             _ => "",
                         };
-                        let resp = ui.add(
+                        let label = ui.add(
                             egui::Label::new(
                                 RichText::new(format!("{}{arrow}", c.title())).strong(),
                             )
                             .truncate()
-                            .selectable(false)
-                            .sense(Sense::click()),
+                            .selectable(false),
+                        );
+                        // The whole width of the title line: a click sorts, a drag moves the
+                        // column (#2).
+                        let title = egui::Rect::from_x_y_ranges(
+                            ui.max_rect().x_range(),
+                            label.rect.y_range(),
+                        );
+                        let resp = ui.interact(
+                            title,
+                            ui.scope_id().with("title"),
+                            Sense::click_and_drag(),
                         );
                         if resp.clicked() {
                             clicked_header = Some(c);
+                        }
+                        if resp.drag_started() {
+                            drag_started = Some(c);
                         }
                         if resp.secondary_clicked() {
                             open_columns_menu = true;
@@ -119,12 +144,6 @@ impl App {
                         }
                     });
                 });
-                if i == 0 {
-                    edges.0 = cell.left();
-                }
-                if i == last_col {
-                    edges.1 = cell.left();
-                }
             }
         })
         .body(|body| {
@@ -206,7 +225,12 @@ impl App {
 
         // Natural width: all columns up to the last one plus its minimum width (the last column
         // fills the rest when everything fits).
-        self.table_width = edges.1 - edges.0 + LAST_COLUMN_MIN;
+        if let (Some(first), Some(last)) = (cells.first(), cells.last()) {
+            self.table_width = last.left() - first.left() + LAST_COLUMN_MIN;
+        }
+        self.remember_column_widths(parent, &cols, &cells);
+        self.header_drag(parent, &cols, &cells, view, drag_started);
+        self.fit_on_border_double_click(parent, &cols, &cells, view);
         parent.advance_cursor_after_rect(view);
         if hbar_h > 0.0 {
             let bar = egui::Rect::from_min_max(egui::pos2(full.min.x, view.max.y), full.max);

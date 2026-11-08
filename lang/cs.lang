@@ -85,7 +85,9 @@ state.invalid = Neplatný ({value})
 state.invalid.tip = Operační systém vrátil neplatný stav TCP ({value}). Nejde o chybu MM PortLens; řádek je zobrazen tak, jak ho systém vrátil.
 columns.move_left = Posunout doleva
 columns.move_right = Posunout doprava
+columns.drag = Tažením přesunete sloupec
 columns.reset = Výchozí sloupce
+columns.reset.tip = Výchozí pořadí, viditelnost a šířky sloupců
 
 # --- Panel nástrojů ---
 toolbar.pause = Pozastavit obnovování
@@ -116,7 +118,7 @@ filter.clear = Filtry sloupců: {count}
 filter.clear.tip = Zrušit všechny filtry sloupců
 
 # --- Tabulka ---
-table.header.tip = Klik: seřadit podle sloupce. Pravý klik: sloupce.
+table.header.tip = Klik: seřadit podle sloupce. Tažení: přesunout sloupec. Dvojklik na okraj: přizpůsobit šířku. Pravý klik: sloupce.
 table.copy_rows = Kopírovat vybrané řádky
 
 # --- Zavřít spojení / Ukončit proces ---

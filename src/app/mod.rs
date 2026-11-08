@@ -26,6 +26,7 @@ use std::time::{Duration, Instant};
 mod actions;
 mod admin;
 mod colfilters;
+mod columnlayout;
 mod details;
 mod help;
 mod input;
@@ -114,6 +115,14 @@ pub struct App {
     table_scroll_x: f32,
     /// Natural width of the table columns, measured in the last frame (#27).
     table_width: f32,
+    /// The visible columns the table widths were last applied for (#2).
+    table_cols: Vec<ColumnId>,
+    /// Apply the widths of the settings to the table in the next frame (fit, reset; #2).
+    apply_widths: bool,
+    /// The header being dragged to a new place (#2).
+    header_drag: Option<columnlayout::ColumnDrag>,
+    /// The row of the column window being dragged (#2).
+    columns_drag: Option<columnlayout::ColumnDrag>,
     /// Help → Keyboard shortcuts.
     show_shortcuts: bool,
     /// Close connection / End process waiting for confirmation (#6).
@@ -177,6 +186,10 @@ impl App {
             scroll_to: None,
             table_scroll_x: 0.0,
             table_width: 0.0,
+            table_cols: Vec::new(),
+            apply_widths: false,
+            header_drag: None,
+            columns_drag: None,
             show_shortcuts: false,
             pending_action: None,
             action_result: None,

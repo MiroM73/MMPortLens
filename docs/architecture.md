@@ -27,11 +27,11 @@ with the change.
 | `src/dns.rs` | Reverse DNS (#5): `DnsCache` (TTL, negative results, pending – pure), `Resolver` (cache + worker pool), `system_lookup` (`GetNameInfoW` / `getnameinfo`). |
 | `src/services.rs` | Built-in table of well-known port names (#5). |
 | `src/actions.rs` | Close connection (`SetTcpEntry` + DELETE_TCB) and End process (`TerminateProcess` / `kill`), with the pure checks `can_close` / `can_kill` and `tcp_row` (#6). |
-| `src/columns.rs` | `ColumnId`, cell texts, value-based sorting (`SortSpec`), `ColumnLayout` (visibility + order). |
+| `src/columns.rs` | `ColumnId`, cell texts, value-based sorting (`SortSpec`), `ColumnLayout` (visibility, order, widths), `drop_slot`. |
 | `src/config.rs` | `Config` (JSON, every field has a default). |
 | `src/i18n.rs` | `t!()` and the language files – the same module as in RusTrace. |
 | `src/timefmt.rs` | Clock times for the table. |
-| `src/app/` | The UI, split by area like RusTrace: `mod.rs` (state, frame loop), `menu.rs`, `toolbar.rs`, `table.rs`, `statusbar.rs`, `colfilters.rs` (column filter state and field), `admin.rs` (restart as administrator), `update_window.rs` (Help → Check for updates), `input.rs` (keyboard shortcuts, copying the selection), `help.rs` (Help → Keyboard shortcuts), `actions.rs` (context menu items, confirmation window and result of #6), `details.rs` (details pane, process icons and tooltip of #7). |
+| `src/app/` | The UI, split by area like RusTrace: `mod.rs` (state, frame loop), `menu.rs`, `toolbar.rs`, `table.rs`, `statusbar.rs`, `colfilters.rs` (column filter state and field), `admin.rs` (restart as administrator), `update_window.rs` (Help → Check for updates), `input.rs` (keyboard shortcuts, copying the selection), `help.rs` (Help → Keyboard shortcuts), `actions.rs` (context menu items, confirmation window and result of #6), `details.rs` (details pane, process icons and tooltip of #7), `columnlayout.rs` (header drag and drop, remembered widths, fit on a border double click – #2). |
 | `lang/*.lang` | Built-in translations (en, sk, cs, de), embedded with `include_str!`. |
 
 ## Reading the connections
@@ -128,8 +128,33 @@ Cells are not clipped (`Column::clip(false)`): labels truncate themselves and a 
 its color into the gaps between the cells, so the row is one solid band (same technique as
 RusTrace).
 
-The table id contains the list of visible columns, so a changed column set starts with fresh
-default widths.
+### Column order and widths (#2)
+
+`ColumnLayout` (in the settings) holds every column with its visibility and an optional width
+(`None` = the default `ColumnId::width`; `normalize` clamps a broken width to 40–2000 px, old files
+without widths load unchanged). The table has a fixed id; `egui_extras` keeps the widths of the
+columns *by position* in its own state, so whenever the visible column list differs from the one
+the widths were applied for (`App::table_cols`) or `App::apply_widths` is set (fit, Default
+columns), `TableBuilder::reset` drops that state and the columns start with
+`Column::initial(layout.width(id))`. After drawing, `remember_column_widths` writes the header
+cell widths back into the layout once no mouse button is down (a resize does not write the
+settings every frame); the last column fills the rest of the window and keeps its stored width.
+
+A header title line senses click and drag over the whole cell width: a click sorts, a drag starts
+`App::header_drag` (`src/app/columnlayout.rs`). While dragging, the cell under the pointer and its
+half give the drop place (`columns::drop_slot`, pure and tested), drawn as a line in a foreground
+layer together with the title at the pointer; near the left / right edge the table scrolls
+horizontally (#27). The drop uses the place shown in the last frame (`ColumnDrag::slot`), not the
+pointer of the release frame; Esc cancels. `ColumnLayout::move_to` moves the column before / after
+the target in the full list (hidden columns keep their places). The column window (View →
+Columns, right click on a header) has a ≡ handle per row with the same drag logic turned
+vertical, next to the ⏴ ⏵ buttons.
+
+A double click on a header border (within the resize grab radius) fits the column:
+`fit_column` measures the title with the sort arrow and the cell texts of the first 5 000 rows
+shown (plus the icon for Process). It is detected by `App` itself, because `egui_extras` 0.37
+reads the double click of its resize handle under a different id than it creates it with, so its
+own auto-size never triggers.
 
 ### Horizontal scrolling (#27)
 

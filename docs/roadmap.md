@@ -26,8 +26,8 @@ program, README / `docs/architecture.md` / `docs/history.md`, detailed commit wi
 ## Phase 2 – the table and shared code
 | Issue | What | Status |
 |-------|------|--------|
-| #27 | Horizontal scroll bar when the columns are wider than the window (port from RusTrace `7904f90`); before #2, which makes wide tables more common | done |
-| #2 | Column order by drag and drop, remembered column widths (same table code as #1) | |
+| #27 | Horizontal scroll bar when the columns are wider than the window (port from RusTrace `7904f90`); before #2, which makes wide tables more common | done (b96c34c) |
+| #2 | Column order by drag and drop, remembered column widths (same table code as #1) | done |
 | #9 | Export CSV / Excel / JSON (`tabexport/` from RusTrace; exports the filtered view of #1) | |
 | #20 | Shared crate with RusTrace – decide after the filters and the export are ported (i18n, colfilter, update/http, tabexport are then copied) | |
 

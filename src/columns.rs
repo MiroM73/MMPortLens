@@ -417,15 +417,35 @@ impl SortSpec {
     }
 }
 
-#[derive(Clone, Copy, PartialEq, Eq, Debug, Serialize, Deserialize)]
+#[derive(Clone, Copy, PartialEq, Debug, Serialize, Deserialize)]
 pub struct ColumnSetting {
     pub id: ColumnId,
     pub visible: bool,
+    /// Width set by the user (#2); `None` = the default [`ColumnId::width`].
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub width: Option<f32>,
 }
 
-/// Which columns are shown and in which order. Stored in the settings; [`Self::normalize`]
-/// repairs files from older versions (new columns are added hidden at the end).
-#[derive(Clone, PartialEq, Eq, Debug, Serialize, Deserialize)]
+/// Where a dragged column (or a row of the column window) lands (#2): `edges` are the start and
+/// end of the cells along the drag direction, `x` the pointer. Returns the cell under the pointer
+/// and whether the drop goes after it (second half); before the first / after the last cell the
+/// nearest end. `None` without cells.
+pub fn drop_slot(edges: &[(f32, f32)], x: f32) -> Option<(usize, bool)> {
+    let last = edges.len().checked_sub(1)?;
+    edges
+        .iter()
+        .enumerate()
+        .find(|&(i, &(_, end))| x < end || i == last)
+        .map(|(i, &(start, end))| (i, x > (start + end) * 0.5))
+}
+
+/// Narrowest and widest width a column keeps (#2).
+pub const MIN_WIDTH: f32 = 40.0;
+pub const MAX_WIDTH: f32 = 2000.0;
+
+/// Which columns are shown, in which order and how wide. Stored in the settings;
+/// [`Self::normalize`] repairs files from older versions (new columns are added hidden at the end).
+#[derive(Clone, PartialEq, Debug, Serialize, Deserialize)]
 #[serde(transparent)]
 pub struct ColumnLayout(pub Vec<ColumnSetting>);
 
@@ -437,6 +457,7 @@ impl Default for ColumnLayout {
                 .map(|&id| ColumnSetting {
                     id,
                     visible: id.default_visible(),
+                    width: None,
                 })
                 .collect(),
         )
@@ -454,8 +475,19 @@ impl ColumnLayout {
         });
         for id in ColumnId::ALL {
             if !seen.contains(&id) {
-                self.0.push(ColumnSetting { id, visible: false });
+                self.0.push(ColumnSetting {
+                    id,
+                    visible: false,
+                    width: None,
+                });
             }
+        }
+        for c in &mut self.0 {
+            // A broken width in the file falls back to the default.
+            c.width = c
+                .width
+                .filter(|w| w.is_finite())
+                .map(|w| w.clamp(MIN_WIDTH, MAX_WIDTH));
         }
         if !self.0.iter().any(|c| c.visible) {
             self.0[0].visible = true;
@@ -475,6 +507,53 @@ impl ColumnLayout {
         if let Some(c) = self.0.iter_mut().find(|c| c.id == id) {
             c.visible = on;
         }
+    }
+
+    /// The width of a column: the user's or the default one.
+    pub fn width(&self, id: ColumnId) -> f32 {
+        self.0
+            .iter()
+            .find(|c| c.id == id)
+            .and_then(|c| c.width)
+            .unwrap_or_else(|| id.width())
+    }
+
+    /// Remembers the width of a column (clamped); the default width is stored as `None`.
+    /// Returns true when the stored value changed.
+    pub fn set_width(&mut self, id: ColumnId, width: f32) -> bool {
+        if !width.is_finite() {
+            return false;
+        }
+        let w = width.clamp(MIN_WIDTH, MAX_WIDTH);
+        let new = ((w - id.width()).abs() >= 0.5).then_some(w.round());
+        let Some(c) = self.0.iter_mut().find(|c| c.id == id) else {
+            return false;
+        };
+        let same = match (c.width, new) {
+            (Some(a), Some(b)) => (a - b).abs() < 0.5,
+            (a, b) => a.is_none() && b.is_none(),
+        };
+        if !same {
+            c.width = new;
+        }
+        !same
+    }
+
+    /// Moves column `id` right before (or with `after` right after) column `target` – the drop
+    /// of a dragged header or row of the column window (#2).
+    pub fn move_to(&mut self, id: ColumnId, target: ColumnId, after: bool) {
+        if id == target {
+            return;
+        }
+        let Some(i) = self.0.iter().position(|c| c.id == id) else {
+            return;
+        };
+        let c = self.0.remove(i);
+        let Some(j) = self.0.iter().position(|c| c.id == target) else {
+            self.0.insert(i, c);
+            return;
+        };
+        self.0.insert(if after { j + 1 } else { j }, c);
     }
 
     /// Moves a column by `delta` places in the order (clamped to the ends).
@@ -513,6 +592,68 @@ mod tests {
             l.set_visible(id, false);
         }
         assert_eq!(l.visible().len(), 1);
+    }
+
+    #[test]
+    fn layout_move_to() {
+        use ColumnId::*;
+        let mut l = ColumnLayout::default();
+        l.move_to(Pid, State, true);
+        let v = l.visible();
+        let pos = |id| v.iter().position(|c| *c == id).unwrap();
+        assert_eq!(pos(Pid), pos(State) + 1);
+        l.move_to(Pid, Process, false);
+        assert_eq!(l.visible()[0], Pid);
+        // A drop onto itself changes nothing.
+        let before = l.clone();
+        l.move_to(Pid, Pid, true);
+        assert_eq!(l, before);
+        // Moving to the end.
+        let last = *l.visible().last().unwrap();
+        l.move_to(Process, last, true);
+        assert_eq!(*l.visible().last().unwrap(), Process);
+        assert_eq!(l.0.len(), ColumnId::ALL.len());
+    }
+
+    #[test]
+    fn drop_slots() {
+        let cells = [(0.0, 100.0), (110.0, 160.0), (170.0, 300.0)];
+        assert_eq!(drop_slot(&[], 5.0), None);
+        assert_eq!(drop_slot(&cells, -20.0), Some((0, false)));
+        assert_eq!(drop_slot(&cells, 20.0), Some((0, false)));
+        assert_eq!(drop_slot(&cells, 60.0), Some((0, true)));
+        // In the gap between two cells: before the next one.
+        assert_eq!(drop_slot(&cells, 105.0), Some((1, false)));
+        assert_eq!(drop_slot(&cells, 150.0), Some((1, true)));
+        assert_eq!(drop_slot(&cells, 900.0), Some((2, true)));
+    }
+
+    #[test]
+    fn layout_widths() {
+        let mut l = ColumnLayout::default();
+        assert_eq!(l.width(ColumnId::Process), ColumnId::Process.width());
+        assert!(l.set_width(ColumnId::Process, 250.4));
+        assert_eq!(l.width(ColumnId::Process), 250.0);
+        assert!(!l.set_width(ColumnId::Process, 250.2), "no change");
+        // Clamped, and the default width is not stored.
+        l.set_width(ColumnId::Pid, 1.0);
+        assert_eq!(l.width(ColumnId::Pid), MIN_WIDTH);
+        assert!(l.set_width(ColumnId::Pid, ColumnId::Pid.width()));
+        assert_eq!(
+            l.0.iter().find(|c| c.id == ColumnId::Pid).unwrap().width,
+            None
+        );
+        assert!(!l.set_width(ColumnId::Pid, f32::NAN));
+        // Widths survive the settings round trip and a broken value is repaired.
+        let json = serde_json::to_string(&l).unwrap();
+        assert!(json.contains("250"));
+        let mut back: ColumnLayout = serde_json::from_str(&json).unwrap();
+        back.normalize();
+        assert_eq!(back, l);
+        let mut old: ColumnLayout =
+            serde_json::from_str(r#"[{"id":"pid","visible":true,"width":-5.0}]"#).unwrap();
+        old.normalize();
+        assert_eq!(old.width(ColumnId::Pid), MIN_WIDTH);
     }
 
     #[test]

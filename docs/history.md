@@ -109,3 +109,11 @@
   program (800 px wide window with all default columns): the bar appears, a horizontal wheel
   moves the columns, dragging the bar to the end shows the last column (Command line) complete
   with the vertical bar still visible, and at 1900 px the bar disappears.
+- #2: column order by dragging a header (drop line, title at the pointer, scrolling at the edges,
+  Esc cancels) and by dragging the ≡ handle in the column window; column widths remembered in the
+  settings (`ColumnSetting::width`), double click on a header border fits the width to the content,
+  Default columns also resets the widths. Verified with unit tests (`move_to`, `drop_slot`, widths
+  round trip and repair of old / broken values) and in the running program with its own settings
+  file: PID dragged behind State, Protocol resized to 149 px and Local address fitted to 180 px,
+  both kept after a restart; Local port dragged in the column window to the place the line showed;
+  Default columns restored the order and widths (no width left in the file).

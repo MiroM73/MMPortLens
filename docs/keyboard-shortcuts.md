@@ -16,6 +16,8 @@ shortcuts** (F1).
 | Click | Select one row |
 | Ctrl + click | Add / remove a row |
 | Shift + click, Ctrl+Shift + click | Select / add the range from the anchor row |
+| Drag a header | Move the column (Esc cancels); the drop place is shown as a line |
+| Drag a header border / double click it | Resize the column / fit it to its content |
 | Right click | Context menu (on a row outside the selection: selects only that row first) |
 | Shift + mouse wheel | Scroll the table horizontally when the columns do not fit (also the horizontal touchpad gesture) |
 | Ctrl+A | Select all rows shown |

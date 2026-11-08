@@ -102,8 +102,18 @@ impl App {
         let mut changed = false;
         let order: Vec<_> = self.cfg.columns.0.clone();
         let last = order.len() - 1;
+        // Row rects and the row whose handle starts a drag (#2).
+        let mut rows = Vec::with_capacity(order.len());
+        let mut drag_started = None;
         for (i, c) in order.iter().enumerate() {
-            ui.horizontal(|ui| {
+            let row = ui.horizontal(|ui| {
+                let handle = ui
+                    .add(egui::Label::new("≡").selectable(false).sense(Sense::drag()))
+                    .on_hover_cursor(egui::CursorIcon::Grab)
+                    .on_hover_text(t!("columns.drag"));
+                if handle.drag_started() {
+                    drag_started = Some(c.id);
+                }
                 let mut on = c.visible;
                 if ui.checkbox(&mut on, c.id.title()).changed() {
                     self.cfg.columns.set_visible(c.id, on);
@@ -128,10 +138,19 @@ impl App {
                     }
                 });
             });
+            rows.push(row.response.rect);
         }
+        let ids: Vec<ColumnId> = order.iter().map(|c| c.id).collect();
+        changed |= self.columns_list_drag(ui, &ids, &rows, drag_started);
         ui.separator();
-        if ui.button(t!("columns.reset")).clicked() {
+        if ui
+            .button(t!("columns.reset"))
+            .on_hover_text(t!("columns.reset.tip"))
+            .clicked()
+        {
+            // Order, visibility and widths (#2).
             self.cfg.columns = Default::default();
+            self.apply_widths = true;
             changed = true;
         }
         if changed {

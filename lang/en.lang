@@ -96,7 +96,9 @@ state.invalid = Invalid ({value})
 state.invalid.tip = The operating system reported an invalid TCP state ({value}). This is not an error of MM PortLens; the row is shown as reported.
 columns.move_left = Move left
 columns.move_right = Move right
+columns.drag = Drag to move the column
 columns.reset = Default columns
+columns.reset.tip = Default order, visibility and widths of the columns
 
 # --- Toolbar ---
 toolbar.pause = Pause the refresh
@@ -127,7 +129,7 @@ filter.clear = Column filters: {count}
 filter.clear.tip = Clear all column filters
 
 # --- Table ---
-table.header.tip = Click: sort by this column. Right click: columns.
+table.header.tip = Click: sort by this column. Drag: move the column. Double click on the border: fit the width. Right click: columns.
 table.copy_rows = Copy selected rows
 
 # --- Close connection / End process ---

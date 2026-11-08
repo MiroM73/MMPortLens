@@ -28,7 +28,9 @@ Early version (0.2.0). What works now:
 - New endpoints are **green**, endpoints that changed their TCP state **yellow**, closed endpoints
   stay **red** for 3 seconds before they disappear.
 - Sorting by a click on a column header (numbers and addresses sort as values).
-- Columns on / off and their order: **View → Columns** or a right click on a header.
+- Columns on / off and their order: **View → Columns** or a right click on a header; **drag a
+  header** to move a column, drag its border to resize it (double click = fit to the content).
+  Order and widths are remembered.
 - A **horizontal scroll bar** under the table when the columns do not fit the window
   (Shift + mouse wheel scrolls as well).
 - Switches TCP / UDP / IPv4 / IPv6 / Listening and a text filter over the visible columns.
