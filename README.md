@@ -47,6 +47,9 @@ Early version (0.2.5). What works now:
   `svchost.exe` it is) – in the details pane under the table, as columns and as a tooltip.
 - **Process properties** window (row context menu → Properties…, Alt+Enter) with Copy, Open file
   location, File properties and End process; it stays on its process and shows when it exits.
+- **Color rules** (View → Color rules…, Ctrl+H): color rows whose column matches a pattern in the
+  column filter syntax, e.g. remote port `3389` red or `10.0.0.0/8` blue; colors per theme, order
+  decides, import / export, also in the Excel / HTML export.
 - **Close connection** (IPv4 TCP, like TCPView) and **End process** from the context menu or with
   Del, for all selected rows, after a confirmation that lists them.
 - **Multi-selection and keyboard shortcuts**: Ctrl / Shift + click, arrows, Ctrl+A, Ctrl+C copies

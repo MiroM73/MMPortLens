@@ -152,14 +152,17 @@ impl App {
                 let r = &self.view[row.index()];
                 let key = r.conn.key();
                 row.set_selected(self.sel.contains(&key));
-                let bg = mark_color(r.mark, dark);
+                let (fg, bg) = self.row_colors(row.index(), r, dark);
                 for &c in &cols {
                     row.col(|ui| {
                         if let Some(bg) = bg {
                             ui.painter()
                                 .rect_filled(ui.max_rect().expand2(gap), 0.0, bg);
                         }
-                        let text = cell_text(r, c);
+                        let mut text = RichText::new(cell_text(r, c));
+                        if let Some(fg) = fg {
+                            text = text.color(fg);
+                        }
                         let label = egui::Label::new(text).truncate().selectable(false);
                         if c.numeric() {
                             let resp = ui.with_layout(

@@ -32,7 +32,7 @@ with the change.
 | `src/config.rs` | `Config` (JSON, every field has a default). |
 | `src/i18n.rs` | `t!()` and the language files – the same module as in RusTrace. |
 | `src/timefmt.rs` | Clock times for the table. |
-| `src/app/` | The UI, split by area like RusTrace: `mod.rs` (state, frame loop), `menu.rs`, `toolbar.rs`, `table.rs`, `statusbar.rs`, `colfilters.rs` (column filter state and field), `admin.rs` (restart as administrator), `update_window.rs` (Help → Check for updates), `input.rs` (keyboard shortcuts, copying the selection), `help.rs` (Help → Keyboard shortcuts), `actions.rs` (context menu items, confirmation window and result of #6), `details.rs` (details pane, process icons and tooltip of #7), `properties.rs` (process properties window of #28), `columnlayout.rs` (header drag and drop, remembered widths, fit on a border double click – #2), `export.rs` (File → Export… window, export thread, status – #9). |
+| `src/app/` | The UI, split by area like RusTrace: `mod.rs` (state, frame loop), `menu.rs`, `toolbar.rs`, `table.rs`, `statusbar.rs`, `colfilters.rs` (column filter state and field), `admin.rs` (restart as administrator), `update_window.rs` (Help → Check for updates), `input.rs` (keyboard shortcuts, copying the selection), `help.rs` (Help → Keyboard shortcuts), `actions.rs` (context menu items, confirmation window and result of #6), `details.rs` (details pane, process icons and tooltip of #7), `properties.rs` (process properties window of #28), `rules.rs` (color rules window and row colors of #10), `columnlayout.rs` (header drag and drop, remembered widths, fit on a border double click – #2), `export.rs` (File → Export… window, export thread, status – #9). |
 | `lang/*.lang` | Built-in translations (en, sk, cs, de), embedded with `include_str!`. |
 
 ## Reading the connections
@@ -362,6 +362,34 @@ it clears all of them, like **View → Clear column filters**. With **View → R
 filters** the texts are saved in `Config::column_filters` and set again at start; they are also
 handed to the new version after an update (`SessionState::col_filters`).
 
+
+## Color rules (#10)
+
+`src/rules.rs` (pure, from the highlight rules of RusTrace): a `ColorRule` has a name, a column
+(`None` = any visible column), a pattern in the **column filter syntax** (compiled with
+`ColumnFilter::parse` for the column's `FilterKind`, so `3389`, `>1024`, `10.0.0.0/8`, `private`,
+`/regex/` work as in the filter row) and text / background colors for the light and the dark
+theme (`fg_dark` / `bg_dark` with alpha 0 = not set → copied from the light colors after loading).
+`Compiled::new` keeps per rule `None` (off / empty), the filter, or its `FilterError` (⚠ in the
+window, the rule colors nothing); `first_match` returns the first matching rule (order decides).
+A rule for one column checks that column even when it is hidden; "any column" checks the visible
+columns.
+
+- `Config::color_rules` defaults to three examples (RDP remote port 3389, PowerShell processes,
+  a disabled 10.0.0.0/8 VPN rule), so existing settings get them once; an emptied list stays
+  empty. `Config::marks_over_rules` (default on): the new / changed / closed marks keep their
+  color; off, the rule's colors win where the rule sets them (`row_look`).
+- The match runs in `rebuild_view` (`App::view_rule`, parallel to `view`), not per frame; the
+  table takes `row_colors` (background painted as for the marks, text via `RichText::color`).
+- Export (#9): `App::export_looks` gives `tabexport::Job::looks` (light colors, `export_look`), and
+  `write_rows` uses them for Excel / HTML; an empty list means "by the marks" (tests use
+  `write_table`).
+- **View → Color rules…** / Ctrl+H (`src/app/rules.rs`): table of the rules (on, name, column,
+  pattern with the error mark, text and background color with on / off, preview on the edited
+  theme's background, up / down / delete), theme switch with "Copy from the other theme", "marks
+  keep their color", Add, Import (merged without duplicates by name + pattern, `import_rules`),
+  Export of ticked rules to JSON, Restore example rules. Every change recompiles and rebuilds the
+  view, so the table is the live preview.
 ## Settings and languages
 
 `Config` is saved debounced (0.8 s after the last change, and on close) through a temporary file.

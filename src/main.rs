@@ -18,6 +18,7 @@ mod model;
 mod net;
 mod poller;
 mod process;
+mod rules;
 mod selection;
 mod services;
 mod tabexport;

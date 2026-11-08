@@ -156,3 +156,13 @@
   listener: the window showed the same values as the details pane, End process from the window
   ended it after the confirmation and the window switched to the exited state (0 TCP, End process
   disabled), File properties opened the Windows dialog of python.exe, Esc closed the window.
+- #10: custom color rules (`src/rules.rs`, window `src/app/rules.rs`, View → Color rules… /
+  Ctrl+H): per rule a column (or any visible column) and a pattern in the column filter syntax,
+  text / background colors per theme, order decides, marks over rules configurable, example rules
+  (RDP, PowerShell, VPN range), import without duplicates / export of chosen rules, Excel / HTML
+  export with the rule colors. Verified: 8 unit tests (order, any column, disabled / invalid
+  rules, marks vs rules, export colors, examples valid, import + old files, moving) and the
+  settings test; in the release build with a rule "Local port 8765" the `python -m http.server`
+  row was blue with white text, the window showed the rule, changing the pattern to 9999 removed
+  the color at once and was saved to the settings file. The ⚠ of an invalid pattern was not
+  checked by hand (unit tests only).

@@ -50,6 +50,10 @@ pub struct Config {
     pub update_skipped: String,
     /// File → Export… settings (#9).
     pub export: crate::tabexport::Settings,
+    /// Custom color rules for rows (#10); examples on the first start.
+    pub color_rules: Vec<crate::rules::ColorRule>,
+    /// The new / changed / closed marks have priority over the color rules.
+    pub marks_over_rules: bool,
 }
 
 /// When MM PortLens looks for a new version at start-up.
@@ -109,6 +113,8 @@ impl Default for Config {
             update_last_check: 0,
             update_skipped: String::new(),
             export: Default::default(),
+            color_rules: crate::rules::default_rules(),
+            marks_over_rules: true,
         }
     }
 }
@@ -134,6 +140,9 @@ impl Config {
         let mut cfg: Config = serde_json::from_str(text).ok()?;
         cfg.columns.normalize();
         cfg.interval_ms = cfg.interval_ms.clamp(100, 600_000);
+        cfg.color_rules
+            .iter_mut()
+            .for_each(crate::rules::ColorRule::fill_missing_dark);
         Some(cfg)
     }
 
@@ -186,6 +195,11 @@ mod tests {
                 (ColumnId::Pid, ">4".into())
             ]
         );
+        // Older settings get the example color rules; an emptied list stays empty (#10).
+        assert_eq!(partial.color_rules, crate::rules::default_rules());
+        assert!(partial.marks_over_rules);
+        let none = Config::parse(r#"{"color_rules": []}"#).unwrap();
+        assert!(none.color_rules.is_empty());
         let daily = Config::parse(r#"{"update_when": "daily"}"#).unwrap();
         assert_eq!(daily.update_when, UpdateCheck::Daily);
     }

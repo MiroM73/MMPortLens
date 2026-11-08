@@ -262,7 +262,9 @@ impl App {
             .csv_separator
             .unwrap_or_else(tabexport::csv::system_list_separator);
         let now = now_ms();
+        let looks = self.export_looks(&rows, e.colors);
         let job = tabexport::Job {
+            looks,
             cols: self
                 .export_columns(e.columns)
                 .into_iter()

@@ -25,6 +25,7 @@ shortcuts** (F1).
 | Alt+Enter | Properties of the process of the cursor row (also **Properties…** in the row context menu) |
 | Ctrl+C | Copy the selected rows, tab-separated in the visible columns (a header line for several rows; values with a tab, quote or line break are quoted, so they paste into Excel) |
 | Ctrl+S | Export the table (CSV, Excel, JSON Lines, HTML) |
+| Ctrl+H | Color rules window (open / close) |
 | F1 | Keyboard shortcuts window |
 
 The selection belongs to the connections, not to the positions in the table: it stays when the

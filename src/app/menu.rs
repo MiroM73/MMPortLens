@@ -77,6 +77,16 @@ impl App {
                     self.clear_column_filters();
                 }
                 ui.separator();
+                if ui
+                    .add(
+                        egui::Button::new(t!("menu.view.color_rules"))
+                            .shortcut_text(help::kb("Ctrl+H")),
+                    )
+                    .clicked()
+                {
+                    ui.close();
+                    self.show_rules = true;
+                }
                 ui.menu_button(t!("menu.view.language"), |ui| self.language_menu(ui));
                 ui.menu_button(t!("menu.view.theme"), |ui| self.theme_menu(ui));
             });

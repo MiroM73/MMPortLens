@@ -311,10 +311,25 @@ pub fn cell(row: &Row, col: ColumnId, now: u64) -> Cell<'static> {
     }
 }
 
-/// Writes the header and every row into `sink`; returns the number of rows.
-/// Cancelling (`ctl.cancel`) ends with an `Interrupted` error.
+/// Writes the header and every row into `sink`, rows colored by their marks; returns the number
+/// of rows. Cancelling (`ctl.cancel`) ends with an `Interrupted` error.
+#[cfg(test)]
 pub fn write_table(
     rows: &[Row],
+    cols: &[ColumnSpec],
+    header: bool,
+    now: u64,
+    sink: &mut dyn TableSink,
+    ctl: &Control,
+) -> io::Result<usize> {
+    write_rows(rows, &[], cols, header, now, sink, ctl)
+}
+
+/// [`write_table`] with the colors of the rows given (`looks[i]` for `rows[i]`, e.g. the color
+/// rules of #10); rows without a look are colored by their marks.
+pub fn write_rows(
+    rows: &[Row],
+    looks: &[RowLook],
     cols: &[ColumnSpec],
     header: bool,
     now: u64,
@@ -328,7 +343,11 @@ pub fn write_table(
     for (n, r) in rows.iter().enumerate() {
         cells.clear();
         cells.extend(cols.iter().map(|c| cell(r, c.col, now)));
-        sink.row(&cells, RowLook::of_mark(r.mark))?;
+        let look = looks
+            .get(n)
+            .copied()
+            .unwrap_or_else(|| RowLook::of_mark(r.mark));
+        sink.row(&cells, look)?;
         ctl.check(n + 1)?;
     }
     ctl.done.store(rows.len(), Ordering::Relaxed);
@@ -338,6 +357,8 @@ pub fn write_table(
 /// Everything one export needs (moved into the export thread).
 pub struct Job {
     pub rows: Vec<Row>,
+    /// The colors of the rows (empty = by their marks).
+    pub looks: Vec<RowLook>,
     pub cols: Vec<ColumnSpec>,
     pub format: TableFormat,
     pub header: bool,
@@ -358,7 +379,9 @@ pub fn run(job: &Job, path: &Path, ctl: &Control) -> io::Result<(usize, usize)> 
     let res = (|| -> io::Result<(usize, usize)> {
         let file = io::BufWriter::new(std::fs::File::create(path)?);
         let table = |sink: &mut dyn TableSink| {
-            write_table(&job.rows, &job.cols, job.header, job.now, sink, ctl)
+            write_rows(
+                &job.rows, &job.looks, &job.cols, job.header, job.now, sink, ctl,
+            )
         };
         match job.format {
             TableFormat::Csv => {
@@ -551,6 +574,7 @@ pub(crate) mod tests {
         std::fs::create_dir_all(&dir).unwrap();
         let job = |format| Job {
             rows: sample(),
+            looks: Vec::new(),
             cols: specs(&[ColumnId::Process, ColumnId::Pid]),
             format,
             header: true,

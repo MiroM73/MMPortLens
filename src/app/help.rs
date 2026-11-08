@@ -15,6 +15,7 @@ const SHORTCUTS: &[(&str, &str)] = &[
     ("Ctrl+A", "help.select_all"),
     ("Ctrl+C", "help.copy"),
     ("Ctrl+S", "help.export"),
+    ("Ctrl+H", "help.rules"),
     ("Del", "help.close"),
     ("Alt+Enter", "help.properties"),
     ("F1", "help.shortcuts"),

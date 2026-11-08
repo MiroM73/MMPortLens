@@ -33,6 +33,7 @@ mod help;
 mod input;
 mod menu;
 mod properties;
+mod rules;
 mod statusbar;
 mod table;
 mod toolbar;
@@ -97,7 +98,17 @@ pub struct App {
     tracker: Tracker,
     /// The rows shown: filtered and sorted copy of the tracker, rebuilt when `view_dirty`.
     view: Vec<Row>,
+    /// The color rule of each row of `view` (#10), matched when the view is rebuilt.
+    view_rule: Vec<Option<usize>>,
     view_dirty: bool,
+    /// The color rules compiled (#10).
+    rules: crate::rules::Compiled,
+    /// View → Color rules… window (#10): open, theme of the edited colors, the rules ticked
+    /// for an export, the last import / export message.
+    show_rules: bool,
+    rules_edit_dark: bool,
+    rules_export_pick: Option<Vec<bool>>,
+    rules_msg: Option<String>,
     counts: Counts,
     /// Text filter of the toolbar (any visible column contains it, case-insensitive).
     filter: String,
@@ -179,7 +190,13 @@ impl App {
             rx,
             tracker: Tracker::default(),
             view: Vec::new(),
+            view_rule: Vec::new(),
             view_dirty: true,
+            rules: crate::rules::Compiled::default(),
+            show_rules: false,
+            rules_edit_dark: cc.egui_ctx.global_style().visuals.dark_mode,
+            rules_export_pick: None,
+            rules_msg: None,
             counts: Counts::default(),
             filter: String::new(),
             col_filter_text: HashMap::new(),
@@ -224,6 +241,7 @@ impl App {
             elevate_error: elevate_error.as_ref().map(admin::elevate_error_text),
         };
         app.apply_theme(&cc.egui_ctx);
+        app.recompile_rules();
         if app.cfg.remember_column_filters {
             let saved = app.cfg.column_filters.clone();
             app.set_column_filters(saved);
@@ -359,6 +377,10 @@ impl App {
         }
         let sort = self.cfg.sort;
         view.sort_by(|a, b| sort.compare(a, b));
+        self.view_rule = view
+            .iter()
+            .map(|r| self.rules.first_match(&self.cfg.color_rules, r, &cols))
+            .collect();
         counts.shown = view.len();
         self.view = view;
         self.counts = counts;
@@ -382,6 +404,11 @@ impl App {
 
 /// Minimum width of the last table column; it fills the rest of the window when the columns fit.
 const LAST_COLUMN_MIN: f32 = 150.0;
+
+/// An RGBA color of the settings as an egui color.
+fn c32(c: [u8; 4]) -> Color32 {
+    Color32::from_rgba_unmultiplied(c[0], c[1], c[2], c[3])
+}
 
 /// Background of a marked row, readable in both themes.
 fn mark_color(mark: Mark, dark: bool) -> Option<Color32> {
@@ -417,6 +444,7 @@ impl eframe::App for App {
         self.shortcuts_window(&ctx);
         self.properties_window(&ctx);
         self.confirm_window(&ctx);
+        self.rules_window(&ctx);
         self.check_export();
         self.export_window(&ctx);
         self.poll_update(&ctx);

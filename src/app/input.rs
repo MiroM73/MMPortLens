@@ -25,7 +25,7 @@ impl App {
         let filter_id = egui::Id::unique(FILTER_ID);
         let filter_focused = ctx.memory(|m| m.has_focus(filter_id));
 
-        let (f5, ctrl_f, ctrl_a, help, export, props) = ctx.input_mut(|i| {
+        let (f5, ctrl_f, ctrl_a, help, export, props, rules) = ctx.input_mut(|i| {
             (
                 i.consume_key(Modifiers::NONE, Key::F5),
                 i.consume_key(Modifiers::COMMAND, Key::F),
@@ -33,8 +33,12 @@ impl App {
                 i.consume_key(Modifiers::NONE, Key::F1),
                 i.consume_key(Modifiers::COMMAND, Key::S),
                 !typing && i.consume_key(Modifiers::ALT, Key::Enter),
+                i.consume_key(Modifiers::COMMAND, Key::H),
             )
         });
+        if rules {
+            self.show_rules = !self.show_rules;
+        }
         if props {
             self.open_properties_of_cursor();
         }
