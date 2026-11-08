@@ -90,6 +90,8 @@ struct Counts {
     established: usize,
     listening: usize,
     time_wait: usize,
+    /// TCP rows with a state Windows should never report (0 or above 12, #21).
+    invalid: usize,
 }
 
 pub struct App {
@@ -392,6 +394,7 @@ impl App {
                 Some(TcpState::Established) => counts.established += 1,
                 Some(TcpState::Listen) => counts.listening += 1,
                 Some(TcpState::TimeWait) => counts.time_wait += 1,
+                Some(TcpState::Unknown(_)) => counts.invalid += 1,
                 _ => {}
             }
             if resolve {

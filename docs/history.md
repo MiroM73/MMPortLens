@@ -225,3 +225,8 @@
   decided by the pure `check_state`. Verified: 100 consecutive runs of the test passed on the
   development PC; every run skipped the listener (state 0) and 15 skipped the client (reported as
   Listen, FinWait1 or Closed despite the retries); unit test of `check_state`; 130 tests.
+- #21 part 3 (closes #21): the status bar shows "Invalid TCP states: N" in the warning color with
+  a tooltip explaining that Windows on this computer reports broken states (also in netstat and
+  TCPView) while any TCP row has an invalid state; new keys in all four languages. Verified in
+  the release build on the affected PC: "Invalid TCP states: 39" after the state counts; 130
+  tests (including the language completeness test).

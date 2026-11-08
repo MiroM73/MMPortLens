@@ -16,6 +16,15 @@ impl App {
                 listening = c.listening,
                 time_wait = c.time_wait
             ));
+            if c.invalid > 0 {
+                // Windows on this computer reports broken TCP states (#21).
+                ui.separator();
+                ui.colored_label(
+                    ui.visuals().warn_fg_color,
+                    t!("status.invalid_states", count = c.invalid),
+                )
+                .on_hover_text(t!("status.invalid_states.tip", count = c.invalid));
+            }
             ui.separator();
             let ch = self.last_changes;
             ui.label(t!(

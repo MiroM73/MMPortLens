@@ -74,6 +74,9 @@ others. It is an OS problem, not a decoding one. Consequences in the code:
 - `TcpState::from_mib` maps any value outside 1–12 to `Unknown(n)`; `columns::state_text` shows it
   as the translated `state.invalid` ("Invalid (0)") and the table cell has the `state.invalid.tip`
   tooltip.
+- The status bar counts the TCP rows with an invalid state (`Counts::invalid`) and shows
+  "Invalid TCP states: N" in the warning color with an explaining tooltip (`status.invalid_states`)
+  while there are any, so the user knows the states of this computer are not trustworthy.
 - The decoder drops the remote side `0.0.0.0:0` / `[::]:0` by the address alone, whatever the
   state (`winrows::remote_or_none`): Windows reports some listeners alternately with state 0 and
   `Listen`, and deciding by the state gave the same socket two `ConnKey`s, so the row flickered

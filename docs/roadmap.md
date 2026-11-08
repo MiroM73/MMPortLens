@@ -67,7 +67,7 @@ program, README / `docs/architecture.md` / `docs/history.md`, detailed commit wi
 ## Any time (small fixes found on the way)
 | Issue | What | Status |
 |-------|------|--------|
-| #21 part 3 | Status bar hint when Windows reports invalid TCP states | |
+| #21 part 3 | Status bar hint when Windows reports invalid TCP states | done |
 | #22 | Sort arrow in the header drawn as an empty box | done |
 | #23 | Live snapshot test failed once (flaky) – better message, retry; reproduced: own connection reported as Listen (#21) | done |
 | #24 | Listener rows flicker between two keys when Windows alternates state 0 and Listen | done |
