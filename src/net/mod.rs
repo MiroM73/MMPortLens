@@ -278,21 +278,16 @@ mod tests {
         let (_server, _) = listener.accept().unwrap();
         let conns = snapshot().unwrap();
         let me = std::process::id();
-        // Found by protocol, local address and PID only: with an invalid state the decoder
-        // cannot tell a listener and keeps its remote side 0.0.0.0:0 (issue #21).
+        // Found by protocol, local address and PID; the remote side is none whatever state
+        // Windows reports (#21, #24).
         let lis = conns
             .iter()
             .find(|c| {
-                c.proto == Protocol::Tcp
-                    && c.local == addr
-                    && c.pid == me
-                    && c.remote
-                        .is_none_or(|r| r.port() == 0 && r.ip().is_unspecified())
+                c.proto == Protocol::Tcp && c.local == addr && c.pid == me && c.remote.is_none()
             })
             .expect("own listener");
         if state_checkable("own listener", lis.state) {
             assert_eq!(lis.state, Some(TcpState::Listen));
-            assert_eq!(lis.remote, None);
         }
         let out = conns
             .iter()

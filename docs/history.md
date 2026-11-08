@@ -212,3 +212,10 @@
   uses the same function. Verified in the release build: ▲ after Process (ascending), ▼ after PID
   (descending) with grouping on, the column window shows ◀ / ▶ with the disabled first / last
   button faded; fmt, clippy, 129 tests.
+- #24: a TCP row with the remote side `0.0.0.0:0` / `[::]:0` has no remote side whatever its
+  state (`winrows::remote_or_none` decides by the address alone), so a listener that Windows
+  reports alternately with state 0 and Listen keeps one key and is only marked changed instead of
+  closed + new. Verified: new decoder test (IPv4 and IPv6 rows with state 0 and Listen have the
+  same key), `can_close` test for both forms, the live test finds its listener by
+  `remote == None`; in the release build the listeners with "Invalid (0)" and the alternating
+  `:5040` show no remote side and the last refresh stayed at +0 −0 ~0. 130 tests.

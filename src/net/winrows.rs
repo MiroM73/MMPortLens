@@ -78,9 +78,12 @@ pub fn rows(buf: &[u8], row_size: usize) -> impl Iterator<Item = &[u8]> {
         .take(n.min(fit))
 }
 
-/// Remote side of a TCP row: none for a listener (remote address and port 0).
-fn remote_or_none(state: TcpState, addr: SocketAddr) -> Option<SocketAddr> {
-    if state == TcpState::Listen && addr.port() == 0 && addr.ip().is_unspecified() {
+/// Remote side of a TCP row: none when it is the unspecified address with port 0. Decided by
+/// the address alone, not by the state: a real connection never has remote port 0, and Windows
+/// can report a listener alternately with the invalid state 0 and with Listen (#21) – deciding
+/// by the state gave the same socket two keys and the row flickered as closed + new (#24).
+fn remote_or_none(addr: SocketAddr) -> Option<SocketAddr> {
+    if addr.port() == 0 && addr.ip().is_unspecified() {
         None
     } else {
         Some(addr)
@@ -95,7 +98,7 @@ pub fn decode_tcp4(buf: &[u8]) -> Vec<Connection> {
             Connection {
                 proto: Protocol::Tcp,
                 local: SocketAddr::new(IpAddr::V4(ipv4(r, 4)), port(r, 8)),
-                remote: remote_or_none(state, remote),
+                remote: remote_or_none(remote),
                 state: Some(state),
                 pid: dword(r, 20),
                 created: created(r, 24),
@@ -114,7 +117,7 @@ pub fn decode_tcp6(buf: &[u8]) -> Vec<Connection> {
             Connection {
                 proto: Protocol::Tcp6,
                 local: sock6(ipv6(r, 0), port(r, 20), dword(r, 16)),
-                remote: remote_or_none(state, remote),
+                remote: remote_or_none(remote),
                 state: Some(state),
                 pid: dword(r, 52),
                 created: created(r, 56),
@@ -218,6 +221,46 @@ mod tests {
         assert_eq!(c[1].remote, None);
         assert_eq!(c[1].state, Some(TcpState::Listen));
         assert_eq!(c[1].created, None);
+    }
+
+    /// A listener reported alternately with the invalid state 0 and Listen keeps one key (#24).
+    #[test]
+    fn listener_key_does_not_depend_on_the_state() {
+        let row = |state: u32| {
+            let mut r = Vec::new();
+            r.extend(dw(state));
+            r.extend([0, 0, 0, 0]);
+            r.extend(pdw(5040));
+            r.extend([0, 0, 0, 0]);
+            r.extend(pdw(0));
+            r.extend(dw(13812));
+            finish(r, 24, 0, TCP4_ROW)
+        };
+        let invalid = decode_tcp4(&table(1, &[row(0)]));
+        let listen = decode_tcp4(&table(1, &[row(2)]));
+        assert_eq!(invalid[0].state, Some(TcpState::Unknown(0)));
+        assert_eq!(invalid[0].remote, None);
+        assert_eq!(invalid[0].key(), listen[0].key());
+        // The same for IPv6 ([::]:0).
+        let row6 = |state: u32| {
+            let mut r = Vec::new();
+            r.extend([0; 16]);
+            r.extend(dw(0));
+            r.extend(pdw(5040));
+            r.extend([0; 16]);
+            r.extend(dw(0));
+            r.extend(pdw(0));
+            r.extend(dw(state));
+            r.extend(dw(13812));
+            finish(r, 56, 0, TCP6_ROW)
+        };
+        let invalid = decode_tcp6(&table(1, &[row6(0)]));
+        let listen = decode_tcp6(&table(1, &[row6(2)]));
+        assert_eq!(invalid[0].remote, None);
+        assert_eq!(invalid[0].key(), listen[0].key());
+        // A remote side with a real address or port stays.
+        assert!(remote_or_none("0.0.0.0:443".parse().unwrap()).is_some());
+        assert!(remote_or_none("10.0.0.1:0".parse().unwrap()).is_some());
     }
 
     #[test]

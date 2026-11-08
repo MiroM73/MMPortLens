@@ -74,7 +74,11 @@ others. It is an OS problem, not a decoding one. Consequences in the code:
 - `TcpState::from_mib` maps any value outside 1–12 to `Unknown(n)`; `columns::state_text` shows it
   as the translated `state.invalid` ("Invalid (0)") and the table cell has the `state.invalid.tip`
   tooltip.
-- Such a listener keeps its remote side `0.0.0.0:0` (the decoder only drops it for `Listen`).
+- The decoder drops the remote side `0.0.0.0:0` / `[::]:0` by the address alone, whatever the
+  state (`winrows::remote_or_none`): Windows reports some listeners alternately with state 0 and
+  `Listen`, and deciding by the state gave the same socket two `ConnKey`s, so the row flickered
+  as closed + new, lost its selection and "First seen" (#24). Now only the state changes (marked
+  *Changed*).
 - The live test finds its own sockets by protocol, local address and PID and skips only the state
   assertion when Windows reports an invalid state (`state_checkable`, prints a message); on a clean
   Windows (CI) the full check runs.
@@ -317,8 +321,8 @@ selected rows shown (`App::selected_rows`, table order).
 
 - `actions::can_close` allows only IPv4 TCP connections with a remote side that are not Listen /
   TimeWait / Closed / DeleteTcb (an invalid state of #21 is allowed – Windows reports it for live
-  connections; a listener with an invalid state keeps `0.0.0.0:0` as its remote side and is
-  refused). Windows has no IPv6 counterpart of `SetTcpEntry`. The disabled menu item has the
+  connections; a listener with an invalid state has no remote side, #24, and a remote port 0 is
+  refused as well). Windows has no IPv6 counterpart of `SetTcpEntry`. The disabled menu item has the
   reason as its tooltip; Del on rows that cannot be closed shows the reason in the status bar.
 - `actions::can_kill` refuses PID 0, 4 (Windows) and MM PortLens itself; End process acts on the
   distinct PIDs of the selection.

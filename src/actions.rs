@@ -279,14 +279,22 @@ mod tests {
             assert_eq!(can_close(&udp), Err(CloseBlock::Udp));
             let lis = conn(Protocol::Tcp, "0.0.0.0:445", None, Some(TcpState::Listen));
             assert_eq!(can_close(&lis), Err(CloseBlock::Listener));
-            // A listener with an invalid state keeps 0.0.0.0:0 as its remote side (#21).
+            // A listener with an invalid state has no remote side since #24; a row with remote
+            // port 0 (from another backend) is refused as well.
             let lis0 = conn(
+                Protocol::Tcp,
+                "0.0.0.0:445",
+                None,
+                Some(TcpState::Unknown(0)),
+            );
+            assert_eq!(can_close(&lis0), Err(CloseBlock::Listener));
+            let port0 = conn(
                 Protocol::Tcp,
                 "0.0.0.0:445",
                 Some("0.0.0.0:0"),
                 Some(TcpState::Unknown(0)),
             );
-            assert_eq!(can_close(&lis0), Err(CloseBlock::Listener));
+            assert_eq!(can_close(&port0), Err(CloseBlock::Listener));
         } else {
             assert_eq!(can_close(&est), Err(CloseBlock::Platform));
         }
