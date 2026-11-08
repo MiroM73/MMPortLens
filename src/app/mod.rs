@@ -62,6 +62,24 @@ pub fn base_title() -> String {
     }
 }
 
+/// The egui theme of the `theme` setting ("dark", "light", anything else = system).
+pub fn theme_preference(theme: &str) -> egui::ThemePreference {
+    match theme {
+        "dark" => egui::ThemePreference::Dark,
+        "light" => egui::ThemePreference::Light,
+        _ => egui::ThemePreference::System,
+    }
+}
+
+/// The program icon for a window.
+pub fn icon_data() -> egui::IconData {
+    egui::IconData {
+        rgba: crate::icon::rgba(64),
+        width: 64,
+        height: 64,
+    }
+}
+
 /// Update check and installation (#15).
 enum UpdateState {
     Idle,
@@ -369,12 +387,7 @@ impl App {
     }
 
     fn apply_theme(&self, ctx: &egui::Context) {
-        let pref = match self.cfg.theme.as_str() {
-            "dark" => egui::ThemePreference::Dark,
-            "light" => egui::ThemePreference::Light,
-            _ => egui::ThemePreference::System,
-        };
-        ctx.set_theme(pref);
+        ctx.set_theme(theme_preference(&self.cfg.theme));
     }
 
     /// Writes the settings, with the saved values of what the command line changed for this run.

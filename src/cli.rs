@@ -3,10 +3,11 @@
 //! [`parse`] is a small hand-written parser (no dependency, the style of RusTrace `src/cli.rs`)
 //! that only turns the arguments into [`Options`]; [`check_lang`] and [`filters`] check the values
 //! that need the language files or the settings (language codes, column names, preset names,
-//! filter syntax). Messages go through `t!()`; the help and the errors of a start with a window
+//! filter syntax). Messages go through `t!()`; the version and the errors of a start with a window
 //! are shown with [`show_message`] (a message box on Windows, where the release build has no
 //! console, and stdout / stderr), the runs without a window (`--export`, `--record`) write to the
-//! console they were started from ([`attach_console`]).
+//! console they were started from ([`attach_console`]). The help is `clihelp` (#38), shown in the
+//! window of `helpwindow` (#39).
 //!
 //! Compatibility: a plain `mmportlens.exe "C:\path\capture.plrec"` (a double-clicked recording)
 //! is the RECORDING; `--preset <name>` keeps the form and the behaviour it had since #13; the

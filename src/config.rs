@@ -64,6 +64,8 @@ pub struct Config {
     pub filter_presets: Vec<crate::presets::FilterPreset>,
     /// File → Start recording… settings (#3).
     pub record: crate::recording::Settings,
+    /// Zoom and size of the `--help` window (#39).
+    pub help_window: crate::helpwindow::HelpWindowState,
 }
 
 /// When MM PortLens looks for a new version at start-up.
@@ -130,6 +132,7 @@ impl Default for Config {
             collapsed_processes: Vec::new(),
             filter_presets: crate::presets::default_presets(),
             record: Default::default(),
+            help_window: Default::default(),
         }
     }
 }

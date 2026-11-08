@@ -350,3 +350,16 @@
   from the Help menu, scrolls, the copy button put `mmportlens --column state==Established --column
   "remote_port=443|80"` on the clipboard and showed ✔; the export examples run from PowerShell
   wrote the CSV files with exit code 0.
+- #39: `--help` / `-h` / `-?` / `/?` open a styled egui window (`src/helpwindow.rs`) with the
+  renderer of #38 instead of the message box; the console it was started from still gets the
+  aligned text. Resizable window with a grip in the corner, zoom by Ctrl + wheel, Ctrl + `+` / `-`
+  / `0` and the bottom bar buttons, zoom and size remembered in `Config::help_window`; Esc / Close
+  / × end the program with 0. `app::theme_preference` and `app::icon_data` are shared with the
+  main window. Verified: fmt, clippy, 3 new tests (zoom limits and rounding, zoom keys incl. the
+  physical 0 key, defaults of the new setting), 172 tests; in the release build with a scratch
+  config: `--lang sk --help` printed the Slovak text to the console and showed the Slovak window,
+  Ctrl + `=` twice → 120 %, Ctrl + wheel → 220 %, Ctrl + `-` → 210 %, Esc closed it with exit
+  code 0 and saved zoom 2.1; `-?` opened it at 210 %, Ctrl + 0 (real key event) → 100 %, dragging
+  the bottom-right corner shrank the window to 600 × 450 with the text reflowed, × saved that
+  size. SendKeys "^0" did not reset on the Slovak layout (it sends the shifted character), which
+  led to the physical-key check.

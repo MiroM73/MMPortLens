@@ -15,6 +15,7 @@ mod dns;
 mod elevation;
 mod grouping;
 mod headless;
+mod helpwindow;
 mod http;
 mod i18n;
 mod icon;
@@ -74,14 +75,14 @@ fn command_line(cfg: &config::Config, raw: &[String]) -> (app::Startup, Option<P
         _ => None,
     };
     if opts.help {
+        // The aligned text for the console it was started from (scripts, `| more`), then the
+        // help window (#39); closing it ends the program with exit code 0.
         let help = clihelp::build(&languages.join(", "));
-        // Aligned with spaces on the console, with tabs in the message box.
-        cli::show_message(
-            &t!("cli.title.help"),
-            &help.text(false),
-            &help.text(true),
-            false,
-        );
+        cli::attach_console();
+        println!("{}", help.text(false));
+        if let Err(e) = helpwindow::run(cfg, help, app::icon_data()) {
+            eprintln!("{e}");
+        }
         std::process::exit(0)
     }
     if opts.version {
@@ -206,11 +207,7 @@ fn main() -> eframe::Result {
         viewport: viewport
             .with_min_inner_size([700.0, 350.0])
             .with_title(app::base_title())
-            .with_icon(Arc::new(egui::IconData {
-                rgba: icon::rgba(64),
-                width: 64,
-                height: 64,
-            })),
+            .with_icon(Arc::new(app::icon_data())),
         ..Default::default()
     };
     eframe::run_native(

@@ -10,6 +10,7 @@ with the change.
 | `src/main.rs` | Start-up: the command line (`cli`), help / version / errors, the runs without a window (`headless`), always start as administrator, `--restore <file>` after an update, the window. |
 | `src/cli.rs` | Command-line parser (#16): `Options` / `ViewOptions`, `CliError` with translated messages, `filters` (preset + text + column filters checked against the settings), `PUBLIC_OPTIONS` (the documented options, shared with the help), message box, `attach_console` – the style of RusTrace `src/cli.rs`. |
 | `src/clihelp.rs` | The command-line help as data (#38): `CliHelp` (usage, options, column names, exit codes, examples) built from `cli::PUBLIC_OPTIONS` and the `cli.*` keys; `text()` for the console / message box. |
+| `src/helpwindow.rs` | The `--help` window (#39): a small eframe app around `app::cli_help::cli_help_ui`, zoom (Ctrl + wheel / `+` / `-` / `0`, bottom bar), resize grip, `HelpWindowState` (zoom and size in `Config::help_window`). |
 | `src/headless.rs` | `--export` (one snapshot) and `--record` (until `--duration` or Ctrl+C) without a window (#16). |
 | `src/rowfilter.rs` | `RowFilter` (switches, text filter, column filters of the visible columns), `compile` – used by the table, a recording and the command line. |
 | `build.rs` | Windows: icon (from `src/icon.rs`) and version information as a resource of the exe (`winresource`). |
@@ -630,7 +631,8 @@ counts, `--column` adds one filter each time), `main::command_line` acts:
 | `--lang <code>` | UI language for this run |
 | `--export <file>` | without a window: one snapshot, format by the extension |
 | `--record <file>` / `--duration <time>` | without a window: record until the time is up (`10m`, `90s`, `1h30m`, minutes – `recording::parse_duration`) or Ctrl+C; `.plrec` is added to a name without an extension |
-| `--help` / `--version` | message box (and stdout) |
+| `--help` | the aligned text on the console it was started from, then the help window (#39) |
+| `--version` | message box (and stdout) |
 
 Hidden: `--restore <file>` (update / elevated restart, #15) and `--elevated` keep their old form,
 so older versions still restart this one.
@@ -664,8 +666,23 @@ menu or an interval in the toolbar (then that one is saved). The toolbar shows a
 (`750 ms`).
 
 **Errors and output**: exit code 0 = done, 1 = error (reading the tables, writing the file), 2 =
-invalid command line. A start with a window shows errors and the help in a message box
+invalid command line. A start with a window shows errors and the version in a message box
 (`cli::show_message`, `MessageBoxW`; the release build has no console) and on stdout / stderr.
+
+**`--help` window (#39)**: `main` attaches to the parent console (`cli::attach_console`), prints
+`CliHelp::text(false)` there (scripts, `| more`) and runs `helpwindow::run` – a second, small
+`eframe::run_native` (app id `MMPortLens-help`) instead of the message box, titled `cli.title.help`,
+with the program icon (`app::icon_data`) and the theme of the settings (`app::theme_preference`);
+the language is already the one of `--lang`. The content is `cli_help_ui` of #38 in a
+`CentralPanel`, a bottom panel holds A− / zoom % (reset) / A+, the hint (truncated when the zoomed
+buttons need the room), Close and a painted resize grip in the corner (the OS window is resizable
+by its edges; default 800 × 600, minimum 520 × 320). Zoom = `Context::set_zoom_factor`, 50–300 %,
+rounded to whole percent (`clamp_zoom`); egui's own keyboard zoom is switched off so the window
+handles Ctrl + `+` / `=` / `-` / `0` itself (`zoom_keys`: Ctrl, Shift ignored, the physical key
+counts too – on the Slovak layout the 0 key types "é") and Ctrl + wheel through
+`InputState::zoom_delta`. Esc, Close or the × save `HelpWindowState` (zoom, inner size in
+unzoomed logical pixels = points × zoom) into a freshly loaded `Config` (`help_window`) and close;
+`main` then exits with 0. The same window on Linux (there was no message box).
 When the arguments contain `--export` / `--record`, `cli::attach_console`
 (`AttachConsole(ATTACH_PARENT_PROCESS)`) runs first and every message (also an invalid line) goes
 only to the console – an unattended task never waits for a click. Because the exe is a GUI
