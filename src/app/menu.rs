@@ -77,6 +77,8 @@ impl App {
                     self.clear_column_filters();
                 }
                 ui.separator();
+                self.group_menu_items(ui);
+                ui.separator();
                 if ui
                     .add(
                         egui::Button::new(t!("menu.view.color_rules"))

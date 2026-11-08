@@ -5,6 +5,7 @@
 
 use crate::app::*;
 use crate::columns::{MAX_WIDTH, MIN_WIDTH};
+use crate::grouping::Line;
 use egui_extras::{Column, TableBuilder};
 
 impl App {
@@ -64,7 +65,8 @@ impl App {
             .auto_shrink([false, false])
             .cell_layout(egui::Layout::left_to_right(egui::Align::Center));
         if let Some(pos) = self.scroll_to.take() {
-            tb = tb.scroll_to_row(pos, None);
+            let line = self.line_of_row.get(pos).copied().unwrap_or(pos);
+            tb = tb.scroll_to_row(line, None);
         }
         for (i, c) in cols.iter().enumerate() {
             let col = if i + 1 == cols.len() {
@@ -85,6 +87,7 @@ impl App {
         let mut copy = false;
         let mut action: Option<actions::MenuAction> = None;
         let mut properties: Option<(u32, Arc<crate::process::ProcessInfo>)> = None;
+        let mut toggled: Option<usize> = None;
 
         // Filter row under the headers: one field per visible column (edited in a copy, applied
         // after the table is drawn).
@@ -148,11 +151,21 @@ impl App {
             }
         })
         .body(|body| {
-            body.rows(row_h, self.view.len(), |mut row| {
-                let r = &self.view[row.index()];
+            body.rows(row_h, self.lines.len(), |mut row| {
+                // A group line of #12, or the position of the row in the view.
+                let i = match self.lines[row.index()] {
+                    Line::Group(g) => {
+                        if self.group_line(&mut row, g, &cols, row_h, gap, view) {
+                            toggled = Some(g);
+                        }
+                        return;
+                    }
+                    Line::Row(i) => i,
+                };
+                let r = &self.view[i];
                 let key = r.conn.key();
                 row.set_selected(self.sel.contains(&key));
-                let (fg, bg) = self.row_colors(row.index(), r, dark);
+                let (fg, bg) = self.row_colors(i, r, dark);
                 for &c in &cols {
                     row.col(|ui| {
                         if let Some(bg) = bg {
@@ -205,10 +218,10 @@ impl App {
                 }
                 let resp = row.response();
                 if resp.clicked() {
-                    clicked_row = Some((row.index(), false));
+                    clicked_row = Some((i, false));
                 }
                 if resp.secondary_clicked() {
-                    clicked_row = Some((row.index(), true));
+                    clicked_row = Some((i, true));
                 }
                 resp.context_menu(|ui| {
                     if ui
@@ -293,6 +306,9 @@ impl App {
         }
         if copy {
             self.copy_selection(&ui.ctx().clone());
+        }
+        if let Some(g) = toggled {
+            self.toggle_group(g);
         }
         if let Some((pid, info)) = properties {
             self.open_properties(pid, info);

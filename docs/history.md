@@ -175,3 +175,14 @@
   "Edge" stored it (and made it the chosen one), after a restart `--preset edge` set both filters
   again, Manage presets listed all six with their filters. Found on the way: the ★ character is an
   empty box in egui's fonts (like #22), ⭐ is used instead.
+- #12: group rows by process (`src/grouping.rs`, `src/app/groups.rs`): toolbar switch *Group*
+  and View → Group by process / Expand all / Collapse all; one line per process (icon, name, PID,
+  TCP / UDP count, traffic sum), click collapses / expands, collapsed groups remembered by
+  process name; groups follow the sort column, filters apply inside the groups. Verified: 4 unit
+  tests (order of groups and rows, collapsed groups, groups per PID, 5 000 rows / 300 processes)
+  and the settings test; in the release build: group lines over the whole table width with the
+  icon, a click collapsed `<11160>` and it stayed collapsed after a restart, sorting by PID
+  (descending) ordered the groups by PID, a click and ↓ moved the selection inside a group with
+  the details pane following. Found and fixed on the way: a label in the group line widened the
+  first column (and would have saved that width), a half-transparent tint left stripes between
+  the cells.

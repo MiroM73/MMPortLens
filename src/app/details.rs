@@ -35,6 +35,7 @@ impl App {
         let paths: Vec<(String, Arc<crate::process::Icon>)> = self
             .view
             .iter()
+            .chain(&self.group_samples)
             .filter_map(|r| Some((r.process.path.clone(), r.process.icon.clone()?)))
             .filter(|(p, _)| !self.icons.contains_key(p))
             .collect();

@@ -26,6 +26,9 @@ menu.view.remember_column_filters = Pamätať si filtre stĺpcov
 menu.view.remember_column_filters.tip = Filtre stĺpcov sa uložia a pri ďalšom spustení sa nastavia znova
 menu.view.clear_column_filters = Zrušiť filtre stĺpcov
 menu.view.color_rules = Farebné pravidlá…
+menu.view.group = Zoskupiť podľa procesu
+menu.view.expand_all = Rozbaliť všetky skupiny
+menu.view.collapse_all = Zbaliť všetky skupiny
 menu.view.resolve_addresses = Prekladať adresy
 menu.view.resolve_addresses.tip = Zisťovať názvy hostiteľov k adresám (reverzné DNS) pre stĺpce Vzdialený hostiteľ a Lokálny hostiteľ. Vypnuté: stĺpce zobrazujú adresy.
 menu.view.language = Jazyk
@@ -105,6 +108,8 @@ interval.ms = {n} ms
 interval.s = {n} s
 toolbar.listening = Načúvajúce
 toolbar.listening.tip = Zobraziť koncové body bez vzdialenej strany (TCP v stave Listen, UDP)
+toolbar.group = Skupiny
+toolbar.group.tip = Zoskupiť riadky podľa procesu (kliknutím na riadok skupiny ju zbalíte / rozbalíte)
 toolbar.filter.hint = Filter…
 toolbar.filter.tip = Zobrazí riadky, v ktorých niektorý viditeľný stĺpec obsahuje text (bez ohľadu na veľkosť písmen)
 
@@ -225,6 +230,8 @@ preset.default.established = Iba Established
 preset.default.listening = Načúvajúce porty
 preset.default.no_loopback = Bez loopbacku
 preset.default.teams = Teams
+group.line = {name} (PID {pid}) – koncové body: {count} ({tcp} TCP, {udp} UDP)
+group.unknown = Neznámy proces
 
 # --- Stavový riadok ---
 status.endpoints = Koncové body: {shown} z {total}

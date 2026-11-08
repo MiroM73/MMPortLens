@@ -11,6 +11,7 @@ mod columns;
 mod config;
 mod dns;
 mod elevation;
+mod grouping;
 mod http;
 mod i18n;
 mod icon;

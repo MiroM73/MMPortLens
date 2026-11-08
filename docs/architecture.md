@@ -32,7 +32,7 @@ with the change.
 | `src/config.rs` | `Config` (JSON, every field has a default). |
 | `src/i18n.rs` | `t!()` and the language files – the same module as in RusTrace. |
 | `src/timefmt.rs` | Clock times for the table. |
-| `src/app/` | The UI, split by area like RusTrace: `mod.rs` (state, frame loop), `menu.rs`, `toolbar.rs`, `table.rs`, `statusbar.rs`, `colfilters.rs` (column filter state and field), `admin.rs` (restart as administrator), `update_window.rs` (Help → Check for updates), `input.rs` (keyboard shortcuts, copying the selection), `help.rs` (Help → Keyboard shortcuts), `actions.rs` (context menu items, confirmation window and result of #6), `details.rs` (details pane, process icons and tooltip of #7), `properties.rs` (process properties window of #28), `rules.rs` (color rules window and row colors of #10), `presets.rs` (filter preset combo box and windows of #13), `columnlayout.rs` (header drag and drop, remembered widths, fit on a border double click – #2), `export.rs` (File → Export… window, export thread, status – #9). |
+| `src/app/` | The UI, split by area like RusTrace: `mod.rs` (state, frame loop), `menu.rs`, `toolbar.rs`, `table.rs`, `statusbar.rs`, `colfilters.rs` (column filter state and field), `admin.rs` (restart as administrator), `update_window.rs` (Help → Check for updates), `input.rs` (keyboard shortcuts, copying the selection), `help.rs` (Help → Keyboard shortcuts), `actions.rs` (context menu items, confirmation window and result of #6), `details.rs` (details pane, process icons and tooltip of #7), `properties.rs` (process properties window of #28), `rules.rs` (color rules window and row colors of #10), `presets.rs` (filter preset combo box and windows of #13), `groups.rs` (group lines of #12), `columnlayout.rs` (header drag and drop, remembered widths, fit on a border double click – #2), `export.rs` (File → Export… window, export thread, status – #9). |
 | `lang/*.lang` | Built-in translations (en, sk, cs, de), embedded with `include_str!`. |
 
 ## Reading the connections
@@ -413,6 +413,32 @@ state names are the netstat names, not translated, so the filters work in every 
   #16): applied after start (exact name first, then ignoring case); an unknown name is reported
   in the status bar. The settings of a restart after an update (`--restore`) win over it; an
   elevated restart keeps the argument.
+
+## Group by process (#12)
+
+`src/grouping.rs` (pure) groups the filtered and sorted rows of `rebuild_view` by PID (two
+`svchost.exe` are two groups). A group appears where its first row is in the sorted order, so
+the groups follow the sort column as well (Process → by name, PID → by PID, other columns → by
+their best row) and the rows keep the order inside their group; only rows that passed the filters
+are grouped, so empty groups never appear. A group carries the name, PID, the number of TCP /
+UDP endpoints and the sum of the traffic counters (#8), when any row has them.
+
+- The rows of a collapsed group (`Config::collapsed_processes`, by process name, so it survives
+  a restart) are left out of `App::view`, so selection, keyboard navigation, Ctrl+C, the details
+  pane and the export of the "rows shown" keep working on `view` unchanged. The status bar counts
+  the filtered rows including the collapsed ones.
+- `App::lines` are the table lines (`Line::Group` / `Line::Row(view index)`), `line_of_row` maps a
+  view position to its line (keyboard `scroll_to`), `group_samples` keeps a row per group for the
+  icon and the tooltip of the group line (also of a collapsed group; `load_icon_textures` includes
+  them). Without grouping `ungrouped` gives one line per row.
+- The group line (`src/app/groups.rs`) paints an opaque tint over every cell, a painted triangle
+  (▶ / ▼ are empty boxes in egui's fonts, #22) and the process icon in the first cell, and the
+  text in the last cell with the clip rect of the whole visible line – painted, not a label,
+  so it never widens the first column (whose width is remembered, #2), and after every cell's
+  background. A click toggles the group.
+- Toolbar switch *Group*, View → Group by process / Expand all groups / Collapse all groups.
+- 5 000 rows of 300 processes are grouped in about a millisecond (unit test with a generous limit
+  for debug builds).
 ## Settings and languages
 
 `Config` is saved debounced (0.8 s after the last change, and on close) through a temporary file.

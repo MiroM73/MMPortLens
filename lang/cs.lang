@@ -26,6 +26,9 @@ menu.view.remember_column_filters = Pamatovat si filtry sloupců
 menu.view.remember_column_filters.tip = Filtry sloupců se uloží a při dalším spuštění se nastaví znovu
 menu.view.clear_column_filters = Zrušit filtry sloupců
 menu.view.color_rules = Barevná pravidla…
+menu.view.group = Seskupit podle procesu
+menu.view.expand_all = Rozbalit všechny skupiny
+menu.view.collapse_all = Sbalit všechny skupiny
 menu.view.resolve_addresses = Překládat adresy
 menu.view.resolve_addresses.tip = Zjišťovat názvy hostitelů k adresám (reverzní DNS) pro sloupce Vzdálený hostitel a Místní hostitel. Vypnuto: sloupce zobrazují adresy.
 menu.view.language = Jazyk
@@ -105,6 +108,8 @@ interval.ms = {n} ms
 interval.s = {n} s
 toolbar.listening = Naslouchající
 toolbar.listening.tip = Zobrazit koncové body bez vzdálené strany (TCP ve stavu Listen, UDP)
+toolbar.group = Skupiny
+toolbar.group.tip = Seskupit řádky podle procesu (kliknutím na řádek skupiny ji sbalíte / rozbalíte)
 toolbar.filter.hint = Filtr…
 toolbar.filter.tip = Zobrazí řádky, ve kterých některý viditelný sloupec obsahuje text (bez ohledu na velikost písmen)
 
@@ -225,6 +230,8 @@ preset.default.established = Pouze Established
 preset.default.listening = Naslouchající porty
 preset.default.no_loopback = Bez loopbacku
 preset.default.teams = Teams
+group.line = {name} (PID {pid}) – koncové body: {count} ({tcp} TCP, {udp} UDP)
+group.unknown = Neznámý proces
 
 # --- Stavový řádek ---
 status.endpoints = Koncové body: {shown} z {total}

@@ -29,6 +29,7 @@ mod colfilters;
 mod columnlayout;
 mod details;
 mod export;
+mod groups;
 mod help;
 mod input;
 mod menu;
@@ -99,6 +100,13 @@ pub struct App {
     tracker: Tracker,
     /// The rows shown: filtered and sorted copy of the tracker, rebuilt when `view_dirty`.
     view: Vec<Row>,
+    /// Group by process (#12): the groups, the table lines (group lines and rows of `view`)
+    /// and the line of each row of `view`; without grouping one line per row.
+    groups: Vec<crate::grouping::Group>,
+    lines: Vec<crate::grouping::Line>,
+    line_of_row: Vec<usize>,
+    /// A row of each group (icon and tooltip of the group line).
+    group_samples: Vec<Row>,
     /// The color rule of each row of `view` (#10), matched when the view is rebuilt.
     view_rule: Vec<Option<usize>>,
     view_dirty: bool,
@@ -197,6 +205,10 @@ impl App {
             tracker: Tracker::default(),
             view: Vec::new(),
             view_rule: Vec::new(),
+            groups: Vec::new(),
+            lines: Vec::new(),
+            line_of_row: Vec::new(),
+            group_samples: Vec::new(),
             view_dirty: true,
             rules: crate::rules::Compiled::default(),
             show_rules: false,
@@ -387,11 +399,23 @@ impl App {
         }
         let sort = self.cfg.sort;
         view.sort_by(|a, b| sort.compare(a, b));
+        counts.shown = view.len();
+        let grouped = if self.cfg.group_by_process {
+            let collapsed: std::collections::HashSet<String> =
+                self.cfg.collapsed_processes.iter().cloned().collect();
+            crate::grouping::group(view, &collapsed)
+        } else {
+            crate::grouping::ungrouped(view)
+        };
+        let view = grouped.rows;
+        self.groups = grouped.groups;
+        self.lines = grouped.lines;
+        self.line_of_row = grouped.line_of_row;
+        self.group_samples = grouped.samples;
         self.view_rule = view
             .iter()
             .map(|r| self.rules.first_match(&self.cfg.color_rules, r, &cols))
             .collect();
-        counts.shown = view.len();
         self.view = view;
         self.counts = counts;
         self.view_dirty = false;

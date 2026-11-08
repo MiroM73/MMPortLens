@@ -53,6 +53,8 @@ Early version (0.2.5). What works now:
 - **Filter presets** in the toolbar: save the switches, the text filter and the column filters
   under a name and switch them with one click (examples: Only Established, Listening ports, No
   loopback …); `mmportlens.exe --preset "<name>"` starts with a preset.
+- **Group by process** (toolbar *Group*): one collapsible line per process with its number of
+  endpoints and traffic, its endpoints under it; collapsed groups are remembered.
 - **Close connection** (IPv4 TCP, like TCPView) and **End process** from the context menu or with
   Del, for all selected rows, after a confirmation that lists them.
 - **Multi-selection and keyboard shortcuts**: Ctrl / Shift + click, arrows, Ctrl+A, Ctrl+C copies

@@ -37,6 +37,9 @@ menu.view.remember_column_filters = Remember column filters
 menu.view.remember_column_filters.tip = The column filters are saved and set again at the next start
 menu.view.clear_column_filters = Clear column filters
 menu.view.color_rules = Color rules…
+menu.view.group = Group by process
+menu.view.expand_all = Expand all groups
+menu.view.collapse_all = Collapse all groups
 menu.view.resolve_addresses = Resolve addresses
 menu.view.resolve_addresses.tip = Look up the host names of the addresses (reverse DNS) for the Remote host and Local host columns. Off: the columns show the addresses.
 menu.view.language = Language
@@ -116,6 +119,8 @@ interval.ms = {n} ms
 interval.s = {n} s
 toolbar.listening = Listening
 toolbar.listening.tip = Show endpoints without a remote side (TCP listeners, UDP)
+toolbar.group = Group
+toolbar.group.tip = Group the rows by process (click a group line to collapse / expand it)
 toolbar.filter.hint = Filter…
 toolbar.filter.tip = Shows rows where any visible column contains the text (case-insensitive)
 
@@ -236,6 +241,8 @@ preset.default.established = Only Established
 preset.default.listening = Listening ports
 preset.default.no_loopback = No loopback
 preset.default.teams = Teams
+group.line = {name} (PID {pid}) – {count} endpoint(s): {tcp} TCP, {udp} UDP
+group.unknown = Unknown process
 
 # --- Status bar ---
 status.endpoints = Endpoints: {shown} of {total}

@@ -54,6 +54,10 @@ pub struct Config {
     pub color_rules: Vec<crate::rules::ColorRule>,
     /// The new / changed / closed marks have priority over the color rules.
     pub marks_over_rules: bool,
+    /// Rows grouped by process (#12).
+    pub group_by_process: bool,
+    /// Names of the processes whose group is collapsed (#12).
+    pub collapsed_processes: Vec<String>,
     /// Saved filter presets (#13); examples on the first start.
     pub filter_presets: Vec<crate::presets::FilterPreset>,
 }
@@ -117,6 +121,8 @@ impl Default for Config {
             export: Default::default(),
             color_rules: crate::rules::default_rules(),
             marks_over_rules: true,
+            group_by_process: false,
+            collapsed_processes: Vec::new(),
             filter_presets: crate::presets::default_presets(),
         }
     }
@@ -202,6 +208,7 @@ mod tests {
         assert_eq!(partial.color_rules, crate::rules::default_rules());
         assert!(partial.marks_over_rules);
         assert_eq!(partial.filter_presets, crate::presets::default_presets());
+        assert!(!partial.group_by_process && partial.collapsed_processes.is_empty());
         let none = Config::parse(r#"{"color_rules": []}"#).unwrap();
         assert!(none.color_rules.is_empty());
         let daily = Config::parse(r#"{"update_when": "daily"}"#).unwrap();

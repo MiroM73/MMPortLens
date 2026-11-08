@@ -26,6 +26,9 @@ menu.view.remember_column_filters = Spaltenfilter merken
 menu.view.remember_column_filters.tip = Die Spaltenfilter werden gespeichert und beim nächsten Start wieder gesetzt
 menu.view.clear_column_filters = Spaltenfilter löschen
 menu.view.color_rules = Farbregeln…
+menu.view.group = Nach Prozess gruppieren
+menu.view.expand_all = Alle Gruppen aufklappen
+menu.view.collapse_all = Alle Gruppen zuklappen
 menu.view.resolve_addresses = Adressen auflösen
 menu.view.resolve_addresses.tip = Hostnamen der Adressen nachschlagen (Reverse-DNS) für die Spalten Remote-Host und Lokaler Host. Aus: die Spalten zeigen die Adressen.
 menu.view.language = Sprache
@@ -105,6 +108,8 @@ interval.ms = {n} ms
 interval.s = {n} s
 toolbar.listening = Lauschend
 toolbar.listening.tip = Endpunkte ohne Gegenseite anzeigen (TCP im Status Listen, UDP)
+toolbar.group = Gruppen
+toolbar.group.tip = Zeilen nach Prozess gruppieren (Klick auf eine Gruppenzeile klappt sie zu / auf)
 toolbar.filter.hint = Filter…
 toolbar.filter.tip = Zeigt Zeilen, in denen eine sichtbare Spalte den Text enthält (ohne Groß-/Kleinschreibung)
 
@@ -225,6 +230,8 @@ preset.default.established = Nur Established
 preset.default.listening = Lauschende Ports
 preset.default.no_loopback = Ohne Loopback
 preset.default.teams = Teams
+group.line = {name} (PID {pid}) – {count} Endpunkt(e): {tcp} TCP, {udp} UDP
+group.unknown = Unbekannter Prozess
 
 # --- Statusleiste ---
 status.endpoints = Endpunkte: {shown} von {total}

@@ -69,6 +69,7 @@ impl App {
                 self.view_dirty = true;
                 self.settings_changed();
             }
+            self.group_toggle(ui);
 
             ui.separator();
             let edit = egui::TextEdit::singleline(&mut self.filter)
