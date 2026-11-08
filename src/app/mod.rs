@@ -110,6 +110,10 @@ pub struct App {
     resolver: Resolver,
     /// Table position to scroll to in the next frame (keyboard navigation).
     scroll_to: Option<usize>,
+    /// Horizontal scroll offset of the table (#27), runtime only.
+    table_scroll_x: f32,
+    /// Natural width of the table columns, measured in the last frame (#27).
+    table_width: f32,
     /// Help → Keyboard shortcuts.
     show_shortcuts: bool,
     /// Close connection / End process waiting for confirmation (#6).
@@ -171,6 +175,8 @@ impl App {
                 )
             },
             scroll_to: None,
+            table_scroll_x: 0.0,
+            table_width: 0.0,
             show_shortcuts: false,
             pending_action: None,
             action_result: None,
@@ -335,6 +341,9 @@ impl App {
         self.show_about = open;
     }
 }
+
+/// Minimum width of the last table column; it fills the rest of the window when the columns fit.
+const LAST_COLUMN_MIN: f32 = 150.0;
 
 /// Background of a marked row, readable in both themes.
 fn mark_color(mark: Mark, dark: bool) -> Option<Color32> {

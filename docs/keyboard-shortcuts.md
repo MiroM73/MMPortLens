@@ -17,6 +17,7 @@ shortcuts** (F1).
 | Ctrl + click | Add / remove a row |
 | Shift + click, Ctrl+Shift + click | Select / add the range from the anchor row |
 | Right click | Context menu (on a row outside the selection: selects only that row first) |
+| Shift + mouse wheel | Scroll the table horizontally when the columns do not fit (also the horizontal touchpad gesture) |
 | Ctrl+A | Select all rows shown |
 | Del | Close the selected connections (asks first; IPv4 TCP only) |
 | Ctrl+C | Copy the selected rows, tab-separated in the visible columns (a header line for several rows) |

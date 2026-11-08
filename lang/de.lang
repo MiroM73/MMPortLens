@@ -7,6 +7,7 @@ key.ctrl = Strg
 key.shift = Umschalt
 key.space = Leertaste
 key.del = Entf
+key.wheel = Mausrad
 
 # --- Menü ---
 menu.file = Datei
@@ -46,6 +47,7 @@ help.escape = Filter leeren; wenn er leer ist, die Auswahl aufheben
 help.navigate = In der Tabelle bewegen
 help.extend = Auswahl erweitern
 help.select_click = Zeile hinzufügen / entfernen, Zeilenbereich auswählen
+help.hscroll = Tabelle horizontal scrollen (Spalten, die nicht passen)
 help.select_all = Alle angezeigten Zeilen auswählen
 help.copy = Ausgewählte Zeilen kopieren (tabulatorgetrennt, bei mehreren Zeilen mit Kopfzeile)
 help.close = Ausgewählte Verbindungen schließen (mit Rückfrage)

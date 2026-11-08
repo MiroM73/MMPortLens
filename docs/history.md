@@ -102,3 +102,10 @@
   published. Check of the released ZIP (checksum OK) started with
   `MMPORTLENS_UPDATE_AS_VERSION=0.1.5`: the window title says 0.2.0 and the update window shows the
   v0.2.0 notes.
+- #27: horizontal scroll bar under the table when the columns are wider than the window (ported
+  from RusTrace `7904f90`): the table is drawn shifted and clipped in a child `Ui`, so its vertical
+  scroll bar stays at the right edge; Shift + mouse wheel / horizontal touchpad scrolling; new
+  `MMPORTLENS_CONFIG` variable for test instances with their own settings. Verified in the running
+  program (800 px wide window with all default columns): the bar appears, a horizontal wheel
+  moves the columns, dragging the bar to the end shows the last column (Command line) complete
+  with the vertical bar still visible, and at 1900 px the bar disappears.

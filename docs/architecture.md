@@ -131,6 +131,25 @@ RusTrace).
 The table id contains the list of visible columns, so a changed column set starts with fresh
 default widths.
 
+### Horizontal scrolling (#27)
+
+`egui_extras` tables only scroll vertically, and wrapping the table in a horizontal `ScrollArea`
+would move its vertical scroll bar out of view when the table is wide. Instead (same as RusTrace
+`7904f90`) `App::table` lays the table out in a child `Ui` whose rect starts `table_scroll_x` left
+of the visible area and is clipped (`set_clip_rect`) to it, so the right edge with the vertical
+scroll bar stays at the window edge. The column filter row is part of the header and scrolls with
+the columns.
+
+Every frame the natural width `table_width` is measured from the header cells (left edge of the
+first to the left edge of the last cell, plus `LAST_COLUMN_MIN` = 150 px, the minimum width of the
+last `Column::remainder()`); the offset is clamped to `table_width - visible width`, so resizing
+the window or a column never leaves a gap. Only when that maximum is above 0 is a horizontal bar
+drawn under the table: its own `ScrollArea::horizontal()` with the solid scroll style (floating
+bars only appear on hover), always visible, fed with `table_scroll_x` and read back from
+`state.clamped_offset().x`; its height is taken from the table's rect. Shift + mouse wheel (egui
+turns it into a horizontal delta) and horizontal touchpad scrolling change the offset while the
+pointer is over the table. Both fields are runtime state, not saved.
+
 ## Selection and keyboard (#17)
 
 `App::sel` is a `selection::Selection`: the cursor row, the anchor of Shift ranges and the set of
@@ -344,6 +363,11 @@ names changed; the logic is the same.
   temporary folder.
 
 ## Tests
+
+For checks in the running program the environment variable `MMPORTLENS_CONFIG` points the
+settings to another file (`Config::path`), so a test instance never touches
+`%APPDATA%\MMPortLens\config.json` (and does not restart itself as administrator when the real
+settings say so).
 
 `cargo test` – decoding of the Windows owner module tables (incl. creation times, row offsets),
 the live creation time and owner module of an own connection, `/proc/net` lines, ESTATS rows and

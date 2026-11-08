@@ -7,6 +7,7 @@ key.ctrl = Ctrl
 key.shift = Shift
 key.space = Medzerník
 key.del = Del
+key.wheel = koliesko myši
 
 # --- Menu ---
 menu.file = Súbor
@@ -46,6 +47,7 @@ help.escape = Zrušiť filter; keď je prázdny, zrušiť výber
 help.navigate = Pohyb v tabuľke
 help.extend = Rozšíriť výber
 help.select_click = Pridať / odobrať riadok, vybrať rozsah riadkov
+help.hscroll = Posúvať tabuľku vodorovne (stĺpce, ktoré sa nezmestia)
 help.select_all = Vybrať všetky zobrazené riadky
 help.copy = Kopírovať vybraté riadky (oddelené tabulátorom, pri viacerých riadkoch s hlavičkou)
 help.close = Zatvoriť vybraté spojenia (najprv sa opýta)

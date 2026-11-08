@@ -111,7 +111,12 @@ impl Default for Config {
 }
 
 impl Config {
+    /// `%APPDATA%\MMPortLens\config.json`; the environment variable `MMPORTLENS_CONFIG` points
+    /// to another file (checks in the running program without touching the user's settings).
     pub fn path() -> Option<PathBuf> {
+        if let Some(p) = std::env::var_os("MMPORTLENS_CONFIG").filter(|p| !p.is_empty()) {
+            return Some(PathBuf::from(p));
+        }
         dirs::config_dir().map(|d| d.join("MMPortLens").join("config.json"))
     }
 

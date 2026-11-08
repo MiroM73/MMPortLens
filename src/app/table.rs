@@ -1,6 +1,6 @@
 //! The connection table: visible columns in the user's order, sorting by a header click,
 //! the column menu on a header right click, the column filter row (#1), highlighted new / changed /
-//! closed rows.
+//! closed rows, horizontal scrolling when the columns do not fit (#27).
 
 use crate::app::*;
 use egui_extras::{Column, TableBuilder};
@@ -15,6 +15,32 @@ impl App {
             ui.spacing().item_spacing.x,
             ui.spacing().item_spacing.y * 0.5 + 0.5,
         );
+
+        // Horizontal scrolling (#27, same as RusTrace): egui_extras tables only scroll vertically,
+        // so the table is laid out in a child Ui shifted left by the offset and clipped to the
+        // visible area; its right edge with the vertical scroll bar stays in view. A horizontal
+        // scroll bar below it appears when the columns do not fit (last frame's natural width);
+        // Shift + mouse wheel and horizontal touchpad scrolling work as well.
+        let parent = ui;
+        let full = parent.available_rect_before_wrap();
+        let max_offset = (self.table_width - full.width()).max(0.0);
+        let hbar_h = if max_offset > 0.0 {
+            parent.spacing().scroll.bar_width + 4.0
+        } else {
+            0.0
+        };
+        let view = egui::Rect::from_min_max(full.min, egui::pos2(full.max.x, full.max.y - hbar_h));
+        if parent.rect_contains_pointer(view) {
+            self.table_scroll_x -= parent.input(|i| i.smooth_scroll_delta.x);
+        }
+        self.table_scroll_x = self.table_scroll_x.clamp(0.0, max_offset);
+        let mut child =
+            parent.new_child(egui::UiBuilder::new().max_rect(egui::Rect::from_min_max(
+                egui::pos2(view.min.x - self.table_scroll_x, view.min.y),
+                view.max,
+            )));
+        child.set_clip_rect(view.intersect(parent.clip_rect()));
+        let ui = &mut child;
 
         let header_h = if self.cfg.show_column_filters {
             22.0 + ui.spacing().interact_size.y + ui.spacing().item_spacing.y
@@ -34,7 +60,7 @@ impl App {
         }
         for (i, c) in cols.iter().enumerate() {
             let col = if i + 1 == cols.len() {
-                Column::remainder().at_least(60.0)
+                Column::remainder().at_least(LAST_COLUMN_MIN)
             } else {
                 Column::initial(c.width()).at_least(40.0)
             };
@@ -59,10 +85,13 @@ impl App {
             .map(|c| self.col_filter_text.get(c).cloned().unwrap_or_default())
             .collect();
         let mut filters_changed = false;
+        // Left edges of the first and the last header cell → natural width of the table.
+        let last_col = cols.len().saturating_sub(1);
+        let mut edges = (0.0f32, 0.0f32);
 
         tb.header(header_h, |mut h| {
             for (i, &c) in cols.iter().enumerate() {
-                h.col(|ui| {
+                let (cell, _) = h.col(|ui| {
                     ui.vertical(|ui| {
                         let arrow = match (sort.column == c, sort.ascending) {
                             (true, true) => " ⏶",
@@ -90,6 +119,12 @@ impl App {
                         }
                     });
                 });
+                if i == 0 {
+                    edges.0 = cell.left();
+                }
+                if i == last_col {
+                    edges.1 = cell.left();
+                }
             }
         })
         .body(|body| {
@@ -168,6 +203,26 @@ impl App {
                 });
             });
         });
+
+        // Natural width: all columns up to the last one plus its minimum width (the last column
+        // fills the rest when everything fits).
+        self.table_width = edges.1 - edges.0 + LAST_COLUMN_MIN;
+        parent.advance_cursor_after_rect(view);
+        if hbar_h > 0.0 {
+            let bar = egui::Rect::from_min_max(egui::pos2(full.min.x, view.max.y), full.max);
+            let mut bar_ui = parent.new_child(egui::UiBuilder::new().max_rect(bar));
+            // Solid: a floating bar would only appear on hover.
+            bar_ui.spacing_mut().scroll = egui::style::ScrollStyle::solid();
+            let out = egui::ScrollArea::horizontal()
+                .id_salt("conn_table_hscroll")
+                .auto_shrink([false, true])
+                .scroll_bar_visibility(egui::scroll_area::ScrollBarVisibility::AlwaysVisible)
+                .horizontal_scroll_offset(self.table_scroll_x)
+                .show(&mut bar_ui, |ui| {
+                    ui.allocate_space(egui::vec2(self.table_width, 1.0));
+                });
+            self.table_scroll_x = out.state.clamped_offset().x;
+        }
 
         if filters_changed {
             for (c, text) in cols.iter().zip(filter_texts) {

@@ -29,6 +29,8 @@ Early version (0.2.0). What works now:
   stay **red** for 3 seconds before they disappear.
 - Sorting by a click on a column header (numbers and addresses sort as values).
 - Columns on / off and their order: **View → Columns** or a right click on a header.
+- A **horizontal scroll bar** under the table when the columns do not fit the window
+  (Shift + mouse wheel scrolls as well).
 - Switches TCP / UDP / IPv4 / IPv6 / Listening and a text filter over the visible columns.
 - **Host names** of the addresses (reverse DNS in the background, cached) in the columns *Remote
   host* and *Local host*, and the **service** of well-known ports (443 → https) – switch with
