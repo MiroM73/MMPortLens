@@ -72,20 +72,23 @@ impl App {
             .hint_text(t!("filter.hint"))
             .desired_width(f32::INFINITY);
         let error = self.col_filter_errors.get(&id);
-        let tip = match error {
+        if error.is_some() {
+            edit = edit.background_color(ui.visuals().error_fg_color.gamma_multiply(0.35));
+        } else if self.col_filters.iter().any(|(c, _)| *c == id) {
+            edit = edit.background_color(ui.visuals().selection.bg_fill.gamma_multiply(0.6));
+        }
+        let resp = ui.add(edit);
+        let changed = resp.changed();
+        // An error replaces the help (#36: syntax, examples of the column, its values).
+        match error {
             Some(e) => {
-                edit = edit.background_color(ui.visuals().error_fg_color.gamma_multiply(0.35));
-                e.text()
+                resp.on_hover_text(e.text());
             }
             None => {
-                if self.col_filters.iter().any(|(c, _)| *c == id) {
-                    edit =
-                        edit.background_color(ui.visuals().selection.bg_fill.gamma_multiply(0.6));
-                }
-                filter_tip(id.filter_kind())
+                resp.on_hover_ui(|ui| filter_help_ui(ui, id, false));
             }
-        };
-        ui.add(edit).on_hover_text(tip).changed()
+        }
+        changed
     }
 }
 
@@ -98,4 +101,32 @@ fn filter_tip(kind: FilterKind) -> String {
         FilterKind::Address => tip.push_str(&format!("\n{}", t!("filter.tip.address"))),
     }
     tip
+}
+
+/// The help of a filter field (#36): the syntax (`short` = the one-line pattern tip of a color
+/// rule instead of the full list), a grid of examples for the column and, for State and
+/// Protocol, the values the column can have.
+pub(in crate::app) fn filter_help_ui(ui: &mut egui::Ui, id: ColumnId, short: bool) {
+    ui.set_max_width(520.0);
+    if short {
+        ui.label(t!("rules.pattern.tip"));
+    } else {
+        ui.label(filter_tip(id.filter_kind()));
+    }
+    ui.separator();
+    ui.label(RichText::new(t!("fex.title")).strong());
+    egui::Grid::new(("filter_examples", id))
+        .num_columns(2)
+        .spacing([14.0, 2.0])
+        .show(ui, |ui| {
+            for (text, key) in crate::filterhelp::examples(id) {
+                ui.label(RichText::new(*text).monospace());
+                ui.label(t!(key));
+                ui.end_row();
+            }
+        });
+    if let Some(values) = crate::filterhelp::values(id) {
+        ui.separator();
+        ui.label(t!("fex.values", values = values.join(", ")));
+    }
 }

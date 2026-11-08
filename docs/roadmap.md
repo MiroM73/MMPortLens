@@ -54,13 +54,13 @@ program, README / `docs/architecture.md` / `docs/history.md`, detailed commit wi
 |-------|------|--------|
 | #30 | Live traffic (TCP packets, ESTATS of #8) and I/O operations graph in the process properties window of #28, `egui_plot` (reusable by #19) | done (0243216); the TCP plot as administrator not yet checked by hand |
 
-## Phase 4c – asked by the owner after #3
+## Phase 4c – asked by the owner after #3 (done, not released yet)
 | Issue | What | Status |
 |-------|------|--------|
 | #33 | Process properties (#28, #30) in their own OS windows (egui viewports), several at a time, one per PID | done ("Process properties in their own OS windows") |
 | #34 | Service name of well-known ports: tooltip over the whole port cell (with the owning Windows service of #14), `port (name)` in the details pane, optional system services file | done ("Port service names: whole-cell tooltip, details, system services file") |
 | #35 | Column filters: AND (`&`) and NOT (`!`) per term, precedence `!` > `&` > `\|`, migration of saved `!a\|b` texts (filters, presets, highlight rules); before #16, which reuses the filters. RusTrace port: MiroM73/Rustrace#61 | done ("Column filters: AND and per-term NOT"); the RusTrace port is still open |
-| #36 | Filter field tooltip: examples for the column and its possible values (State, Protocol); after #35 so the examples can use `&` | |
+| #36 | Filter field tooltip: examples for the column and its possible values (State, Protocol); after #35 so the examples can use `&` | done ("Column filter tooltip: examples and values per column") |
 
 ## Phase 5 – recording and automation (#3, #16, #4 released in v1.0.0)
 | Issue | What | Status |

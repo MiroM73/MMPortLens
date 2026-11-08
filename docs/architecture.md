@@ -31,6 +31,7 @@ with the change.
 | `src/poller.rs` | Background thread: snapshot + process names every interval, sent over a channel. |
 | `src/model.rs` | `Tracker`: merges snapshots into rows, marks new / changed / closed rows and expires the marks; `update_with_events` / `present_events` for a recording (#3). |
 | `src/recording/` | Recording (#3): `mod.rs` (`Event`, `EventKind`, `EventKinds`, start-window `Settings`, `parse_duration`), `db.rs` (all SQL: `RecordingWriter`, `RecordingReader`, `EventQuery`; tests in `db_tests.rs`), `threads.rs` (writer thread `Recorder`, `ReplayWorker`). |
+| `src/filterhelp.rs` | Examples and fixed values for the filter tooltips per column (#36). |
 | `src/colfilter.rs` | Column filter syntax: parsing and matching (`ColumnFilter`, `FilterKind`, `FilterError`) – core from RusTrace. |
 | `src/selection.rs` | `Selection` (cursor, anchor, selected `ConnKey`s) and `Nav` (arrow / page targets) – pure, tested (#17). |
 | `src/dns.rs` | Reverse DNS (#5): `DnsCache` (TTL, negative results, pending – pure), `Resolver` (cache + worker pool), `system_lookup` (`GetNameInfoW` / `getnameinfo`). |
@@ -607,6 +608,19 @@ imported color rules file in the old form (a plain JSON array; exports are now
 `{"filter_syntax": 1, "rules": [...]}`, `rules::export_rules` / `parse_rules`). A literal `&` in
 an old filter now means AND (rare; a regex `/a&b/` matches it literally). The same change is to be
 ported to RusTrace (MiroM73/Rustrace#61), whose `colfilter.rs` this module was copied from.
+
+**Tooltip (#36).** The help of a filter field (`colfilters::filter_help_ui`, `on_hover_ui`) shows
+the syntax (`filter.tip.text` plus the number / address line of the column kind), a grid of 1–4
+examples for the column with a translated explanation and, for State and Protocol, the values the
+column can have. The examples are data in the pure `src/filterhelp.rs`: `examples(ColumnId) ->
+&[(filter text, t! key)]` (the filter text is never translated) and `values(ColumnId)` (the state
+texts of MIB states 1–12 plus `state.invalid` with `n`; TCP, TCPv6, UDP, UDPv6). Tests: every
+column has examples, every example parses to a filter for its column kind and has a text, and the
+tricky ones select what they say on the cell texts the table really shows (durations from
+`timefmt::duration`, bytes / rates from `columns::bytes` / `rate`, the invalid state in any
+language via `/\(\d+\)/`, a created time with a date via `-`). The pattern field of a color rule
+shows the same examples for the rule's column (with the one-line `rules.pattern.tip`; a rule for
+any column keeps the plain tip). An invalid filter still shows only the error.
 
 `ColumnFilter::parse` returns `Err(FilterError)` for an invalid regex or prefix length; the field
 turns red with the error as a tooltip and the filter is not applied. Valid filters get a colored

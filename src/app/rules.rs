@@ -234,7 +234,16 @@ impl App {
                                     .hint_text(t!("filter.hint")),
                             );
                             changed |= pattern.changed();
-                            pattern.on_hover_text(t!("rules.pattern.tip"));
+                            // The examples of the rule's column (#36), else the syntax.
+                            match r.column {
+                                Some(c) => {
+                                    pattern
+                                        .on_hover_ui(|ui| colfilters::filter_help_ui(ui, c, true));
+                                }
+                                None => {
+                                    pattern.on_hover_text(t!("rules.pattern.tip"));
+                                }
+                            }
                             match err {
                                 Some(e) => {
                                     ui.colored_label(ui.visuals().error_fg_color, "⚠")

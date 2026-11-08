@@ -13,6 +13,7 @@ mod columns;
 mod config;
 mod dns;
 mod elevation;
+mod filterhelp;
 mod grouping;
 mod headless;
 mod helpwindow;

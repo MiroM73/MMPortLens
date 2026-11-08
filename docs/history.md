@@ -420,3 +420,14 @@
   `target\release\lang` overrode the built-in texts in the local release build (moved aside; the
   update replaces `lang\` next to the exe, so users are not affected). The port to RusTrace
   (MiroM73/Rustrace#61) is not part of this commit.
+- #36: the tooltip of a column filter field shows the syntax, 1–4 examples for its column with a
+  translated explanation (grid) and, for State and Protocol, the possible values; the pattern
+  field of a color rule shows the examples of the rule's column. Examples are data in the new
+  `src/filterhelp.rs` (texts literal, explanations `fex.*` in all four languages); bytes and rates
+  are text columns, so their examples are `/./&!=0 B` (with traffic) and `MB|GB`, not `>0`.
+  Verified: fmt, clippy, 182 tests (every column has examples, each parses for its column kind and
+  has a text, the tricky ones match the real cell texts, the State / Protocol values); release
+  build: the State tooltip showed the syntax, four examples and the 13 values; `/\(\d+\)/`
+  pasted into State left the 34 rows the status bar counted as invalid; `/(/` replaced the tooltip
+  with the error and its reason (also the check of #41); the Process rule pattern in the color
+  rules window showed the Process examples.
