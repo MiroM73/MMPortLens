@@ -24,6 +24,8 @@ rfd = "0.17"
 open = "5"
 egui_plot = "0.38"
 rusqlite = { version = "0.41.1", features = ["bundled"] }
+# The main window handle for the notification icon of the watch rules (#18); already used by eframe.
+raw-window-handle = "0.6"
 
 [profile.release]
 opt-level = 3

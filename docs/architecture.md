@@ -39,6 +39,8 @@ with the change.
 | `src/selection.rs` | `Selection` (cursor, anchor, selected `ConnKey`s) and `Nav` (arrow / page targets) – pure, tested (#17). |
 | `src/dns.rs` | Reverse DNS (#5): `DnsCache` (TTL, negative results, pending – pure), `Resolver` (cache + worker pool), `system_lookup` (`GetNameInfoW` / `getnameinfo`). |
 | `src/stats.rs` | Statistics (#19): `Sample` / `History` (state counts per refresh, ten minutes), `top` lists (processes by endpoints and traffic, remote hosts, remote ports) and their `=value` column filters – pure, tested. |
+| `src/watch.rs` | Watch rules and alerts (#18): `WatchRule` (trigger, column filter conditions, actions), `Compiled`, `check` (tracker events → hits), `batch` (one notification per refresh), the alert log file – pure, tested. |
+| `src/notify.rs` | Desktop notification of a watch rule hit (Windows: notification icon + balloon / toast, `Shell_NotifyIconW`) and the alert sound (`MessageBeep`). |
 | `src/services.rs` | Well-known port names (#5): built-in table plus the system services file read in the background (#34). |
 | `src/actions.rs` | Close connection (`SetTcpEntry` + DELETE_TCB) and End process (`TerminateProcess` / `kill`), with the pure checks `can_close` / `can_kill` and `tcp_row` (#6). |
 | `src/columns.rs` | `ColumnId`, cell texts, value-based sorting (`SortSpec`), `ColumnLayout` (visibility, order, widths), `drop_slot`. |
@@ -46,7 +48,7 @@ with the change.
 | `src/config.rs` | `Config` (JSON, every field has a default). |
 | `src/i18n.rs` | `t!()` and the language files – the same module as in RusTrace. |
 | `src/timefmt.rs` | Clock times for the table. |
-| `src/app/` | The UI, split by area like RusTrace: `mod.rs` (state, frame loop), `menu.rs`, `toolbar.rs`, `table.rs`, `statusbar.rs`, `colfilters.rs` (column filter state and field), `admin.rs` (restart as administrator), `update_window.rs` (Help → Check for updates), `input.rs` (keyboard shortcuts, copying the selection), `help.rs` (Help → Keyboard shortcuts), `cli_help.rs` (Help → Command line and the shared help renderer `cli_help_ui`, #38), `actions.rs` (context menu items, confirmation window and result of #6), `details.rs` (details pane, process icons and tooltip of #7), `properties.rs` (process properties window of #28), `properties_windows.rs` (several of them in native windows, #33), `native_window.rs` (zoomable tool window: native or embedded, own zoom, remembered geometry – #42), `stats.rs` (View → Statistics, #19), `properties_graph.rs` (its live traffic / I/O graph, #30), `rules.rs` (color rules window and row colors of #10), `presets.rs` (filter preset combo box and windows of #13), `groups.rs` (group lines of #12), `columnlayout.rs` (header drag and drop, remembered widths, fit on a border double click – #2), `export.rs` (File → Export… window, export thread, status – #9), `record.rs` (start window, events to the writer, ● REC – #3), `replay.rs` (opened recording, replay bar with the time slider – #3), `replay_events.rs` (event list of a recording – #3), `etw.rs` (View menu switch and status bar item of the ETW capture – #4). |
+| `src/app/` | The UI, split by area like RusTrace: `mod.rs` (state, frame loop), `menu.rs`, `toolbar.rs`, `table.rs`, `statusbar.rs`, `colfilters.rs` (column filter state and field), `admin.rs` (restart as administrator), `update_window.rs` (Help → Check for updates), `input.rs` (keyboard shortcuts, copying the selection), `help.rs` (Help → Keyboard shortcuts), `cli_help.rs` (Help → Command line and the shared help renderer `cli_help_ui`, #38), `actions.rs` (context menu items, confirmation window and result of #6), `details.rs` (details pane, process icons and tooltip of #7), `properties.rs` (process properties window of #28), `properties_windows.rs` (several of them in native windows, #33), `native_window.rs` (zoomable tool window: native or embedded, own zoom, remembered geometry – #42), `stats.rs` (View → Statistics, #19), `watch.rs` (View → Watch rules and alerts, the actions of a hit – #18), `properties_graph.rs` (its live traffic / I/O graph, #30), `rules.rs` (color rules window and row colors of #10), `presets.rs` (filter preset combo box and windows of #13), `groups.rs` (group lines of #12), `columnlayout.rs` (header drag and drop, remembered widths, fit on a border double click – #2), `export.rs` (File → Export… window, export thread, status – #9), `record.rs` (start window, events to the writer, ● REC – #3), `replay.rs` (opened recording, replay bar with the time slider – #3), `replay_events.rs` (event list of a recording – #3), `etw.rs` (View menu switch and status bar item of the ETW capture – #4). |
 | `lang/*.lang` | Built-in translations (en, sk, cs, de), embedded with `include_str!`. |
 
 ## Reading the connections
@@ -508,6 +510,53 @@ and list widths scale with the window zoom) and the four lists side by side as s
 Process, Remote address or Remote port (the other filters stay), shows that column and the filter
 row (filters of hidden columns do not apply). The test `filters_of_entries_match_exactly_their_rows`
 checks that each filter matches exactly the counted rows (`=80` not `8080`).
+
+## Watch rules and alerts (#18)
+
+**Rules** (`src/watch.rs`, `Config::watch`): a `WatchRule` has a name, a `Trigger` (new
+connection = a new endpoint with a remote side; new listener = without one, TCP listener or UDP
+socket; any new endpoint; state changed; closed), conditions – one column filter (#1 syntax,
+compiled with the column's `FilterKind`) per row, all must match, none = every endpoint – and
+`Actions` (notification, sound, window to the front, log file, start recording). Three examples,
+all off (port 4444, new TCP listener, `chrome.exe` outside `10.0.0.0/8`). `Compiled` keeps per
+rule off / the filters / the first invalid condition (red field with the error, the rule never
+fires).
+
+**Checking**: the rules run on the **events of the tracker** – the same `Event`s a recording
+writes (#3), from `update_with_events` and `merge_etw` (ETW short connections, #4) – so a rule
+fires once per new connection / change / close, not on every refresh, and invalid state flips are
+already filtered (#32). `App::receive` collects the events when a recording runs **or** a rule is
+on (`Compiled::any_on`); `watch_events` (`app/watch.rs`) calls `watch::check` (each event is made a
+`Row` once with `rowfilter::event_row` and matched with `cell_text`, like the column filters).
+`receive` now runs in `eframe::App::logic`, which eframe calls also while the window is minimized
+(`ui` is not called then), so the rules – and recordings – keep working minimized.
+
+**Actions** of a refresh's hits (`watch::batch`, each at most once): one notification naming the
+first hit and "and N more"; the sound; focus (`ViewportCommand::Minimized(false)`, `Focus`,
+`RequestUserAttention`, applied in `logic`); one log line per hit (`date time \t rule \t event \t
+process (pid) proto local → remote state`) appended to `WatchSettings::log_file` or `alerts.log`
+next to the settings; a recording `alert_<time>.plrec` in the last recording folder (else
+Documents) for `record_minutes` (5) unless one runs (`start_recording_to`, split from the File →
+Start recording dialog). **Notification** (`src/notify.rs`): a notification icon of the main
+window (`Shell_NotifyIconW` `NIM_ADD` with the exe's small icon, the HWND from
+`raw-window-handle`), the hit as its balloon (`NIF_INFO`), which Windows 10 / 11 shows as a toast;
+the icon is removed when the window closes. When it cannot be shown the status bar says so;
+Linux has no notification (the hits are still listed).
+
+**UI**: View → *Watch rules and alerts…* and the 🔔 n button in the status bar (hits not seen yet)
+open a zoomable tool window (#42, `Config::watch_window`): tab *Alerts* (newest first, time, rule,
+event, endpoint; ➡ selects the row in the table and scrolls to it, or says it is filtered out / gone;
+clear, open the log file) and tab *Rules* (per rule: on, name, trigger, ⬆ ⬇ 🗑, conditions with
+column combo and pattern field, actions; Add rule, Add examples, recording minutes, log file
+choose / default). At most 1000 hits are kept in memory.
+
+Checked with the release build (not elevated): a rule *New connection, Local port `=5555`* with
+notification, sound and log; the window minimized; three PowerShell connections to a listener on
+5555 two seconds apart and kept open → exactly three log lines (one per connection), none on the
+following refreshes; restored, the status bar showed 🔔 1 after another connection; the window
+showed the hit in *Alerts (1)* (`powershell.exe (4696) TCP 127.0.0.1:5555 → 127.0.0.1:52369
+Established` with ➡) and the rule in *Rules*. The toast itself was not captured on screen
+(`Shell_NotifyIconW` returned success).
 
 ## Close connection, End process (#6)
 

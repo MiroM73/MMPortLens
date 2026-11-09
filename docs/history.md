@@ -551,3 +551,16 @@
   stop the recording: the processes had inherited an "ignore Ctrl+C" flag, so `headless` now clears
   it (`SetConsoleCtrlHandler(None, 0)`) before it registers its handler; then the recording stopped
   after 5 s and was finished (285 events).
+- #18: watch rules and alerts. New `src/watch.rs` (rules with a trigger, column filter conditions
+  and actions; checked on the tracker events, so once per event; one notification per refresh;
+  alert log), `src/notify.rs` (Windows notification icon + balloon / toast, sound),
+  `src/app/watch.rs` (tool window with the Alerts and Rules tabs, 🔔 in the status bar, jump to the
+  row, focus and recording actions); `App::receive` moved into `eframe::App::logic` so it runs while
+  minimized; `start_recording_to` split from the start dialog; `raw-window-handle` (already in the
+  lock file) for the HWND; `Config::watch` / `watch_window`; 50 keys in four languages.
+  Verified: fmt, clippy (Windows, Linux), tests (acceptance: a rule on local port 5555 fires once per
+  new connection over five refreshes; triggers, AND conditions, invalid / off rules, burst = one
+  notification, examples, log appending); release build minimized: three connections → three log
+  lines, 🔔 1 after one more; the window showed the hit (Alerts tab) and the rule editor (Rules tab,
+  the log file row then got its buttons before the path). Not seen: the toast itself on screen
+  (API success). Found: `counts_own_traffic` is flaky when not elevated (#46).

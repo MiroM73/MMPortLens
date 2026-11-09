@@ -24,6 +24,7 @@ mod i18n;
 mod icon;
 mod model;
 mod net;
+mod notify;
 mod poller;
 mod presets;
 mod process;
@@ -37,6 +38,7 @@ mod stats;
 mod tabexport;
 mod timefmt;
 mod update;
+mod watch;
 mod winproc;
 
 use eframe::egui;

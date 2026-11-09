@@ -103,6 +103,7 @@ impl App {
                 .on_hover_text(t!("status.traffic_denied.tip"));
         }
         self.etw_status_item(ui);
+        self.watch_status(ui);
         self.record_status(ui);
         self.admin_status(ui);
         self.action_status(ui);

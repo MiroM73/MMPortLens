@@ -2064,6 +2064,7 @@ dependencies = [
  "egui_plot",
  "flate2",
  "open",
+ "raw-window-handle",
  "regex",
  "rfd",
  "rusqlite",

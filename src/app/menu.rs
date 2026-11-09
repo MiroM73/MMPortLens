@@ -37,6 +37,14 @@ impl App {
                     ui.close();
                     self.open_stats();
                 }
+                if ui
+                    .button(t!("menu.view.watch"))
+                    .on_hover_text(t!("menu.view.watch.tip"))
+                    .clicked()
+                {
+                    ui.close();
+                    self.open_watch(false);
+                }
                 ui.separator();
                 if ui
                     .checkbox(&mut self.cfg.show_details, t!("menu.view.details"))

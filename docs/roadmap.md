@@ -69,7 +69,7 @@ program, README / `docs/architecture.md` / `docs/history.md`, detailed commit wi
 | #3 | Record connection events for a period of time | done ("Record connection events and replay them"), released in v1.0.0; the command-line part is #16 |
 | #16 | Command line: filters (#1), export (#9), recording (#3) – therefore after them | done ("Command line: filters, headless export and recording"), released in v1.0.0 |
 | #4 | ETW for short-lived connections (extends the recording of #3) | done ("Capture short-lived connections with ETW"), checked as administrator (acceptance test 100 + 100 connections, `--record --etw`); released in v1.0.0 |
-| #18 | Watch rules and alerts (builds on #10 and #3) | |
+| #18 | Watch rules and alerts (builds on #10 and #3) | done ("Watch rules and alerts"), not released yet |
 | #19 | Statistics over time (data from the recording of #3) | done ("Statistics window: connections over time, top processes, hosts and ports"), released in v1.1.1; charts for an opened recording are not part of it |
 | #11 | Country and ASN (offline) – least critical, depends on an offline database | |
 | #31 | Replay: the Duration column counts to now instead of the slider time (found in the #3 check) | done ("Replay: Duration counts to the slider time"), released in v1.1.1 |
@@ -92,6 +92,7 @@ program, README / `docs/architecture.md` / `docs/history.md`, detailed commit wi
 | #29 | Status bar texts overlap in a narrow window (found in the #27 check) | done (10e1140) |
 | #41 | Multi-line values in the language files cut after the first line: filter tooltip, regex error (found in #35) | done ("Language files: one line per value"), released in v1.0.7 |
 | #43 | wgpu validation error (panic) when a window is larger than the maximum texture size, 8192 px (found in the #31 check) | done ("Windows larger than the GPU texture limit no longer end the program"), not released yet |
+| #46 | Flaky test `counts_own_traffic`: AccessDenied when the first snapshot misses the own connection (found in the #18 check) | |
 
 ## Deferred indefinitely (owner's decision)
 | Issue | What | Status |

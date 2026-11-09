@@ -57,6 +57,11 @@ Version 1.1.1. What works now:
 - **Statistics** (View → Statistics…): a chart of the established / listening / time-wait
   connections of the last ten minutes and the top processes (endpoints, traffic), remote hosts
   and remote ports; a click on an entry filters the table. Own window with its own text zoom.
+- **Watch rules and alerts** (View → Watch rules and alerts…): be told when a new connection,
+  listener, state change or close matches conditions in the column filter syntax (e.g. remote
+  port `4444`, or process `chrome.exe` and remote address `!10.0.0.0/8`) – once per event, also
+  while minimized; a desktop notification, a sound, the window to the front, a line in a log file
+  or a recording; the hits are listed with a jump to the row (🔔 in the status bar).
 - **Color rules** (View → Color rules…, Ctrl+H): color rows whose column matches a pattern in the
   column filter syntax, e.g. remote port `3389` red or `10.0.0.0/8` blue; colors per theme, order
   decides, import / export, also in the Excel / HTML export.

@@ -50,6 +50,7 @@ mod statusbar;
 mod table;
 mod toolbar;
 mod update_window;
+mod watch;
 
 /// Program version from Cargo.toml (window title, About window).
 pub const VERSION: &str = env!("CARGO_PKG_VERSION");
@@ -193,6 +194,18 @@ pub struct App {
     stats_win: native_window::ToolWindow,
     stats_history: crate::stats::History,
     stats_data: stats::StatsData,
+    /// Watch rules and alerts (#18): the compiled rules, the hits (newest last), the hits not
+    /// seen in the window yet, the window and its tab, the notification icon, the main window
+    /// handle (for the icon) and the actions waiting for the next frame.
+    watch_rules: crate::watch::Compiled,
+    watch_hits: std::collections::VecDeque<crate::watch::Hit>,
+    watch_unseen: usize,
+    watch_win: native_window::ToolWindow,
+    watch_tab: watch::WatchTab,
+    notifier: crate::notify::Notifier,
+    hwnd: Option<isize>,
+    watch_focus: bool,
+    watch_msg: Option<String>,
     /// Result of the last action (status bar).
     action_result: Option<actions::ActionResult>,
     /// The traffic counters were refused by Windows (not elevated, #8).
@@ -341,6 +354,15 @@ impl App {
             stats_win: native_window::ToolWindow::new("stats"),
             stats_history: Default::default(),
             stats_data: Default::default(),
+            watch_rules: Default::default(),
+            watch_hits: Default::default(),
+            watch_unseen: 0,
+            watch_win: native_window::ToolWindow::new("watch"),
+            watch_tab: Default::default(),
+            notifier: Default::default(),
+            hwnd: None,
+            watch_focus: false,
+            watch_msg: None,
             active_preset: String::new(),
             preset_windows: Default::default(),
             icons: HashMap::new(),
@@ -371,6 +393,7 @@ impl App {
         };
         app.apply_theme(&cc.egui_ctx);
         app.recompile_rules();
+        app.recompile_watch();
         if app.cfg.remember_column_filters {
             let saved = app.cfg.column_filters.clone();
             app.set_column_filters(saved);
@@ -432,7 +455,9 @@ impl App {
         while let Ok(res) = self.rx.try_recv() {
             match res {
                 Ok(snap) => {
-                    let mut events = self.recording.as_ref().map(|_| Vec::new());
+                    // Events for a recording and for the watch rules (#18).
+                    let mut events =
+                        (self.recording.is_some() || self.watch_rules.any_on()).then(Vec::new);
                     self.last_changes = self.tracker.update_with_events(
                         snap.rows,
                         snap.taken,
@@ -451,6 +476,7 @@ impl App {
                     self.etw_rows += etw;
                     self.etw_status = snap.etw_status;
                     if let Some(events) = events {
+                        self.watch_events(&events);
                         self.record_events(events);
                     }
                     self.last_took = snap.took;
@@ -627,11 +653,20 @@ fn mark_color(mark: Mark, dark: bool) -> Option<Color32> {
 }
 
 impl eframe::App for App {
+    /// Runs also while the window is minimized (unlike `ui`): the snapshots, the recording and
+    /// the watch rules (#18) keep going.
+    fn logic(&mut self, ctx: &egui::Context, frame: &mut eframe::Frame) {
+        if self.hwnd.is_none() {
+            self.hwnd = window_handle(frame);
+        }
+        self.receive();
+        self.watch_actions(ctx);
+    }
+
     fn ui(&mut self, ui: &mut egui::Ui, frame: &mut eframe::Frame) {
         let ctx = ui.ctx().clone();
         crate::gpu::keep_running_on_gpu_errors(frame);
         crate::gpu::limit_window_size(&ctx);
-        self.receive();
         if self.view_dirty {
             self.rebuild_view();
         }
@@ -653,6 +688,7 @@ impl eframe::App for App {
         self.cli_help_window(&ctx);
         self.properties_windows(&ctx);
         self.stats_window(&ctx);
+        self.watch_window(&ctx);
         self.confirm_window(&ctx);
         self.rules_window(&ctx);
         self.preset_windows(&ctx);
@@ -681,6 +717,8 @@ impl eframe::App for App {
             ctx.request_repaint_after(Duration::from_millis(900));
         }
         if closing {
+            // The notification icon of the watch rules (#18) would stay until hovered.
+            self.notifier.remove();
             // Stops the ETW session too, which would outlive the process (#4).
             self.ctl.shutdown();
             // The recording is finished into a complete file before the program ends.
@@ -688,5 +726,14 @@ impl eframe::App for App {
                 let _ = rec.recorder.wait();
             }
         }
+    }
+}
+
+/// The Win32 handle of the main window (owner of the notification icon of #18).
+fn window_handle(frame: &eframe::Frame) -> Option<isize> {
+    use raw_window_handle::{HasWindowHandle, RawWindowHandle};
+    match frame.window_handle().ok()?.as_raw() {
+        RawWindowHandle::Win32(h) => Some(h.hwnd.get()),
+        _ => None,
     }
 }

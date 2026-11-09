@@ -97,6 +97,10 @@ pub struct Config {
     pub cli_help_window: ToolWindowState,
     /// Position, size and zoom of the View → Statistics window (#19).
     pub stats_window: ToolWindowState,
+    /// Watch rules and alerts (#18).
+    pub watch: crate::watch::WatchSettings,
+    /// Position, size and zoom of the View → Alerts window (#18).
+    pub watch_window: ToolWindowState,
     /// Version of the filter syntax of the saved filters (#35). A file without it (0) is from
     /// before #35: its filters are rewritten once by `colfilter::migrate_v1`. The field default
     /// is 0 (an old file), `Config::default()` has the current version.
@@ -172,6 +176,8 @@ impl Default for Config {
             separate_windows: true,
             cli_help_window: Default::default(),
             stats_window: Default::default(),
+            watch: Default::default(),
+            watch_window: Default::default(),
             properties_window: None,
             filter_syntax: crate::colfilter::SYNTAX_VERSION,
         }

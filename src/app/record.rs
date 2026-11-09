@@ -222,6 +222,12 @@ impl App {
         };
         self.cfg.record.folder = path.parent().map(|p| p.to_path_buf());
         self.settings_changed();
+        self.start_recording_to(path, duration);
+    }
+
+    /// Starts the writer thread for `path` with the current endpoints as the starting state;
+    /// `duration` in ms, `None` = until stopped. Also used by the watch rules (#18).
+    pub(in crate::app) fn start_recording_to(&mut self, path: PathBuf, duration: Option<u64>) {
         // The starting state is the tracker after its last snapshot: snapshots taken while the
         // file dialog was open are still queued and come later, with later times.
         let now = self.last_poll.unwrap_or_else(now_ms);

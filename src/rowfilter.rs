@@ -87,7 +87,7 @@ pub fn compile(
 }
 
 /// A row for the filter of an event.
-fn event_row(e: &Event) -> Row {
+pub fn event_row(e: &Event) -> Row {
     let mut conn = e.conn.clone();
     conn.state = e.shown_state();
     Row {
