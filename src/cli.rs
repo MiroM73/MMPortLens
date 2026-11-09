@@ -405,15 +405,22 @@ pub fn filters(
 /// Shows a message: `console` on stdout / stderr (`error`) and, on Windows (the release build
 /// has no console), `boxed` in a message box.
 pub fn show_message(title: &str, console: &str, boxed: &str, error: bool) {
+    // Started by `mmportlens.com` (#44): the console, file or pipe of the shell only.
+    let boxed_too = !crate::console::from_companion();
+    if !boxed_too {
+        crate::console::attach_console();
+    }
     if error {
         crate::console::err(console);
     } else {
         crate::console::out(console);
     }
     #[cfg(windows)]
-    message_box(title, boxed, error);
+    if boxed_too {
+        message_box(title, boxed, error);
+    }
     #[cfg(not(windows))]
-    let _ = (title, boxed);
+    let _ = (title, boxed, boxed_too);
 }
 
 #[cfg(windows)]

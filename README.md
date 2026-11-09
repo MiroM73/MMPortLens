@@ -66,7 +66,9 @@ Version 1.1.1. What works now:
 - **Command line**: start with filters (`--preset`, `--filter`, `--column state==Established`),
   `--interval`, `--paused`, `--lang`; without a window `--export connections.xlsx` writes one
   snapshot and `--record capture.plrec --duration 10m` records (Ctrl+C stops) – for scripts and
-  scheduled tasks, with exit codes. `mmportlens --help` (a resizable window with zoomable text)
+  scheduled tasks, with exit codes. Typed in cmd or PowerShell, `mmportlens` runs the console
+  companion `mmportlens.com`, so the shell waits, `>` / `$x = …` capture the messages and
+  `%ERRORLEVEL%` / `$LASTEXITCODE` is the exit code. `mmportlens --help` (a resizable window with zoomable text)
   and **Help → Command line** list the options, column names and ready-to-copy examples; both
   zoom their text with Ctrl + wheel or Ctrl + `+` / `-` / `0`.
 - **Group by process** (toolbar *Group*): one collapsible line per process with its number of
@@ -113,6 +115,7 @@ Both create:
 ```
 MMPortLens\
     mmportlens.exe    the program (no installation, no Visual C++ runtime needed)
+    mmportlens.com    console companion: cmd / PowerShell wait for it and get its output
     lang\*.lang       language files – edit or add translations here
     LICENSE           the Unlicense (public domain)
 ```
@@ -123,7 +126,7 @@ The programs are not code-signed, so Windows SmartScreen may ask for confirmatio
 ## Build
 
 ```
-cargo build --release      → target\release\mmportlens.exe
+cargo build --release      → target\release\mmportlens.exe (+ mmportlens-com.exe = mmportlens.com)
 cargo test
 ```
 

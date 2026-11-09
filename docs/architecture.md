@@ -9,7 +9,8 @@ with the change.
 |------|--------------|
 | `src/main.rs` | Start-up: the command line (`cli`), help / version / errors, the runs without a window (`headless`), always start as administrator, `--restore <file>` after an update, the window. |
 | `src/cli.rs` | Command-line parser (#16): `Options` / `ViewOptions`, `CliError` with translated messages, `filters` (preset + text + column filters checked against the settings), `PUBLIC_OPTIONS` (the documented options, shared with the help), message box – the style of RusTrace `src/cli.rs`. |
-| `src/console.rs` | Console messages of the runs without a window (#40): `attach_console`, `out` / `err` (instead of `println!` / `eprintln!`) with the encoding chosen per handle (`target`: console → WriteConsoleW, pipe read by PowerShell → the console's code page, else UTF-8). |
+| `src/console.rs` | Console messages of the runs without a window (#40): `attach_console`, `out` / `err` (instead of `println!` / `eprintln!`) with the encoding chosen per handle (`target`: console → WriteConsoleW, pipe read by PowerShell → the console's code page, else UTF-8); the side of the console companion (#44): `from_companion`, `release_companion`, `starting_program`. |
+| `src/bin/mmportlens-com.rs` | The console companion `mmportlens.com` (#44): starts `mmportlens.exe` with the same arguments and standard handles and waits for its end (exit code) or for the signal that its window opened. |
 | `src/clihelp.rs` | The command-line help as data (#38): `CliHelp` (usage, options, column names, exit codes, examples) built from `cli::PUBLIC_OPTIONS` and the `cli.*` keys; `text()` for the console / message box. |
 | `src/helpwindow.rs` | The `--help` window (#39): a small eframe app around `app::cli_help::cli_help_ui`, zoom (Ctrl + wheel / `+` / `-` / `0`, bottom bar), resize grip, `HelpWindowState` (zoom and size in `Config::help_window`); the shared zoom bar (`zoom_bar`), zoom input (`zoom_input`) and per-window text scaling (`scale_text`) of the zoomable windows (#42). |
 | `src/gpu.rs` | Window size limit of the wgpu renderer (#43): device with the adapter's maximum texture size, maximum inner size / shrinking of every viewport, wgpu errors logged instead of a panic. |
@@ -845,10 +846,36 @@ unzoomed logical pixels = points × zoom) into a freshly loaded `Config` (`help_
 `main` then exits with 0. The same window on Linux (there was no message box).
 When the arguments contain `--export` / `--record`, `console::attach_console`
 (`AttachConsole(ATTACH_PARENT_PROCESS)`) runs first and every message (also an invalid line) goes
-only to the console – an unattended task never waits for a click. Because the exe is a GUI
-program, PowerShell does not wait for it on its own: `mmportlens --export x.csv | Out-Null` (or
-`Start-Process -Wait`, `start /wait` in cmd) waits and sets `$LASTEXITCODE`; cmd does not pass
-redirected handles to a GUI program at all (`> out.txt` stays empty) – #44.
+only to the console – an unattended task never waits for a click.
+
+**Console companion `mmportlens.com` (#44).** The exe is a GUI program, so cmd and PowerShell
+did not wait for it, cmd passed no redirected handles to it (`> out.txt` stayed empty), `$x =
+mmportlens …` captured nothing and `%ERRORLEVEL%` / `$LASTEXITCODE` were not its exit code. The
+release ships a second, console-subsystem program next to it: `src/bin/mmportlens-com.rs`, built by
+cargo as `mmportlens-com.exe` (`default-run = "mmportlens"` keeps `cargo run`) and copied by
+`scripts/package.ps1` as `mmportlens.com`. A shell that runs `mmportlens` takes the `.com` first
+(PATHEXT `.COM;.EXE;…`, the same trick as `devenv.com`); the Start menu, Explorer and the `.plrec`
+association keep the `.exe`, without a console window. The companion:
+- creates a manual-reset event `Local\MMPortLens-console-<pid>` and starts `mmportlens.exe` from
+  its own folder with the same arguments, the inherited standard handles (console, file, pipe) and
+  `MMPORTLENS_CONSOLE_EVENT=<event name>`;
+- waits for the process **or** the event (`WaitForMultipleObjects`): the process ends → the same
+  exit code (`--export`, `--record`, invalid command line, `--version`); the event → exit 0 at once
+  (`console::release_companion` in `main` when the window opens, and for `--help` after the text
+  was printed – the help window stays, the prompt comes back);
+- ignores Ctrl+C / Ctrl+Break with a handler routine (not inherited): they reach
+  `mmportlens.exe`, which stops and saves the recording, and the companion still reports its exit
+  code. `headless::catch_ctrl_c` first clears an inherited "ignore Ctrl+C" flag
+  (`SetConsoleCtrlHandler(None, 0)`) – with it set, a test's Ctrl+C did not stop the recording.
+`mmportlens.exe` started by it (`console::from_companion`) writes errors and `--version` only to the
+console / file / pipe, never into a message box nobody in a script would click. The PowerShell
+detection of #40 looks past the companion to the shell that started it
+(`console::starting_program`, pure and tested). Checked in the release build: cmd `mmportlens
+--record x.plrec --duration 3s > out.txt` waited 4 s, `%ERRORLEVEL%` 0, `out.txt` had the UTF-8
+messages; `--bogus 2> err.txt` → 2 and the message in the file; Windows PowerShell 5.1 `$x =
+mmportlens --record … --duration 2s` waited and captured both lines, `--duration 5` → 2,
+`--version` → printed, 0; `mmportlens --paused` and `--help > help.txt` returned within 40 ms with
+0 and their windows stayed open. Typing `mmportlens.exe` explicitly keeps the old behaviour.
 
 **Encoding of the console messages (#40)**: every message of these runs goes through
 `console::out` / `console::err`, which pick the encoding by where the standard handle points

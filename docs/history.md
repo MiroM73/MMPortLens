@@ -537,3 +537,17 @@
   elevated); release build not elevated: `--export --column local_port==135` gave `svchost.exe`
   (1788) twice, `--filter svchost` 68 rows, a full export no `<pid>` at all; the window shows
   svchost.exe, lsass.exe, services.exe, spoolsv.exe for the listeners.
+- #44: console companion `mmportlens.com` (option 1 of the issue, chosen because the owner asked
+  to fix all open issues): `src/bin/mmportlens-com.rs` starts `mmportlens.exe` with the same
+  arguments and standard handles and waits for its exit code, or for an event the program sets
+  when its window opens (also after the `--help` text). Started by it, the program writes errors
+  and `--version` to the console only (no message box), and the PowerShell encoding of #40 looks
+  past it. `scripts/package.ps1` ships it as `mmportlens.com`; `default-run` in `Cargo.toml`.
+  Verified: fmt, clippy (Windows, Linux), tests (shell behind the companion); release build in cmd
+  (`> out.txt` UTF-8, waits, `%ERRORLEVEL%` 0 / 2) and Windows PowerShell 5.1 (`$x = …` captures,
+  `$LASTEXITCODE` 0 / 2, `--version` printed), the window and `--help` return the prompt within
+  40 ms; the packaged ZIP contains `mmportlens.com`. Ctrl+C (`GenerateConsoleCtrlEvent` into a
+  new console running `cmd /c .\mmportlens.com --record … --duration 60s > c.txt`) first did not
+  stop the recording: the processes had inherited an "ignore Ctrl+C" flag, so `headless` now clears
+  it (`SetConsoleCtrlHandler(None, 0)`) before it registers its handler; then the recording stopped
+  after 5 s and was finished (285 events).

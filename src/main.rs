@@ -60,7 +60,8 @@ fn command_line(cfg: &config::Config, raw: &[String]) -> (app::Startup, Option<P
     }
     let fail = |e: cli::CliError| -> ! {
         let msg = e.message();
-        if headless_args {
+        if headless_args || console::from_companion() {
+            console::attach_console();
             console::err(&msg);
         } else {
             cli::show_message(&t!("cli.title.error"), &msg, &msg, true);
@@ -84,6 +85,8 @@ fn command_line(cfg: &config::Config, raw: &[String]) -> (app::Startup, Option<P
         let help = clihelp::build(&languages.join(", "));
         console::attach_console();
         console::out(&help.text(false));
+        // The text is out: the shell gets its prompt back while the window stays (#44).
+        console::release_companion();
         if let Err(e) = helpwindow::run(cfg, help, app::icon_data()) {
             console::err(&e.to_string());
         }
@@ -179,6 +182,8 @@ fn main() -> eframe::Result {
     // Port names of the system services database (#34), read while the program starts.
     services::load_system();
     let (mut startup, restore_file) = command_line(&cfg, &args);
+    // The window opens: `mmportlens.com` stops waiting (#44).
+    console::release_companion();
 
     // "Always start as administrator": start again through UAC and end this one. The elevated
     // child gets ELEVATED_ARG and never tries again; it reads the same command line. Before the

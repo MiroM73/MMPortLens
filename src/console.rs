@@ -133,13 +133,83 @@ mod win {
     pub const STD_ERROR_HANDLE: u32 = -12i32 as u32;
     pub const FILE_TYPE_PIPE: u32 = 3;
 
-    /// The executable name of the parent process (Toolhelp snapshot); `None` when unknown.
+    /// The executable name of the program that started this one (Toolhelp snapshot), past the
+    /// console companion `mmportlens.com` (#44); `None` when unknown.
     pub fn parent_exe() -> Option<String> {
-        let list = crate::winproc::process_list();
+        let list: Vec<(u32, u32, String)> = crate::winproc::process_list()
+            .into_iter()
+            .map(|e| (e.pid, e.parent_pid, e.exe))
+            .collect();
         // SAFETY: no arguments.
-        let me = unsafe { GetCurrentProcessId() };
-        let parent = list.iter().find(|e| e.pid == me)?.parent_pid;
-        list.into_iter().find(|e| e.pid == parent).map(|e| e.exe)
+        super::starting_program(&list, unsafe { GetCurrentProcessId() })
+    }
+
+    #[link(name = "kernel32")]
+    unsafe extern "system" {
+        fn OpenEventW(access: u32, inherit: i32, name: *const u16) -> *mut c_void;
+        fn SetEvent(event: *mut c_void) -> i32;
+        fn CloseHandle(handle: *mut c_void) -> i32;
+    }
+    const EVENT_MODIFY_STATE: u32 = 0x0002;
+
+    /// Signals the event `name` of the console companion.
+    pub fn signal(name: &str) {
+        let wide: Vec<u16> = name.encode_utf16().chain([0]).collect();
+        // SAFETY: `wide` is NUL-terminated and lives until the call returns; the handle is checked
+        // and closed.
+        unsafe {
+            let event = OpenEventW(EVENT_MODIFY_STATE, 0, wide.as_ptr());
+            if !event.is_null() {
+                SetEvent(event);
+                CloseHandle(event);
+            }
+        }
+    }
+}
+
+/// Environment variable with the name of the event the console companion `mmportlens.com` waits
+/// on besides the end of the program (#44).
+pub const COMPANION_EVENT: &str = "MMPORTLENS_CONSOLE_EVENT";
+
+/// Whether `exe` is the console companion (`mmportlens.com`, or `mmportlens-com.exe` as cargo
+/// builds it).
+#[cfg_attr(not(windows), allow(dead_code))]
+pub fn is_companion(exe: &str) -> bool {
+    let name = exe.rsplit(['\\', '/']).next().unwrap_or(exe);
+    ["mmportlens.com", "mmportlens-com.exe"]
+        .iter()
+        .any(|n| name.eq_ignore_ascii_case(n))
+}
+
+/// The program that started the process `me` in a process list of (PID, parent PID, executable):
+/// its parent, or the parent of the console companion when that started it (#44).
+#[cfg_attr(not(windows), allow(dead_code))]
+pub fn starting_program(list: &[(u32, u32, String)], me: u32) -> Option<String> {
+    let parent_of = |pid: u32| list.iter().find(|e| e.0 == pid).map(|e| e.1);
+    let exe_of = |pid: u32| list.iter().find(|e| e.0 == pid).map(|e| e.2.clone());
+    let parent = parent_of(me)?;
+    let exe = exe_of(parent)?;
+    if is_companion(&exe) {
+        exe_of(parent_of(parent)?)
+    } else {
+        Some(exe)
+    }
+}
+
+/// Whether the console companion `mmportlens.com` started the program and waits for it (#44):
+/// messages then go to its console, file or pipe only, never to a message box nobody in a script
+/// would click.
+pub fn from_companion() -> bool {
+    std::env::var_os(COMPANION_EVENT).is_some()
+}
+
+/// Tells the console companion `mmportlens.com` that the program opened its window (a normal
+/// start, the `--help` window): it ends then and gives the shell its prompt back, instead of
+/// waiting for the window to close (#44). Does nothing when the program was not started by it.
+pub fn release_companion() {
+    #[cfg(windows)]
+    if let Some(name) = std::env::var_os(COMPANION_EVENT) {
+        win::signal(&name.to_string_lossy());
     }
 }
 
@@ -235,6 +305,32 @@ mod tests {
         assert_eq!(target(false, true, CP_UTF8, ps), Target::Utf8);
         assert_eq!(target(false, true, 0, ps), Target::Utf8);
         assert_eq!(target(false, false, 852, ps), Target::Utf8);
+    }
+
+    #[test]
+    fn the_companion_is_skipped_when_looking_for_the_shell() {
+        let list = |mid: &str| {
+            vec![
+                (10, 1, "powershell.exe".to_string()),
+                (20, 10, mid.to_string()),
+                (30, 20, "mmportlens.exe".to_string()),
+            ]
+        };
+        assert_eq!(
+            starting_program(&list("mmportlens.com"), 30).as_deref(),
+            Some("powershell.exe")
+        );
+        assert_eq!(
+            starting_program(&list("MMPortLens-com.exe"), 30).as_deref(),
+            Some("powershell.exe")
+        );
+        assert_eq!(
+            starting_program(&list("cmd.exe"), 30).as_deref(),
+            Some("cmd.exe")
+        );
+        assert_eq!(starting_program(&list("cmd.exe"), 99), None);
+        assert!(is_companion(r"C:\Tools\MMPortLens\mmportlens.com"));
+        assert!(!is_companion("mmportlens.exe"));
     }
 
     #[test]

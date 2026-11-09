@@ -224,8 +224,11 @@ fn catch_ctrl_c() {
         1
     }
     // SAFETY: `handler` is a plain function that lives for the whole program and only touches
-    // atomics; registering it has no other effect.
+    // atomics; registering it has no other effect. `None, 0` clears an "ignore Ctrl+C" flag
+    // inherited from the process that started this one (#44: found when a test sent Ctrl+C to a
+    // console whose processes had inherited it – the recording went on).
     unsafe {
+        SetConsoleCtrlHandler(None, 0);
         SetConsoleCtrlHandler(Some(handler), 1);
     }
 }

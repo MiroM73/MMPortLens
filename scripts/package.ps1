@@ -10,6 +10,7 @@
 
         MMPortLens\
             mmportlens.exe
+            mmportlens.com    console companion for cmd / PowerShell (#44)
             lang\*.lang
             LICENSE
 
@@ -37,6 +38,10 @@ if (-not $Version) {
 
 $exe = Join-Path $root 'target\release\mmportlens.exe'
 if (-not (Test-Path $exe)) { throw "$exe not found - run 'cargo build --release' first." }
+# The console companion (#44) is built as mmportlens-com.exe and shipped as mmportlens.com, which
+# cmd and PowerShell prefer when the user types "mmportlens".
+$companion = Join-Path $root 'target\release\mmportlens-com.exe'
+if (-not (Test-Path $companion)) { throw "$companion not found - run 'cargo build --release' first." }
 
 # Locate 7-Zip and its GUI self-extractor module. The installation folder is preferred, because a
 # 7z.exe in PATH may be a shim (e.g. Chocolatey) without 7z.sfx next to it.
@@ -54,6 +59,7 @@ $appDir = Join-Path $stage 'MMPortLens'
 if (Test-Path $stage) { Remove-Item $stage -Recurse -Force }
 New-Item -ItemType Directory -Force (Join-Path $appDir 'lang') | Out-Null
 Copy-Item $exe $appDir
+Copy-Item $companion (Join-Path $appDir 'mmportlens.com')
 Copy-Item (Join-Path $root 'lang\*.lang') (Join-Path $appDir 'lang')
 Copy-Item (Join-Path $root 'LICENSE') $appDir
 
