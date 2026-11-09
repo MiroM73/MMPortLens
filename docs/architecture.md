@@ -1151,7 +1151,8 @@ settings say so).
 `cargo test` – decoding of the Windows owner module tables (incl. creation times, row offsets),
 the live creation time and owner module of an own connection, `/proc/net` lines, ESTATS rows and
 counters (elevated: 200 KB over an own connection are counted; not elevated: exactly
-AccessDenied), traffic rates between snapshots, the rate sampler of the properties graph (per-connection deltas, closed / new connections, resets, window), `/proc/<pid>/io` parsing and the own I/O counters, byte / rate texts, state codes, the tracker
+AccessDenied, decided by the token and not by the first `fill`; the snapshot is retried until
+it has the own connection with a state `has_stats` accepts, #46), traffic rates between snapshots, the rate sampler of the properties graph (per-connection deltas, closed / new connections, resets, window), `/proc/<pid>/io` parsing and the own I/O counters, byte / rate texts, state codes, the tracker
 (new / changed / closed / expiry / reappearing), column layout and sorting, settings round trip,
 language files, reverse DNS (cache TTL / negative results / pending, `sockaddr` layout, a
 300-address run through the worker pool with a slow fake resolver – never more than `WORKERS` at

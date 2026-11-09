@@ -92,7 +92,7 @@ program, README / `docs/architecture.md` / `docs/history.md`, detailed commit wi
 | #29 | Status bar texts overlap in a narrow window (found in the #27 check) | done (10e1140) |
 | #41 | Multi-line values in the language files cut after the first line: filter tooltip, regex error (found in #35) | done ("Language files: one line per value"), released in v1.0.7 |
 | #43 | wgpu validation error (panic) when a window is larger than the maximum texture size, 8192 px (found in the #31 check) | done ("Windows larger than the GPU texture limit no longer end the program"), released in v1.1.7 |
-| #46 | Flaky test `counts_own_traffic`: AccessDenied when the first snapshot misses the own connection (found in the #18 check) | |
+| #46 | Flaky test `counts_own_traffic`: AccessDenied when the first snapshot misses the own connection (found in the #18 check) | done ("Flaky test counts_own_traffic: decide elevation by the token"), not released yet |
 
 ## Deferred indefinitely (owner's decision)
 | Issue | What | Status |

@@ -363,6 +363,10 @@ mod tests {
 
     /// Elevated: 200 KB sent over an own loopback connection are counted. Not elevated: the
     /// collector reports AccessDenied (and nothing else).
+    ///
+    /// Elevation is decided by the token (`is_elevated`), not by the first `fill`: `fill` asks
+    /// Windows only for rows `has_stats` accepts, and a snapshot may miss the own connection or
+    /// report a state it skips (#21, #32), so an `Ok` of the first `fill` proves nothing (#46).
     #[cfg(windows)]
     #[test]
     fn counts_own_traffic() {
@@ -372,26 +376,46 @@ mod tests {
         let mut client = std::net::TcpStream::connect(addr).unwrap();
         let (mut server, _) = listener.accept().unwrap();
         let local = client.local_addr().unwrap();
-        let mine = |conns: &mut Vec<Connection>| {
-            conns.retain(|c| c.local == local && c.remote == Some(addr));
+        // The own outgoing connection, retried until a snapshot has it with a state
+        // `has_stats` accepts (like `live_snapshot_sees_own_sockets`, #23). `None` when it is
+        // there only with skipped states; a panic when it is not there at all.
+        let own = || {
+            let mut seen = Vec::new();
+            for attempt in 0..20 {
+                if attempt > 0 {
+                    std::thread::sleep(std::time::Duration::from_millis(50));
+                }
+                let mut conns = super::super::snapshot().unwrap();
+                conns.retain(|c| c.local == local && c.remote == Some(addr));
+                if conns.iter().any(has_stats) {
+                    conns.retain(has_stats);
+                    return Some(conns);
+                }
+                seen.extend(conns.into_iter().map(|c| c.state));
+            }
+            assert!(
+                !seen.is_empty(),
+                "own connection {local} -> {addr} never seen"
+            );
+            eprintln!("counts_own_traffic: own connection only seen in states {seen:?}, skipped");
+            None
         };
+        let elevated = crate::elevation::is_elevated();
         let mut col = Collector::default();
-        let mut conns = super::super::snapshot().unwrap();
-        mine(&mut conns);
+        let Some(mut conns) = own() else { return };
         match col.fill(&mut conns) {
-            Err(StatsError::AccessDenied) => {
+            Err(StatsError::AccessDenied) if !elevated => {
                 eprintln!("counts_own_traffic: not elevated, only the access error checked");
                 return;
             }
-            Err(e) => panic!("{e:?}"),
-            Ok(()) => {}
+            Ok(()) if elevated => {}
+            other => panic!("elevated {elevated}: {other:?}"),
         }
         let data = vec![7u8; 200_000];
         client.write_all(&data).unwrap();
         let mut got = vec![0u8; data.len()];
         server.read_exact(&mut got).unwrap();
-        let mut conns = super::super::snapshot().unwrap();
-        mine(&mut conns);
+        let Some(mut conns) = own() else { return };
         col.fill(&mut conns).unwrap();
         let s = conns[0].stats.expect("statistics of the own connection");
         assert!(s.bytes_out >= 200_000, "{s:?}");

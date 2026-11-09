@@ -585,3 +585,15 @@
   succeeded and the draft was published with the notes as the latest release. Check of the
   released ZIP: checksum OK, it contains `mmportlens.com`, `mmportlens.exe` has product version
   1.1.7, and `cargo test fetch_latest_release -- --ignored` passes with v1.1.7 as the latest release.
+
+## After 1.1.7 (2026-11-09)
+
+- #46: the flaky test `counts_own_traffic` (AccessDenied from the second `fill` when not
+  elevated). It now decides elevation by the token (`elevation::is_elevated`) instead of by the
+  first `fill`, which asks Windows only for rows `has_stats` accepts and so returned `Ok` when the
+  snapshot missed the own connection or reported a skipped state (#21, #32). Both snapshots are
+  retried (20 x 50 ms) until they hold the own connection with an accepted state; a connection seen
+  only in skipped states skips the test with a message, one never seen fails it. Not elevated, the
+  first `fill` must be exactly AccessDenied; elevated, it must be `Ok`. Verified: fmt, clippy
+  (Windows, Linux), the test 11 times alone and the full `cargo test` 4 times (not elevated); the
+  elevated path not run in this session.
