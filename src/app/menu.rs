@@ -45,6 +45,14 @@ impl App {
                     ui.close();
                     self.open_watch(false);
                 }
+                if ui
+                    .button(t!("menu.view.geo"))
+                    .on_hover_text(t!("menu.view.geo.tip"))
+                    .clicked()
+                {
+                    ui.close();
+                    self.show_geo = true;
+                }
                 ui.separator();
                 if ui
                     .checkbox(&mut self.cfg.show_details, t!("menu.view.details"))

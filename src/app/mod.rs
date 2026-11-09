@@ -32,6 +32,7 @@ mod columnlayout;
 mod details;
 mod etw;
 mod export;
+mod geo;
 mod groups;
 mod help;
 mod input;
@@ -206,6 +207,9 @@ pub struct App {
     hwnd: Option<isize>,
     watch_focus: bool,
     watch_msg: Option<String>,
+    /// View → Country and ASN database… (#11) and the database generation the view was built with.
+    show_geo: bool,
+    geo_generation: u64,
     /// Result of the last action (status bar).
     action_result: Option<actions::ActionResult>,
     /// The traffic counters were refused by Windows (not elevated, #8).
@@ -363,6 +367,8 @@ impl App {
             hwnd: None,
             watch_focus: false,
             watch_msg: None,
+            show_geo: false,
+            geo_generation: 0,
             active_preset: String::new(),
             preset_windows: Default::default(),
             icons: HashMap::new(),
@@ -394,6 +400,7 @@ impl App {
         app.apply_theme(&cc.egui_ctx);
         app.recompile_rules();
         app.recompile_watch();
+        app.load_geo();
         if app.cfg.remember_column_filters {
             let saved = app.cfg.column_filters.clone();
             app.set_column_filters(saved);
@@ -494,6 +501,11 @@ impl App {
             self.view_dirty = true;
         }
         if self.resolver.receive(now_ms()) {
+            self.view_dirty = true;
+        }
+        // A country / ASN database finished loading (#11).
+        if crate::geo::generation() != self.geo_generation {
+            self.geo_generation = crate::geo::generation();
             self.view_dirty = true;
         }
         self.receive_replay();
@@ -689,6 +701,7 @@ impl eframe::App for App {
         self.properties_windows(&ctx);
         self.stats_window(&ctx);
         self.watch_window(&ctx);
+        self.geo_window(&ctx);
         self.confirm_window(&ctx);
         self.rules_window(&ctx);
         self.preset_windows(&ctx);

@@ -99,6 +99,8 @@ pub struct Config {
     pub stats_window: ToolWindowState,
     /// Watch rules and alerts (#18).
     pub watch: crate::watch::WatchSettings,
+    /// The offline country / ASN database files (#11).
+    pub geo: crate::geo::GeoSettings,
     /// Position, size and zoom of the View → Alerts window (#18).
     pub watch_window: ToolWindowState,
     /// Version of the filter syntax of the saved filters (#35). A file without it (0) is from
@@ -177,6 +179,7 @@ impl Default for Config {
             cli_help_window: Default::default(),
             stats_window: Default::default(),
             watch: Default::default(),
+            geo: Default::default(),
             watch_window: Default::default(),
             properties_window: None,
             filter_syntax: crate::colfilter::SYNTAX_VERSION,

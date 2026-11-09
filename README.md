@@ -90,6 +90,9 @@ Version 1.1.1. What works now:
   new and closed endpoints, state changes – for a chosen time (until stopped, 1 – 60 min or
   custom), optionally only the rows matching the current filters, into a `.plrec` file (a SQLite
   database, about 10 MB for a busy hour). ● REC in the status bar shows the time and the events.
+- **Country and network owner** of remote addresses (columns *Country*, *Network (ASN)*, e.g.
+  `US`, `AS8075 MICROSOFT-CORP-MSN-AS-BLOCK`) from offline database files you download
+  (ip2asn, DB-IP Country Lite; View → Country and ASN database…) – nothing is sent anywhere.
 - **Short connections with ETW** (View → Capture short connections, administrator): Event
   Tracing for Windows sees also the connections that open and close between two refreshes
   (beacons, failing health checks); they appear as closed rows marked ⚡, with their process and

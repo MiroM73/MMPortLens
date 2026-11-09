@@ -41,6 +41,7 @@ with the change.
 | `src/stats.rs` | Statistics (#19): `Sample` / `History` (state counts per refresh, ten minutes), `top` lists (processes by endpoints and traffic, remote hosts, remote ports) and their `=value` column filters – pure, tested. |
 | `src/watch.rs` | Watch rules and alerts (#18): `WatchRule` (trigger, column filter conditions, actions), `Compiled`, `check` (tracker events → hits), `batch` (one notification per refresh), the alert log file – pure, tested. |
 | `src/notify.rs` | Desktop notification of a watch rule hit (Windows: notification icon + balloon / toast, `Shell_NotifyIconW`) and the alert sound (`MessageBeep`). |
+| `src/geo.rs` | Country and ASN of remote addresses from offline files (#11): ip2asn TSV / DB-IP CSV (also .gz) parsed into sorted ranges, binary-search lookup, address classes, the global database loaded in the background. |
 | `src/services.rs` | Well-known port names (#5): built-in table plus the system services file read in the background (#34). |
 | `src/actions.rs` | Close connection (`SetTcpEntry` + DELETE_TCB) and End process (`TerminateProcess` / `kill`), with the pure checks `can_close` / `can_kill` and `tcp_row` (#6). |
 | `src/columns.rs` | `ColumnId`, cell texts, value-based sorting (`SortSpec`), `ColumnLayout` (visibility, order, widths), `drop_slot`. |
@@ -48,7 +49,7 @@ with the change.
 | `src/config.rs` | `Config` (JSON, every field has a default). |
 | `src/i18n.rs` | `t!()` and the language files – the same module as in RusTrace. |
 | `src/timefmt.rs` | Clock times for the table. |
-| `src/app/` | The UI, split by area like RusTrace: `mod.rs` (state, frame loop), `menu.rs`, `toolbar.rs`, `table.rs`, `statusbar.rs`, `colfilters.rs` (column filter state and field), `admin.rs` (restart as administrator), `update_window.rs` (Help → Check for updates), `input.rs` (keyboard shortcuts, copying the selection), `help.rs` (Help → Keyboard shortcuts), `cli_help.rs` (Help → Command line and the shared help renderer `cli_help_ui`, #38), `actions.rs` (context menu items, confirmation window and result of #6), `details.rs` (details pane, process icons and tooltip of #7), `properties.rs` (process properties window of #28), `properties_windows.rs` (several of them in native windows, #33), `native_window.rs` (zoomable tool window: native or embedded, own zoom, remembered geometry – #42), `stats.rs` (View → Statistics, #19), `watch.rs` (View → Watch rules and alerts, the actions of a hit – #18), `properties_graph.rs` (its live traffic / I/O graph, #30), `rules.rs` (color rules window and row colors of #10), `presets.rs` (filter preset combo box and windows of #13), `groups.rs` (group lines of #12), `columnlayout.rs` (header drag and drop, remembered widths, fit on a border double click – #2), `export.rs` (File → Export… window, export thread, status – #9), `record.rs` (start window, events to the writer, ● REC – #3), `replay.rs` (opened recording, replay bar with the time slider – #3), `replay_events.rs` (event list of a recording – #3), `etw.rs` (View menu switch and status bar item of the ETW capture – #4). |
+| `src/app/` | The UI, split by area like RusTrace: `mod.rs` (state, frame loop), `menu.rs`, `toolbar.rs`, `table.rs`, `statusbar.rs`, `colfilters.rs` (column filter state and field), `admin.rs` (restart as administrator), `update_window.rs` (Help → Check for updates), `input.rs` (keyboard shortcuts, copying the selection), `help.rs` (Help → Keyboard shortcuts), `cli_help.rs` (Help → Command line and the shared help renderer `cli_help_ui`, #38), `actions.rs` (context menu items, confirmation window and result of #6), `details.rs` (details pane, process icons and tooltip of #7), `properties.rs` (process properties window of #28), `properties_windows.rs` (several of them in native windows, #33), `native_window.rs` (zoomable tool window: native or embedded, own zoom, remembered geometry – #42), `stats.rs` (View → Statistics, #19), `watch.rs` (View → Watch rules and alerts, the actions of a hit – #18), `geo.rs` (View → Country and ASN database – #11), `properties_graph.rs` (its live traffic / I/O graph, #30), `rules.rs` (color rules window and row colors of #10), `presets.rs` (filter preset combo box and windows of #13), `groups.rs` (group lines of #12), `columnlayout.rs` (header drag and drop, remembered widths, fit on a border double click – #2), `export.rs` (File → Export… window, export thread, status – #9), `record.rs` (start window, events to the writer, ● REC – #3), `replay.rs` (opened recording, replay bar with the time slider – #3), `replay_events.rs` (event list of a recording – #3), `etw.rs` (View menu switch and status bar item of the ETW capture – #4). |
 | `lang/*.lang` | Built-in translations (en, sk, cs, de), embedded with `include_str!`. |
 
 ## Reading the connections
@@ -510,6 +511,33 @@ and list widths scale with the window zoom) and the four lists side by side as s
 Process, Remote address or Remote port (the other filters stay), shows that column and the filter
 row (filters of hidden columns do not apply). The test `filters_of_entries_match_exactly_their_rows`
 checks that each filter matches exactly the counted rows (`=80` not `8080`).
+
+## Country and ASN (#11)
+
+Columns **Country** and **Network (ASN)** (hidden by default; shown when a database file is
+chosen) for the remote address, from offline files the user downloads – nothing is sent anywhere.
+`src/geo.rs` reads two formats, plain or gzip (recognized by the magic bytes, `MultiGzDecoder`):
+**ip2asn** (`https://iptoasn.com`, `ip2asn-combined.tsv.gz`: `start end AS country description`
+tab-separated; AS 0 / *Not routed* = no ASN) for ASN, organization and country, and **DB-IP IP to
+Country Lite** (CSV `start,end,cc`, quotes allowed) whose country wins over the ip2asn one. MaxMind
+`.mmdb` files are not supported (no reader without a new crate). `parse` turns the lines into
+`Range`s keyed as `u128` (IPv4 mapped to `::ffff:a.b.c.d`, so one sorted table holds both
+families; organization names interned), a lookup is `partition_point` on the start (the real
+combined file: 719 149 ranges, loaded in about 5 s in a release build, lookups in microseconds).
+Private (RFC 1918, CGNAT, ULA), loopback, link-local and multicast addresses show their class
+(`special_class`, translated) instead of a lookup; the unspecified address is empty.
+
+The database is global (`geo::current`, an `RwLock<Option<Arc<GeoDb>>>`): `columns::cell_text`
+asks it directly, so the table, the column / text filters, sorting, color rules, watch rules,
+the export and the command line all see the same values. `App::new` starts the load
+(`start_loading`, thread `geo`, `Status` None / Loading / Ready / Failed); `receive` notices
+`geo::generation` and rebuilds the view. `headless::export` loads it synchronously when a
+Country / ASN column is exported or filtered (`load_now`, an error goes to stderr). Settings:
+`Config::geo` (`asn_file`, `country_file`). **View → Country and ASN database…**
+(`src/app/geo.rs`): both files with Choose… / ✖, download links, the state with the range counts
+and Reload; choosing a file shows the two columns. Without a database a Country / ASN cell of a
+connection has the tooltip `geo.none.tip`. Filter examples: `=US|=DE`, `AS8075|AS15169`,
+`microsoft|google`.
 
 ## Watch rules and alerts (#18)
 

@@ -15,6 +15,7 @@ mod console;
 mod dns;
 mod elevation;
 mod filterhelp;
+mod geo;
 mod gpu;
 mod grouping;
 mod headless;

@@ -212,6 +212,11 @@ impl App {
                                 } else if let Some(TcpState::Unknown(v)) = r.conn.state {
                                     resp.on_hover_text(t!("state.invalid.tip", value = v));
                                 }
+                            } else if matches!(c, ColumnId::Country | ColumnId::Asn)
+                                && r.conn.remote.is_some()
+                                && crate::geo::current().is_none()
+                            {
+                                resp.on_hover_text(t!("geo.none.tip"));
                             }
                         }
                     });

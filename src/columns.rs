@@ -42,6 +42,10 @@ pub enum ColumnId {
     Module,
     /// `ETW` for a connection seen only by ETW (#4), empty otherwise.
     Source,
+    /// Country of the remote address from an offline database (#11).
+    Country,
+    /// Network owner (ASN and organization) of the remote address (#11).
+    Asn,
     /// Traffic counters of TCP connections (#8).
     BytesSent,
     BytesReceived,
@@ -53,7 +57,7 @@ pub enum ColumnId {
 
 impl ColumnId {
     /// All columns in the default order (the order of TCPView, then the additional ones).
-    pub const ALL: [ColumnId; 28] = [
+    pub const ALL: [ColumnId; 30] = [
         ColumnId::Process,
         ColumnId::Pid,
         ColumnId::Protocol,
@@ -65,6 +69,8 @@ impl ColumnId {
         ColumnId::RemotePort,
         ColumnId::RemoteHost,
         ColumnId::Service,
+        ColumnId::Country,
+        ColumnId::Asn,
         ColumnId::Created,
         ColumnId::Duration,
         ColumnId::FirstSeen,
@@ -100,6 +106,8 @@ impl ColumnId {
                 | ColumnId::Duration
                 | ColumnId::Module
                 | ColumnId::Source
+                | ColumnId::Country
+                | ColumnId::Asn
         ) && !self.traffic()
     }
 
@@ -140,6 +148,8 @@ impl ColumnId {
             ColumnId::Duration => "column.duration",
             ColumnId::Module => "column.module",
             ColumnId::Source => "column.source",
+            ColumnId::Country => "column.country",
+            ColumnId::Asn => "column.asn",
             ColumnId::BytesSent => "column.bytes_sent",
             ColumnId::BytesReceived => "column.bytes_received",
             ColumnId::RateSent => "column.rate_sent",
@@ -173,6 +183,8 @@ impl ColumnId {
             ColumnId::Duration => 100.0,
             ColumnId::Module => 150.0,
             ColumnId::Source => 70.0,
+            ColumnId::Country => 70.0,
+            ColumnId::Asn => 240.0,
             ColumnId::BytesSent
             | ColumnId::BytesReceived
             | ColumnId::RateSent
@@ -261,6 +273,14 @@ pub fn cell_text(row: &Row, col: ColumnId) -> String {
             .unwrap_or_default(),
         ColumnId::Module => c.module.as_deref().unwrap_or_default().to_owned(),
         ColumnId::Source => if row.etw { "ETW" } else { "" }.to_owned(),
+        ColumnId::Country => c
+            .remote
+            .map(|r| crate::geo::country_cell(r.ip()))
+            .unwrap_or_default(),
+        ColumnId::Asn => c
+            .remote
+            .map(|r| crate::geo::asn_cell(r.ip()))
+            .unwrap_or_default(),
         ColumnId::BytesSent => c.stats.map(|s| bytes(s.bytes_out)).unwrap_or_default(),
         ColumnId::BytesReceived => c.stats.map(|s| bytes(s.bytes_in)).unwrap_or_default(),
         ColumnId::RateSent => row.rate_out.map(rate).unwrap_or_default(),
@@ -409,6 +429,8 @@ pub fn compare(a: &Row, b: &Row, col: ColumnId) -> Ordering {
             .unwrap_or(Ordering::Equal),
         ColumnId::RateReceived => a.rate_in.partial_cmp(&b.rate_in).unwrap_or(Ordering::Equal),
         ColumnId::WinServices
+        | ColumnId::Country
+        | ColumnId::Asn
         | ColumnId::Module
         | ColumnId::User
         | ColumnId::CommandLine
@@ -628,7 +650,7 @@ mod tests {
     #[test]
     fn layout_default_and_visibility() {
         let mut l = ColumnLayout::default();
-        assert_eq!(l.visible().len(), ColumnId::ALL.len() - 17);
+        assert_eq!(l.visible().len(), ColumnId::ALL.len() - 19);
         assert!(l.visible().contains(&ColumnId::Created));
         assert!(!l.visible().contains(&ColumnId::ProcessPath));
         assert!(l.visible().contains(&ColumnId::RemoteHost));

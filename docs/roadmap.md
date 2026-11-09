@@ -63,7 +63,7 @@ program, README / `docs/architecture.md` / `docs/history.md`, detailed commit wi
 | #36 | Filter field tooltip: examples for the column and its possible values (State, Protocol); after #35 so the examples can use `&` | done ("Column filter tooltip: examples and values per column"), released in v1.0.7 |
 | #42 | Help → Command line window (#38) in its own OS window like the process properties of #33 (focus when open, Esc / ×, remembered position and size, embedded fallback), zoom as in the `--help` window of #39, the #33 setting becomes a general View → *Open windows separately* (old value kept) | done ("Help → Command line in its own zoomable window"), released in v1.1.1 |
 
-## Phase 5 – recording and automation (#3, #16, #4 released in v1.0.0; #38, #39 in v1.0.7; #19, #31, #40 in v1.1.1)
+## Phase 5 – recording and automation (done; #3, #16, #4 released in v1.0.0; #38, #39 in v1.0.7; #19, #31, #40 in v1.1.1; #18, #11, #32, #37, #44 not released yet)
 | Issue | What | Status |
 |-------|------|--------|
 | #3 | Record connection events for a period of time | done ("Record connection events and replay them"), released in v1.0.0; the command-line part is #16 |
@@ -71,7 +71,7 @@ program, README / `docs/architecture.md` / `docs/history.md`, detailed commit wi
 | #4 | ETW for short-lived connections (extends the recording of #3) | done ("Capture short-lived connections with ETW"), checked as administrator (acceptance test 100 + 100 connections, `--record --etw`); released in v1.0.0 |
 | #18 | Watch rules and alerts (builds on #10 and #3) | done ("Watch rules and alerts"), not released yet |
 | #19 | Statistics over time (data from the recording of #3) | done ("Statistics window: connections over time, top processes, hosts and ports"), released in v1.1.1; charts for an opened recording are not part of it |
-| #11 | Country and ASN (offline) – least critical, depends on an offline database | |
+| #11 | Country and ASN (offline) – least critical, depends on an offline database | done ("Country and ASN of remote addresses from offline files"), not released yet |
 | #31 | Replay: the Duration column counts to now instead of the slider time (found in the #3 check) | done ("Replay: Duration counts to the slider time"), released in v1.1.1 |
 | #32 | Invalid TCP state flips of Windows flood recordings with State changed events (found in the #3 check) | done ("Ignore invalid and implausible TCP state flips"), not released yet |
 | #37 | Process names of system / other users' processes without administrator rights from the process snapshot instead of `<pid>` (found in the #16 check) | done ("Process names of system processes without administrator rights"), not released yet |

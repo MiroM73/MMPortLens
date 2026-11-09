@@ -18,6 +18,14 @@ pub fn examples(col: ColumnId) -> &'static [(&'static str, &'static str)] {
             ("/^ms/", "fex.starts_ms"),
         ],
         Pid => &[("=4", "fex.pid_system"), (">1000", "fex.pid_above")],
+        Country => &[
+            ("=US|=DE", "fex.countries"),
+            ("!=SK&/^[A-Z]{2}$/", "fex.foreign"),
+        ],
+        Asn => &[
+            ("AS8075|AS15169", "fex.asns"),
+            ("microsoft|google", "fex.org"),
+        ],
         Protocol => &[
             ("tcp", "fex.tcp"),
             ("=UDPv6", "fex.udp6"),

@@ -67,6 +67,14 @@ pub fn export(
     let s = &cfg.export;
     let all: Vec<ColumnId> = cfg.columns.0.iter().map(|c| c.id).collect();
     let cols = tabexport::export_columns(s.columns, &visible, &all);
+    // The country / ASN database (#11), only when one of its columns is exported or filtered.
+    let geo = |c: &ColumnId| matches!(c, ColumnId::Country | ColumnId::Asn);
+    if cfg.geo.any()
+        && (cols.iter().any(geo) || visible.iter().any(geo))
+        && let Err(e) = crate::geo::load_now(&cfg.geo)
+    {
+        crate::console::err(&t!("geo.error", error = e));
+    }
     let hosts = |c: &ColumnId| matches!(c, ColumnId::RemoteHost | ColumnId::LocalHost);
     if cfg.resolve_addresses && (visible.iter().any(hosts) || cols.iter().any(hosts)) {
         let local = visible.contains(&ColumnId::LocalHost) || cols.contains(&ColumnId::LocalHost);

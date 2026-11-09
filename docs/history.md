@@ -564,3 +564,16 @@
   lines, 🔔 1 after one more; the window showed the hit (Alerts tab) and the rule editor (Rules tab,
   the log file row then got its buttons before the path). Not seen: the toast itself on screen
   (API success). Found: `counts_own_traffic` is flaky when not elevated (#46).
+- #11: columns Country and Network (ASN) of the remote address from offline files: new
+  `src/geo.rs` (ip2asn TSV and DB-IP country CSV, also gzip; sorted `u128` ranges, binary search;
+  private / loopback / link-local / multicast shown as such; global database loaded in a
+  background thread) and `src/app/geo.rs` (View → Country and ASN database…: files, download
+  links, state, reload); `Config::geo`; the export of the command line loads it when needed;
+  MaxMind `.mmdb` not supported. 33 keys in four languages, filter examples for both columns.
+  Verified: fmt, clippy (Windows, Linux), tests (lookups at range edges, IPv6, IPv4-mapped,
+  not-routed ranges, the country file winning, address classes, gzip, bad / missing files);
+  with the real `ip2asn-combined.tsv.gz` (719 149 ranges): `--export` gave e.g. `140.82.112.26 US
+  AS36459 GITHUB - GitHub, Inc.`, `--column asn=google` 10 rows, `--column country==US` 118 rows
+  (`asn=/./` from Git Bash got 0 rows because MSYS rewrote `/./` into a path – not a program
+  error); the window showed both columns filled and the database window "Loaded: 719149 ASN
+  ranges, 0 country ranges".
