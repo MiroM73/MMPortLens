@@ -63,21 +63,21 @@ program, README / `docs/architecture.md` / `docs/history.md`, detailed commit wi
 | #36 | Filter field tooltip: examples for the column and its possible values (State, Protocol); after #35 so the examples can use `&` | done ("Column filter tooltip: examples and values per column"), released in v1.0.7 |
 | #42 | Help → Command line window (#38) in its own OS window like the process properties of #33 (focus when open, Esc / ×, remembered position and size, embedded fallback), zoom as in the `--help` window of #39, the #33 setting becomes a general View → *Open windows separately* (old value kept) | done ("Help → Command line in its own zoomable window"), released in v1.1.1 |
 
-## Phase 5 – recording and automation (done; #3, #16, #4 released in v1.0.0; #38, #39 in v1.0.7; #19, #31, #40 in v1.1.1; #18, #11, #32, #37, #44 not released yet)
+## Phase 5 – recording and automation (done; #3, #16, #4 released in v1.0.0; #38, #39 in v1.0.7; #19, #31, #40 in v1.1.1; #18, #11, #32, #37, #44 in v1.1.7)
 | Issue | What | Status |
 |-------|------|--------|
 | #3 | Record connection events for a period of time | done ("Record connection events and replay them"), released in v1.0.0; the command-line part is #16 |
 | #16 | Command line: filters (#1), export (#9), recording (#3) – therefore after them | done ("Command line: filters, headless export and recording"), released in v1.0.0 |
 | #4 | ETW for short-lived connections (extends the recording of #3) | done ("Capture short-lived connections with ETW"), checked as administrator (acceptance test 100 + 100 connections, `--record --etw`); released in v1.0.0 |
-| #18 | Watch rules and alerts (builds on #10 and #3) | done ("Watch rules and alerts"), not released yet |
+| #18 | Watch rules and alerts (builds on #10 and #3) | done ("Watch rules and alerts"), released in v1.1.7 |
 | #19 | Statistics over time (data from the recording of #3) | done ("Statistics window: connections over time, top processes, hosts and ports"), released in v1.1.1; charts for an opened recording are not part of it |
-| #11 | Country and ASN (offline) – least critical, depends on an offline database | done ("Country and ASN of remote addresses from offline files"), not released yet |
+| #11 | Country and ASN (offline) – least critical, depends on an offline database | done ("Country and ASN of remote addresses from offline files"), released in v1.1.7 |
 | #31 | Replay: the Duration column counts to now instead of the slider time (found in the #3 check) | done ("Replay: Duration counts to the slider time"), released in v1.1.1 |
-| #32 | Invalid TCP state flips of Windows flood recordings with State changed events (found in the #3 check) | done ("Ignore invalid and implausible TCP state flips"), not released yet |
-| #37 | Process names of system / other users' processes without administrator rights from the process snapshot instead of `<pid>` (found in the #16 check) | done ("Process names of system processes without administrator rights"), not released yet |
+| #32 | Invalid TCP state flips of Windows flood recordings with State changed events (found in the #3 check) | done ("Ignore invalid and implausible TCP state flips"), released in v1.1.7 |
+| #37 | Process names of system / other users' processes without administrator rights from the process snapshot instead of `<pid>` (found in the #16 check) | done ("Process names of system processes without administrator rights"), released in v1.1.7 |
 | #38 | Help → Command line window: options, column names, exit codes and examples with copy buttons, from the same structured data as `--help` (extends #16) | done ("Help → Command line window"), released in v1.0.7 |
 | #40 | Console output of the command line garbled in an OEM code page console (`–` → `ÔÇô`; found in the #4 check) | done ("Console messages in the code page PowerShell decodes with"), released in v1.1.1; RusTrace port is MiroM73/Rustrace#62 |
-| #44 | Shells do not wait for the GUI exe; cmd `>` and PowerShell `$x = …` lose the messages and the exit code (found in the #40 check) | done ("Console companion mmportlens.com for cmd and PowerShell"; option 1 of the issue), not released yet |
+| #44 | Shells do not wait for the GUI exe; cmd `>` and PowerShell `$x = …` lose the messages and the exit code (found in the #40 check) | done ("Console companion mmportlens.com for cmd and PowerShell"; option 1 of the issue), released in v1.1.7 |
 | #39 | `--help` / `-h` / `-?` / `/?` in a styled egui window instead of the message box: resizable by the bottom-right corner, text zoom (Ctrl + wheel, Ctrl + `+` / `-` / `0`); reuses the renderer of #38, so after it | done ("--help in a styled, resizable window"), released in v1.0.7 |
 
 ## Any time (small fixes found on the way) – done up to #29 released in v0.3.7, #41 in v1.0.7
@@ -91,7 +91,7 @@ program, README / `docs/architecture.md` / `docs/history.md`, detailed commit wi
 | #26 | Update check: retry transient GitHub errors (HTTP 502/503/504, timeouts) and explain them; port the change back to RusTrace (copied `update`/`http` code, see #20) | done (739a9c4); RusTrace port is MiroM73/Rustrace#60 |
 | #29 | Status bar texts overlap in a narrow window (found in the #27 check) | done (10e1140) |
 | #41 | Multi-line values in the language files cut after the first line: filter tooltip, regex error (found in #35) | done ("Language files: one line per value"), released in v1.0.7 |
-| #43 | wgpu validation error (panic) when a window is larger than the maximum texture size, 8192 px (found in the #31 check) | done ("Windows larger than the GPU texture limit no longer end the program"), not released yet |
+| #43 | wgpu validation error (panic) when a window is larger than the maximum texture size, 8192 px (found in the #31 check) | done ("Windows larger than the GPU texture limit no longer end the program"), released in v1.1.7 |
 | #46 | Flaky test `counts_own_traffic`: AccessDenied when the first snapshot misses the own connection (found in the #18 check) | |
 
 ## Deferred indefinitely (owner's decision)

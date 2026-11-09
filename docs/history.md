@@ -577,3 +577,11 @@
   (`asn=/./` from Git Bash got 0 rows because MSYS rewrote `/./` into a path – not a program
   error); the window showed both columns filled and the database window "Loaded: 719149 ASN
   ranges, 0 country ranges".
+- Released **v1.1.7** (`scripts/release.ps1 1.1.7 -Yes`; written release notes: new – watch rules
+  and alerts #18, Country and Network (ASN) columns from offline files #11, the console companion
+  `mmportlens.com` #44; changed – invalid and implausible TCP state flips ignored #32 / #21; fixed –
+  process names without administrator rights #37, windows larger than the GPU texture limit #43;
+  known issue #46). The README status line names 1.1.7. The local tests passed, both workflows
+  succeeded and the draft was published with the notes as the latest release. Check of the
+  released ZIP: checksum OK, it contains `mmportlens.com`, `mmportlens.exe` has product version
+  1.1.7, and `cargo test fetch_latest_release -- --ignored` passes with v1.1.7 as the latest release.
