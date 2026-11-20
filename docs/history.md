@@ -611,3 +611,10 @@
   its values and the process block gets all the rest, so there are no wide empty areas and the
   command line is readable (the first version used equal column widths). Verified with
   screenshots at 900, 1200 and 1800 px.
+
+## Release v1.1.8 (2026-11-20)
+- Phase 6 (#47, #48) merged fast-forward from `phase-6-ui-polish` into master and released with
+  `scripts\release.ps1 1.1.8` (local tests, tag, workflow build); #46 (flaky test) ships in it
+  too. The generated draft notes listed only the two pull requests (#49, #50), so they were
+  replaced by hand-written notes (what is new / changed / fixed, download) and the release was
+  published as the latest. See the release page for the notes.

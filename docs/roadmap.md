@@ -80,11 +80,11 @@ program, README / `docs/architecture.md` / `docs/history.md`, detailed commit wi
 | #44 | Shells do not wait for the GUI exe; cmd `>` and PowerShell `$x = …` lose the messages and the exit code (found in the #40 check) | done ("Console companion mmportlens.com for cmd and PowerShell"; option 1 of the issue), released in v1.1.7 |
 | #39 | `--help` / `-h` / `-?` / `/?` in a styled egui window instead of the message box: resizable by the bottom-right corner, text zoom (Ctrl + wheel, Ctrl + `+` / `-` / `0`); reuses the renderer of #38, so after it | done ("--help in a styled, resizable window"), released in v1.0.7 |
 
-## Phase 6 – UI polish after v1.1.7 (in progress, branch `phase-6-ui-polish`)
+## Phase 6 – UI polish after v1.1.7 (done, released in v1.1.8)
 | Issue | What | Status |
 |-------|------|--------|
-| #47 | Statistics window: overlapping columns, misaligned lists, wasted space when enlarged, zoom hint next to the zoom buttons | done ("Statistics window: fixed columns, even lists, zoom hint by the buttons"), not released yet |
-| #48 | Detail panel: fields in 2-3 columns when there is room | done ("Details pane: connection values in up to three columns"), not released yet |
+| #47 | Statistics window: overlapping columns, misaligned lists, wasted space when enlarged, zoom hint next to the zoom buttons | done ("Statistics window: fixed columns, even lists, zoom hint by the buttons"), released in v1.1.8 |
+| #48 | Detail panel: fields in 2-3 columns when there is room | done ("Details pane: connection values in up to three columns"), released in v1.1.8 |
 
 ## Any time (small fixes found on the way) – done up to #29 released in v0.3.7, #41 in v1.0.7
 | Issue | What | Status |
@@ -98,7 +98,7 @@ program, README / `docs/architecture.md` / `docs/history.md`, detailed commit wi
 | #29 | Status bar texts overlap in a narrow window (found in the #27 check) | done (10e1140) |
 | #41 | Multi-line values in the language files cut after the first line: filter tooltip, regex error (found in #35) | done ("Language files: one line per value"), released in v1.0.7 |
 | #43 | wgpu validation error (panic) when a window is larger than the maximum texture size, 8192 px (found in the #31 check) | done ("Windows larger than the GPU texture limit no longer end the program"), released in v1.1.7 |
-| #46 | Flaky test `counts_own_traffic`: AccessDenied when the first snapshot misses the own connection (found in the #18 check) | done ("Flaky test counts_own_traffic: decide elevation by the token"), not released yet |
+| #46 | Flaky test `counts_own_traffic`: AccessDenied when the first snapshot misses the own connection (found in the #18 check) | done ("Flaky test counts_own_traffic: decide elevation by the token"), released in v1.1.8 |
 
 ## Deferred indefinitely (owner's decision)
 | Issue | What | Status |

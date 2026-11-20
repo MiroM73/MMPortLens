@@ -18,7 +18,7 @@ its structure and conventions.
 
 ## Status
 
-Version 1.1.7. What works now:
+Version 1.1.8. What works now:
 
 - TCP and UDP endpoints, IPv4 and IPv6, with PID, process name and process path
   (Windows: `GetExtendedTcpTable` / `GetExtendedUdpTable`; Linux: `/proc/net`).
