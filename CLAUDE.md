@@ -64,3 +64,22 @@ updates, CLI), take its code and adapt it rather than writing it again.
   matching '`. Do not retry the heredoc – write the script (or commit message) to a file in the
   scratchpad with the Write tool and run it (`python "<scratchpad>/x.py"`, `git commit -F
   "<scratchpad>/msg.txt"`). Short heredocs without quotes are fine.
+
+## Working economically
+- `docs/architecture.md` (~1,200 lines) and `docs/history.md` (~600 lines) are
+  never read whole. Grep for the section heading and read that section. For the
+  new `docs/history.md` line read only the place where it goes.
+- `docs/roadmap.md` is short: read it whole before starting work on issues.
+- Large sources (`model.rs` and others over ~800 lines): find the function with
+  grep and read its range.
+- When taking a feature from RusTrace, read only the files of that feature
+  there (see the feature index in its CLAUDE.md), not the whole project.
+- While iterating use `cargo check -q --message-format=short`. Run the full set
+  once, when the change is finished: `cargo test -q`, `cargo fmt`,
+  `cargo clippy -q --all-targets --locked -- -D warnings`, and the Linux clippy.
+- When a test fails, rerun only that test (`cargo test -q <name>`) until it
+  passes, then run the whole suite once.
+- When an advisor is configured: consult it before finalizing a plan that
+  touches more than one module or any `unsafe` Win32 code, when the same compile
+  or test error appears a second time, and before the final commit of such a
+  change.
