@@ -605,3 +605,9 @@
   the right edge of the zoom bar next to the A- / % / A+ buttons (all zoomable windows share
   `zoom_bar`). Verified with screenshots at 1000 x 560 and 1280 x 800; the traffic column (needs
   administrator rights) not seen in this session.
+- #48: the details pane spreads the connection values over one to three columns by the pane
+  width (`pick_columns`), keeping the four groups (endpoints, service / PID / module, times,
+  traffic) whole and the columns as even as possible (`split_groups`). Every column is as wide as
+  its values and the process block gets all the rest, so there are no wide empty areas and the
+  command line is readable (the first version used equal column widths). Verified with
+  screenshots at 900, 1200 and 1800 px.

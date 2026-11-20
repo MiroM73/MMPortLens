@@ -84,7 +84,7 @@ program, README / `docs/architecture.md` / `docs/history.md`, detailed commit wi
 | Issue | What | Status |
 |-------|------|--------|
 | #47 | Statistics window: overlapping columns, misaligned lists, wasted space when enlarged, zoom hint next to the zoom buttons | done ("Statistics window: fixed columns, even lists, zoom hint by the buttons"), not released yet |
-| #48 | Detail panel: fields in 2-3 columns when there is room | open |
+| #48 | Detail panel: fields in 2-3 columns when there is room | done ("Details pane: connection values in up to three columns"), not released yet |
 
 ## Any time (small fixes found on the way) – done up to #29 released in v0.3.7, #41 in v1.0.7
 | Issue | What | Status |

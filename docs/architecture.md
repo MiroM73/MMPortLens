@@ -415,7 +415,13 @@ same way. `<pid>` is left only for a process that ended before the snapshot.
   Process cell tooltip shows description – company, services and the command line.
 - **View → Details pane** (`Config::show_details`, default on): a resizable bottom panel for the
   cursor row (or the first selected row): the connection fields on the left, the process with its
-  icon on the right; values are selectable. Without a path and without elevation it explains that
+  icon on the right; values are selectable. The connection fields are four groups (endpoints;
+  service / PID / module; created / duration / first seen; traffic) that a wide pane spreads over
+  one to three columns (#48). Each column is as wide as its widest value (measured with the body
+  font, a value stretches it by at most 300 pt, longer ones wrap), `pick_columns` takes the most
+  columns that still leave 340 pt for the process block, which gets all the rest of the width (so
+  the command line is wide); `split_groups` keeps the groups whole and minimises the tallest
+  column. Both are pure and tested. Without a path and without elevation it explains that
   Windows needs administrator rights.
 
 ### Process properties window (#28)
