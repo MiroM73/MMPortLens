@@ -7,15 +7,21 @@
 use crate::app::native_window::ToolSpec;
 use crate::app::*;
 use crate::stats::{HISTORY_MS, Sample, TOP_N, TopItem, TopKind};
+use egui::TextWrapMode;
 use egui_plot::{Corner, Legend, Line, Plot, PlotPoints};
 
 /// Height of the chart (points, before the text zoom).
 const CHART_HEIGHT: f32 = 220.0;
-/// Width of one top list (points, before the text zoom); the lists stand side by side and the
-/// window scrolls horizontally when they do not fit.
+/// Minimum width of one top list (points, before the text zoom); the lists stand side by side,
+/// share a wider window evenly and the window scrolls horizontally when they do not fit.
 const LIST_WIDTH: f32 = 250.0;
-/// Longer values are shortened in the lists (the tooltip has them whole).
-const MAX_LABEL: usize = 34;
+/// Space between two lists (points).
+const LIST_GAP: f32 = 12.0;
+/// Space between the cells of a list row (points).
+const CELL_GAP: f32 = 10.0;
+/// Most rows of a list that are computed; a taller window shows more of them (up to this), a
+/// small one at least `TOP_N`. Longer labels are cut by the list width (the tooltip has them whole).
+const MAX_ROWS: usize = 40;
 
 /// One entry as shown: the item and its label (a host name, a port with its service name).
 struct Entry {
@@ -69,18 +75,18 @@ impl App {
         let processes = plain(crate::stats::top(
             rows.iter().copied(),
             TopKind::Processes,
-            TOP_N,
+            MAX_ROWS,
         ));
         let traffic = plain(crate::stats::top(
             rows.iter().copied(),
             TopKind::Traffic,
-            TOP_N,
+            MAX_ROWS,
         ));
         let has_rates = rows
             .iter()
             .any(|r| r.rate_in.is_some() || r.rate_out.is_some());
-        let host_items = crate::stats::top(rows.iter().copied(), TopKind::RemoteHosts, TOP_N);
-        let port_items = crate::stats::top(rows.iter().copied(), TopKind::RemotePorts, TOP_N);
+        let host_items = crate::stats::top(rows.iter().copied(), TopKind::RemoteHosts, MAX_ROWS);
+        let port_items = crate::stats::top(rows.iter().copied(), TopKind::RemotePorts, MAX_ROWS);
         drop(rows);
         let hosts = host_items
             .into_iter()
@@ -166,6 +172,7 @@ fn stats_ui(
     let mut clicked = None;
     // The visible width before the scroll area (inside it the width is unbounded).
     let visible = ui.available_width();
+    let visible_height = ui.available_height();
     egui::ScrollArea::both()
         .auto_shrink([false, false])
         .show(ui, |ui| {
@@ -193,6 +200,17 @@ fn stats_ui(
                 );
             }
             ui.add_space(8.0);
+            // Share the width evenly; the rows fill the height that is left (the title above and
+            // the hint below the lists take a row each).
+            let gap = LIST_GAP + ui.spacing().item_spacing.x;
+            let list_width = list_width(visible - 16.0, LIST_WIDTH * zoom, gap, 4);
+            let row_height = ui.spacing().interact_size.y + 3.0;
+            let rows = rows_that_fit(
+                visible_height - ui.min_rect().height() - 2.0 * row_height - 14.0,
+                row_height,
+                TOP_N,
+                MAX_ROWS,
+            );
             ui.horizontal_top(|ui| {
                 let lists: [(&str, &[Entry], TopKind); 4] = [
                     ("stats.top.processes", &data.processes, TopKind::Processes),
@@ -200,9 +218,9 @@ fn stats_ui(
                     ("stats.top.hosts", &data.hosts, TopKind::RemoteHosts),
                     ("stats.top.ports", &data.ports, TopKind::RemotePorts),
                 ];
-                for (title, entries, kind) in lists {
+                for (i, (title, entries, kind)) in lists.into_iter().enumerate() {
                     ui.vertical(|ui| {
-                        ui.set_width(LIST_WIDTH * zoom);
+                        ui.set_width(list_width);
                         ui.label(RichText::new(t!(title)).strong());
                         if kind == TopKind::Traffic && !data.has_rates {
                             ui.add(
@@ -211,11 +229,19 @@ fn stats_ui(
                             );
                         } else if entries.is_empty() {
                             ui.label(RichText::new(t!("stats.none")).weak());
-                        } else if let Some(c) = top_list(ui, title, entries, kind) {
+                        } else if let Some(c) = top_list(
+                            ui,
+                            title,
+                            &entries[..rows.min(entries.len())],
+                            kind,
+                            list_width,
+                        ) {
                             clicked = Some(c);
                         }
                     });
-                    ui.add_space(12.0);
+                    if i + 1 < 4 {
+                        ui.add_space(LIST_GAP);
+                    }
                 }
             });
             ui.add_space(6.0);
@@ -273,39 +299,52 @@ fn chart(ui: &mut egui::Ui, samples: &[Sample], width: f32, zoom: f32) {
         });
 }
 
-/// One top list as a grid: value (a link that filters), count, traffic for processes.
+/// One top list as a grid: value (a link that filters), count, traffic for processes. The number
+/// columns have a fixed width and the value gets the rest of `width` (cut with an ellipsis), so the
+/// lists never run into each other and their numbers line up.
 fn top_list(
     ui: &mut egui::Ui,
     id: &str,
     entries: &[Entry],
     kind: TopKind,
+    width: f32,
 ) -> Option<(ColumnId, String)> {
     let mut clicked = None;
     let col = kind.column();
     let with_rate = matches!(kind, TopKind::Processes | TopKind::Traffic)
         && entries.iter().any(|e| e.item.rate.is_some());
+    // Room for "00000" and "1234.5 MB/s" in the current text size.
+    let em = ui.text_style_height(&egui::TextStyle::Body);
+    let count_width = em * 3.0;
+    let rate_width = em * 6.0;
+    let numbers = [count_width, rate_width];
+    let label_width = label_width(width, &numbers[..if with_rate { 2 } else { 1 }], CELL_GAP);
     egui::Grid::new(id)
         .num_columns(if with_rate { 3 } else { 2 })
         .striped(true)
-        .spacing([10.0, 3.0])
+        .spacing([CELL_GAP, 3.0])
         .show(ui, |ui| {
             for e in entries {
-                let text = shorten(&e.label, MAX_LABEL);
                 let tip = t!(
                     "stats.filter.tip",
                     value = &e.label,
                     column = col.title(),
                     filter = e.item.filter()
                 );
-                if ui.link(text).on_hover_text(tip).clicked() {
+                let link = ui.scope(|ui| {
+                    ui.set_width(label_width);
+                    ui.style_mut().wrap_mode = Some(TextWrapMode::Truncate);
+                    ui.link(&e.label).on_hover_text(tip)
+                });
+                if link.inner.clicked() {
                     clicked = Some((col, e.item.filter()));
                 }
-                ui.with_layout(egui::Layout::right_to_left(egui::Align::Center), |ui| {
+                right_cell(ui, count_width, |ui| {
                     ui.label(e.item.count.to_string())
                         .on_hover_text(t!("stats.count.tip", count = e.item.count));
                 });
                 if with_rate {
-                    ui.with_layout(egui::Layout::right_to_left(egui::Align::Center), |ui| {
+                    right_cell(ui, rate_width, |ui| {
                         ui.label(e.item.rate.map(crate::columns::rate).unwrap_or_default());
                     });
                 }
@@ -315,15 +354,33 @@ fn top_list(
     clicked
 }
 
-/// `text` cut to `max` characters with an ellipsis.
-fn shorten(text: &str, max: usize) -> String {
-    if text.chars().count() <= max {
-        text.to_owned()
-    } else {
-        let mut s: String = text.chars().take(max.saturating_sub(1)).collect();
-        s.push('…');
-        s
+/// A cell of `width` whose content is aligned to the right.
+fn right_cell(ui: &mut egui::Ui, width: f32, content: impl FnOnce(&mut egui::Ui)) {
+    ui.allocate_ui_with_layout(
+        egui::vec2(width, ui.spacing().interact_size.y),
+        egui::Layout::right_to_left(egui::Align::Center),
+        content,
+    );
+}
+
+/// The width of each of `n` lists that share `total` with `gap` between them, at least `min`.
+fn list_width(total: f32, min: f32, gap: f32, n: usize) -> f32 {
+    ((total - gap * n.saturating_sub(1) as f32) / n.max(1) as f32).max(min)
+}
+
+/// What is left of a list of `width` for the value after the fixed `numbers` columns and the
+/// gaps between all columns.
+fn label_width(width: f32, numbers: &[f32], gap: f32) -> f32 {
+    (width - numbers.iter().sum::<f32>() - gap * numbers.len() as f32).max(40.0)
+}
+
+/// How many rows of `row_height` fit in `remaining`, between `min` (a small window scrolls) and
+/// `max` (rows that exist).
+fn rows_that_fit(remaining: f32, row_height: f32, min: usize, max: usize) -> usize {
+    if remaining <= 0.0 || row_height <= 0.0 {
+        return min;
     }
+    ((remaining / row_height) as usize).clamp(min, max)
 }
 
 #[cfg(test)]
@@ -331,9 +388,25 @@ mod tests {
     use super::*;
 
     #[test]
-    fn shortened_labels() {
-        assert_eq!(shorten("chrome.exe", 34), "chrome.exe");
-        assert_eq!(shorten("abcdef", 4), "abc…");
-        assert_eq!(shorten("čšžťďň", 3), "čš…");
+    fn lists_share_the_width_but_keep_the_minimum() {
+        // 4 lists, 3 gaps of 12: (1048 - 36) / 4
+        assert_eq!(list_width(1048.0, 250.0, 12.0, 4), 253.0);
+        assert_eq!(list_width(2000.0, 250.0, 12.0, 4), 491.0);
+        assert_eq!(list_width(600.0, 250.0, 12.0, 4), 250.0);
+    }
+
+    #[test]
+    fn the_value_gets_what_the_numbers_leave() {
+        assert_eq!(label_width(250.0, &[30.0], 10.0), 210.0);
+        assert_eq!(label_width(250.0, &[30.0, 60.0], 10.0), 140.0);
+        assert_eq!(label_width(50.0, &[30.0, 60.0], 10.0), 40.0);
+    }
+
+    #[test]
+    fn rows_follow_the_height() {
+        assert_eq!(rows_that_fit(100.0, 20.0, 10, 40), 10);
+        assert_eq!(rows_that_fit(500.0, 20.0, 10, 40), 25);
+        assert_eq!(rows_that_fit(5000.0, 20.0, 10, 40), 40);
+        assert_eq!(rows_that_fit(-5.0, 20.0, 10, 40), 10);
     }
 }

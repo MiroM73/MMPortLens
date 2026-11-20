@@ -500,13 +500,20 @@ so the chart has data when it opens; it is one counting pass per refresh, nothin
 (`StatsData::computed_for` = `last_poll`): `stats::top` groups the live rows by process name,
 remote address (no listeners / unspecified / no remote side) or remote port (not 0), sorts by count
 (traffic: by the summed `rate_in + rate_out` of #8, entries with traffic only; the rates exist only
-while a traffic column is shown, otherwise the list explains it) and keeps ten. Host labels use the
+while a traffic column is shown, otherwise the list explains it) and keeps up to `MAX_ROWS` (40; the window shows as many as fit, at least ten). Host labels use the
 reverse DNS cache (`name (address)`), ports `port_with_name`. The window always shows live data –
 during a replay a note says the recording is not included. **Content**: a `ScrollArea::both`
 (vertical and horizontal scroll bars when the zoomed content does not fit) with the heading, the
 current counts, an `egui_plot` chart (x = minutes before the newest sample, −10…0, three lines,
 legend top left; drag / zoom / scroll of the plot off so Ctrl + wheel zooms the window text; height
-and list widths scale with the window zoom) and the four lists side by side as striped grids.
+and list widths scale with the window zoom) and the four lists side by side as striped grids
+(#47). The lists share the window width evenly (`list_width`, at least 250 pt x zoom; the
+`item_spacing` of the row counts into the gap), the number columns have a fixed width (count 3 em,
+traffic 6 em, right aligned in `right_cell`) and the value gets the rest (`label_width`) and is
+cut with an ellipsis (`TextWrapMode::Truncate`, the tooltip has the whole value), so a list never
+runs into the next one and the numbers line up. `rows_that_fit` shows as many rows as the height
+of the window leaves below the chart (a small window keeps ten and scrolls). All three are pure
+and tested.
 **Click = filter**: an entry is a link; `filter_from_stats` sets `=value` as the column filter of
 Process, Remote address or Remote port (the other filters stay), shows that column and the filter
 row (filters of hidden columns do not apply). The test `filters_of_entries_match_exactly_their_rows`
@@ -875,7 +882,7 @@ language switch translates it at once, and shows it in a zoomable tool window (#
 geometry it opened with) and `ToolSpec` (title, default and minimum size). `show` draws it when open:
 with `Config::separate_windows` and native window support an immediate viewport
 (`ViewportId::from_hash_of(key)`, program icon), else an `egui::Window` (`Id::unique(key)`). The
-content is a bottom panel with `helpwindow::zoom_bar` (A− / % = reset / A+, hint, Close) and a
+content is a bottom panel with `helpwindow::zoom_bar` (A− / % = reset / A+, the "Ctrl + wheel zooms" hint right next to them, Close on the right; #47) and a
 `CentralPanel` with the caller's content. Opening an open window only focuses it
 (`ViewportCommand::Focus` / `move_to_top`). Native: the opening position / size come from the
 `config::ToolWindowState` and are fixed at the first frame (as #33); every frame stores the

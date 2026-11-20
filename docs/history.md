@@ -597,3 +597,11 @@
   first `fill` must be exactly AccessDenied; elevated, it must be `Ok`. Verified: fmt, clippy
   (Windows, Linux), the test 11 times alone and the full `cargo test` 4 times (not elevated); the
   elevated path not run in this session.
+
+## Phase 6 – UI polish (2026-11-20)
+- #47: the Statistics window lists no longer overlap: the number columns have a fixed width, the
+  value is cut with an ellipsis, the four lists share the window width evenly and show as many
+  rows as the height leaves (at least ten, up to 40). The "Ctrl + wheel zooms" hint moved from
+  the right edge of the zoom bar next to the A- / % / A+ buttons (all zoomable windows share
+  `zoom_bar`). Verified with screenshots at 1000 x 560 and 1280 x 800; the traffic column (needs
+  administrator rights) not seen in this session.

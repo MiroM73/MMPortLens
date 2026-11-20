@@ -198,6 +198,14 @@ pub fn zoom_bar(ui: &mut egui::Ui, zoom: &mut f32, grip_room: bool) -> bool {
         {
             z += ZOOM_STEP;
         }
+        // The hint stands next to the buttons it explains; it gives way (shortened) when the
+        // zoomed buttons and Close need the room.
+        let close_room = 90.0 + if grip_room { 14.0 } else { 0.0 };
+        let hint_width = (ui.available_width() - close_room).max(0.0);
+        ui.scope(|ui| {
+            ui.set_max_width(hint_width);
+            ui.add(egui::Label::new(RichText::new(t!("helpwin.zoom_hint")).weak()).truncate());
+        });
         ui.with_layout(egui::Layout::right_to_left(egui::Align::Center), |ui| {
             if grip_room {
                 ui.add_space(14.0);
@@ -205,8 +213,6 @@ pub fn zoom_bar(ui: &mut egui::Ui, zoom: &mut f32, grip_room: bool) -> bool {
             if ui.button(t!("helpwin.close")).clicked() {
                 close = true;
             }
-            // The hint gives way (shortened) when the zoomed buttons need the room.
-            ui.add(egui::Label::new(RichText::new(t!("helpwin.zoom_hint")).weak()).truncate());
         });
     });
     ui.add_space(4.0);

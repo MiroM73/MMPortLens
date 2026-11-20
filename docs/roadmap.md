@@ -80,6 +80,12 @@ program, README / `docs/architecture.md` / `docs/history.md`, detailed commit wi
 | #44 | Shells do not wait for the GUI exe; cmd `>` and PowerShell `$x = …` lose the messages and the exit code (found in the #40 check) | done ("Console companion mmportlens.com for cmd and PowerShell"; option 1 of the issue), released in v1.1.7 |
 | #39 | `--help` / `-h` / `-?` / `/?` in a styled egui window instead of the message box: resizable by the bottom-right corner, text zoom (Ctrl + wheel, Ctrl + `+` / `-` / `0`); reuses the renderer of #38, so after it | done ("--help in a styled, resizable window"), released in v1.0.7 |
 
+## Phase 6 – UI polish after v1.1.7 (in progress, branch `phase-6-ui-polish`)
+| Issue | What | Status |
+|-------|------|--------|
+| #47 | Statistics window: overlapping columns, misaligned lists, wasted space when enlarged, zoom hint next to the zoom buttons | done ("Statistics window: fixed columns, even lists, zoom hint by the buttons"), not released yet |
+| #48 | Detail panel: fields in 2-3 columns when there is room | open |
+
 ## Any time (small fixes found on the way) – done up to #29 released in v0.3.7, #41 in v1.0.7
 | Issue | What | Status |
 |-------|------|--------|
