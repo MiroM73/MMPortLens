@@ -8,6 +8,11 @@
   (`README.md` is a short overview; internals go into `docs/architecture.md`, a line per issue into
   `docs/history.md`), and make a commit with a **detailed English commit message**
   (what changed, why, how it was verified).
+- **Close issues from the commit:** the commit message of a change that finishes an issue ends with a
+  line `Closes #N` (one per issue: `Closes #12`, `Closes #13`) – GitHub then closes the issue by itself
+  when the commit reaches `master` (after the owner's push). `(#N)` in the subject line is only a
+  link and does **not** close anything. Use `Refs #N` for a commit that only partly solves an issue.
+  Never close issues by hand with `gh issue close` for work that is committed.
 - When Claude runs into something broken, a performance problem or an improvement idea while
   working on the project, it creates a new GitHub issue for it.
 - The **first block of the README** states that everything was created by Claude (Claude Opus 5.5,
